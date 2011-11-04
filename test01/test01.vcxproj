@@ -19,8 +19,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{A622F9F6-0742-474C-BD53-DD56C448B586}</ProjectGuid>
-    <RootNamespace>neo</RootNamespace>
+    <ProjectGuid>{8809DA3A-DF09-4B47-9F41-E193695EFD74}</ProjectGuid>
+    <RootNamespace>test01</RootNamespace>
     <SccProjectName>
     </SccProjectName>
     <SccAuxPath>
@@ -74,21 +74,25 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>$;$(SolutionDir)kami;$(SolutionDir)kami-lua;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)kami;$(SolutionDir)kami-lua;$(SolutionDir)kami\3rd_party;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>$(SolutionDir)kami;$(SolutionDir)kami\3rd_party;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LibraryPath>$(SolutionDir)$(IntDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(SolutionDir)kami;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)$(IntDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>$(SolutionDir)kami;$(SolutionDir)kami-lua;$(IncludePath)</IncludePath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LibraryPath>$(SolutionDir)$(IntDir);$(LibraryPath)</LibraryPath>
+    <IncludePath>$(SolutionDir)kami;$(SolutionDir)kami\3rd_party;$(SolutionDir)kami-lua;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(SolutionDir)kami;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)kami;$(SolutionDir)kami\3rd_party;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LibraryPath>$(SolutionDir)$(IntDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LibraryPath>$(SolutionDir)$(IntDir);$(LibraryPath)</LibraryPath>
@@ -100,116 +104,75 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalOptions>/Profile %(AdditionalOptions)</AdditionalOptions>
+      <SubSystem>Console</SubSystem>
     </Link>
-    <PreBuildEvent>
-      <Command>$(SolutionDir)$(Configuration)\buildnumber.exe</Command>
-    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <OpenMP>None</OpenMP>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OptimizeForWindowsApplication>true</OptimizeForWindowsApplication>
+      <Optimization>Full</Optimization>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <SubSystem>Console</SubSystem>
       <IgnoreSpecificDefaultLibraries>libcmt.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <AdditionalDependencies>MSVCRT.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
-    <PreBuildEvent>
-      <Command>$(SolutionDir)$(Configuration)\buildnumber.exe</Command>
-    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <IgnoreSpecificDefaultLibraries>MSVCRT.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <SubSystem>Console</SubSystem>
+      <IgnoreSpecificDefaultLibraries>MSVCRT.lib</IgnoreSpecificDefaultLibraries>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="masternoodles.h" />
-    <ClInclude Include="platformer.h" />
+    <ClCompile Include="particles.cpp" />
+    <ClCompile Include="test01.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\kami\info_blue.png" />
+    <None Include="common\glory.png" />
+    <None Include="common\postDefaultF.glsl" />
+    <None Include="common\postDefaultV.glsl" />
+    <None Include="common\test.png" />
+    <None Include="common\UI_charmap_s1.png" />
+    <None Include="icon1.ico" />
+    <None Include="common\modelDefaultF.glsl" />
+    <None Include="common\modelDefaultV.glsl" />
+    <None Include="model.ms3d" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="particles.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="platformer.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="common\clouds.png">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="common\gameover.png">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="common\init.lua">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="common\loading.png">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="common\map01.bmd">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="common\map01.smp">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="common\postDefaultF.glsl">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="common\postDefaultV.glsl">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="common\productionfrag.glsl">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="common\tile.frag">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="common\tile.vert">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="common\tilemap.png">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="common\charmap.png">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="common\title.png">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="configuration.ini">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="icon1.ico" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="neo.rc" />
+    <ResourceCompile Include="test01.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

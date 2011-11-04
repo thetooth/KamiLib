@@ -242,7 +242,7 @@ namespace klib{
 		}
 		void LuaCheckError(lua_State *L, int status){
 			if ( status!=0 ) {
-				std::cerr << "-- " << lua_tostring(L, -1) << std::endl;
+				cl("-- %s\n", lua_tostring(L, -1));
 				lua_pop(L, 1); // remove error message
 			}
 		}

@@ -22,7 +22,7 @@ int main(){
 	clock_t t0 = 0,t1 = 0,t2 = 0;
 	char wTitle[256] = {};
 
-	enum GameMode {_MENU, _MAPLOAD, _MAPDESTROY, _DEV};
+	enum GameMode {_MENU, _MAPLOAD, _MAPDESTROY, _INGAME};
 	int mode = 0;
 	Environment* gameEnv;
 	EnvLoaderThread* mapLoader;
@@ -120,7 +120,7 @@ int main(){
 						break;
 					}
 					break;
-				case GameMode::_DEV:
+				case GameMode::_INGAME:
 					switch (gc->msg.wParam){
 					case VK_RETURN:
 						mode = GameMode::_MAPDESTROY;
@@ -249,7 +249,7 @@ int main(){
 						"common/tile.vert",
 						"common/tile.frag"
 						);
-					mode = GameMode::_DEV;
+					mode = GameMode::_INGAME;
 				}catch(KLGLException e){
 					MessageBox(NULL, e.getMessage(), "KLGLException", MB_OK | MB_ICONERROR);
 					mode = GameMode::_MENU;
@@ -274,7 +274,7 @@ int main(){
 				cl("[OK]\n");
 
 				break;
-			case GameMode::_DEV:											// ! Main game test environment
+			case GameMode::_INGAME:											// ! Main game test environment
 
 				// Compute game physics and update events
 				gameEnv->dt = double(t0 - t1)/1000.0;
