@@ -1,4 +1,4 @@
-// Copyright 2005-2011 The Department of Redundancy Department, Dept.
+﻿// Copyright 2005-2011 The Department of Redundancy Department, Dept.
 
 #include "masternoodles.h"
 #include "platformer.h"
@@ -15,6 +15,8 @@ using namespace NeoPlatformer;
 void Loading(KLGL *gc, KLGLTexture *texture);
 
 int main(){
+	int consoleInput = 1;
+	char inputBuffer[256] = {};
 	char textBuffer[4096] = {};
 	bool quit = false, internalTimer = false, mapScroll = false;
 	int frame = 0,fps = 0,cycle = 0, th_id = 0, nthreads = 0, qualityPreset = 0;
@@ -24,7 +26,7 @@ int main(){
 
 	enum GameMode {_MENU, _MAPLOAD, _MAPDESTROY, _INGAME};
 	int mode = 0;
-	Environment* gameEnv;
+	Environment *gameEnv;
 	EnvLoaderThread* mapLoader;
 	Point<int> *stars[1000] = {};
 
@@ -47,7 +49,7 @@ int main(){
 		Loading(gc, loadingTexture);
 
 		// Configuration values
-		internalTimer = gc->config->GetBoolean("neo", "useInternalTimer", false);
+		internalTimer = gc->config->GetBoolean("neo", "useInternalTimer", true);
 		qualityPreset = gc->config->GetInteger("neo", "qualityPreset", 1);
 
 		// Textures
@@ -68,6 +70,7 @@ int main(){
 		MessageBox(NULL, e.getMessage(), "KLGLException", MB_OK | MB_ICONERROR);
 	}
 
+	cl("\nNeo %s R%d", APP_VERSION, APP_BUILD_VERSION);
 	luaopen_neo(gc->lua);
 	int s = luaL_loadfile(gc->lua, "common/init.lua");
 	if ( s==0 ) {
@@ -88,15 +91,19 @@ int main(){
 			if(gc->msg.message == WM_QUIT){
 				quit = true;
 			}else if (gc->msg.message == WM_KEYUP){
-				switch (gc->msg.wParam){
-				case VK_LEFT:
-					gameEnv->character->leftUp();
-					break;
-				case VK_RIGHT:
-					gameEnv->character->rightUp();
-					break;
-				case VK_UP:
-					gameEnv->character->jumpUp();
+				switch(mode){
+				case GameMode::_INGAME:
+					switch (gc->msg.wParam){
+					case VK_LEFT:
+						gameEnv->character->leftUp();
+						break;
+					case VK_RIGHT:
+						gameEnv->character->rightUp();
+						break;
+					case VK_UP:
+						gameEnv->character->jumpUp();
+						break;
+					}
 					break;
 				}
 			}else if (gc->msg.message == WM_KEYDOWN){
@@ -114,10 +121,41 @@ int main(){
 				// Context sensitive
 				switch(mode){
 				case GameMode::_MENU:
-					switch (gc->msg.wParam){
-					case VK_RETURN:
-						mode = GameMode::_MAPLOAD;
-						break;
+					if(consoleInput){
+						if ((gc->msg.wParam>=32) && (gc->msg.wParam<=255) && (gc->msg.wParam != '|')) {
+							if (strlen(inputBuffer) < 255) {
+								//cl("key: 0x%x\n", graphicsContext->msg.wParam);
+								char buf[3];
+								sprintf(buf, "%c\0", vktochar(gc->msg.wParam));
+								strcat(inputBuffer, buf);
+
+							}
+						} else if (gc->msg.wParam == VK_BACK) {
+							if(strlen(inputBuffer) > 0){
+								inputBuffer[strlen(inputBuffer)-1]='\0';
+							}
+						} else if (gc->msg.wParam == VK_TAB) {
+							inputBuffer[strlen(inputBuffer)]='\t';
+						} else if (gc->msg.wParam == VK_RETURN) {
+							if(strlen(inputBuffer) > 0){
+								if (strcmp(inputBuffer, "start") == 0) {
+									mode = GameMode::_MAPLOAD;
+								}else if (strcmp(inputBuffer, "exit") == 0){
+									PostQuitMessage(0);
+									quit = true;
+								}else{
+									int s = luaL_loadstring(gc->lua, inputBuffer);
+									if ( s==0 ) {
+										// execute Lua program
+										s = lua_pcall(gc->lua, 0, LUA_MULTRET, 0);
+									}
+									gc->LuaCheckError(gc->lua, s);
+								}
+							}else{
+								cl("--\n");
+							}
+							fill_n(inputBuffer, 256, '\0');
+						}
 					}
 					break;
 				case GameMode::_INGAME:
@@ -184,10 +222,7 @@ int main(){
 			switch(mode){
 			case GameMode::_MENU:											// ! Start menu
 
-				sprintf(textBuffer, 
-					"@CFFFFFFNeo %s R%d, Press return to continue.", 
-					APP_VERSION, APP_BUILD_VERSION
-					);
+				sprintf(textBuffer, "@CFFFFFF%s\n> %s%c", clBuffer, inputBuffer, (frame%16 <= 4 ? '_' : '\0'));
 
 				// Update clock
 				t1 = clock();
@@ -196,7 +231,8 @@ int main(){
 				gc->OrthogonalStart();
 				{
 					gc->Blit2D(titleTexture, 0, 0);
-					font->Draw(8, APP_SCREEN_H-22, textBuffer);
+					glViewport(0, gc->buffer_height-APP_SCREEN_H, APP_SCREEN_W, APP_SCREEN_H);
+					font->Draw(8, 8, textBuffer);
 				}
 				gc->OrthogonalEnd();
 
@@ -254,6 +290,15 @@ int main(){
 					MessageBox(NULL, e.getMessage(), "KLGLException", MB_OK | MB_ICONERROR);
 					mode = GameMode::_MENU;
 				}
+
+				envCallbackPtr = gameEnv;
+				
+				cl("Running user script common/map01.lua...\n");
+				int s = luaL_loadfile(gc->lua, "common/map01.lua");
+				if ( s==0 ) {
+					s = lua_pcall(gc->lua, 0, LUA_MULTRET, 0);
+				}
+				gc->LuaCheckError(gc->lua, s);
 
 				cl("\nGame created successfully.\n");
 
@@ -337,7 +382,7 @@ int main(){
 					//glTranslatef(APP_SCREEN_W/2.0f, APP_SCREEN_H/2.0f, 0.0f);
 					//glRotatef(t1/10.0f, 0.0f, 0.0f, 1.0f );
 					//glTranslatef(-APP_SCREEN_W/2.0f, -APP_SCREEN_H/2.0f, 0.0f);
-					
+
 					// Stars
 					for (int i = 0; i < 100; i++)
 					{

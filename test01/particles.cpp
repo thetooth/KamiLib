@@ -34,12 +34,12 @@ namespace klib{
 		int i = numMovers;
 		movers = new LiquidParticleType[10000000];
 		while ( i-- ){
-			movers[i] = LiquidParticleType(canvasW * 0.5f, canvasH * 0.5f);
+			movers[i] = LiquidParticleType(canvasW / 2, canvasH / 2);
 		}
 
-		mouseX = prevMouseX = canvasW * 0.5f;
-		mouseY = prevMouseY = canvasH * 0.5f;
-		mouseVX = mouseVY = 0.0f;
+		mouseX = prevMouseX = canvasW / 2;
+		mouseY = prevMouseY = canvasH / 2;
+		mouseVX = mouseVY = 0;
 	}
 
 	void LiquidParticles::audit(int addremove){
@@ -50,7 +50,7 @@ namespace klib{
 		if (addremove > 0)
 		{
 			for(int i = 0; i < addremove; i++){
-				movers[numMovers+i] = LiquidParticleType(canvasW * 0.5f, canvasH * 0.5f);
+				movers[numMovers+i] = LiquidParticleType(canvasW / 2, canvasH / 2);
 			}
 			numMovers += addremove;
 		}else if (addremove < 0)

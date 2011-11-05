@@ -7,6 +7,57 @@ using namespace std;
 using namespace klib;
 namespace NeoPlatformer{
 
+	Environment *envCallbackPtr = NULL;
+
+	int l_get( lua_State *L ){
+		const char *key = luaL_checkstring(L, 2);
+
+		if (strcmp(key, "characterMaxWalkSpeed") == 0)
+		{
+			lua_pushnumber(L, envCallbackPtr->character->maxWalkSpeed);
+			return 1;
+		}else{
+			return LUA_ERRERR;
+		}
+		return 1;
+	}
+
+	int l_set( lua_State *L ){
+		const char *key = luaL_checkstring(L, 2);
+		int val = luaL_checkint(L, 3);
+
+		if (strcmp(key, "characterMaxWalkSpeed") == 0){
+			envCallbackPtr->character->maxWalkSpeed = val;
+		}else{
+			return LUA_ERRERR;
+		}
+		return 1;
+	}
+
+	int luaopen_neo(lua_State *L) {
+		lua_newuserdata(L, sizeof(void *));
+		luaL_newmetatable(L, "neolib");
+		luaL_register(L, "neo", neolib);
+		neo_register_info(L);
+		lua_setmetatable(L, -2);
+		lua_setglobal(L, "neo");
+		
+		return 1;
+	}
+
+	Environment::Environment(){
+		mode = 0;
+		dt = 0.0;
+		scroll.x = scroll.y = 0;
+		scroll_real.x = scroll_real.y = 0;
+		target.x = target.y = 0;
+		scrollspeed = 20;
+		scrollspeedMulti = 80;
+		character = NULL;
+		platforms = NULL;
+		envCallbackPtr = this;
+	}
+
 	Environment::~Environment(){
 		delete character;
 		delete platforms;

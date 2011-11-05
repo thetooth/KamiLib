@@ -11,13 +11,20 @@ using namespace klib;
 #define MAP_PHASE_ADJ_SPEED			64
 
 namespace NeoPlatformer{
-	
+
 	class ObjectInterface;
+	class Environment;
 	class Character;
 	class Platform;
 
-	// Lua interop
-	static void set_info (lua_State *L) {
+	extern Environment *envCallbackPtr;
+
+	struct luatoInteralMap{
+		char* varName;
+		void* dataPtr;
+	};
+
+	static void neo_register_info (lua_State *L) {
 		lua_pushliteral (L, "_COPYRIGHT");
 		lua_pushliteral (L, "Copyright (C) 2005-2011 Ameoto Systems Inc. All Rights Reserved.");
 		lua_settable (L, -3);
@@ -29,27 +36,22 @@ namespace NeoPlatformer{
 		lua_settable (L, -3);
 	}
 
-	static int test(lua_State *L) {
-		const char *str = luaL_checkstring(L, 1);
-		cl("- %s", str);
-		lua_pushfstring (L,"%s", str);
-		return 1;
-	}
+	int l_get( lua_State *L );
+	int l_set( lua_State *L );
 
-	static const struct luaL_Reg neolib[] = {
-		{"test", test},
-		{NULL, NULL},
+	const struct luaL_Reg neolib[] =
+	{
+		{ "__index",	l_get	},
+		{ "__newindex",	l_set	},
+		{ NULL,			NULL	}
 	};
 
-	inline int luaopen_neo(lua_State *L) {
-		luaL_register(L, "neo", neolib);
-		set_info(L);
-		return 1;
-	}
+	int luaopen_neo(lua_State *L);
 
-	// Sometimes an environment class makes things cleaner.  Mine will be
-	// globally instanced, but you could make a local one and pass it around with 
-	// a pointer.
+	// The direction of the obstacle that I collided with.  See Character::checkCollision()
+	enum CollisionType {C_NONE, C_UP, C_DOWN, C_LEFT, C_RIGHT, C_SLOPELEFT, C_SLOPERIGHT};
+	enum TileType{t_null, t_nonsolid, t_under, t_slopeleft, t_sloperight};
+
 	class Environment
 	{
 	public:
@@ -72,17 +74,7 @@ namespace NeoPlatformer{
 		char *mapData;
 		char *mapMask;
 
-		Environment(){
-			mode = 0;
-			dt = 0.0;
-			scroll.x = scroll.y = 0;
-			scroll_real.x = scroll_real.y = 0;
-			target.x = target.y = 0;
-			scrollspeed = 20;
-			scrollspeedMulti = 80;
-			character = NULL;
-			platforms = NULL;
-		}
+		Environment();
 		~Environment();
 		void comp(int offsetX = 0, int offsetY = 0);
 		void drawHUD(KLGL* gc, KLGLTexture* tex);
@@ -175,10 +167,6 @@ namespace NeoPlatformer{
 		void drag(Environment &env);
 		void comp(Environment &env);
 	};
-
-	// The direction of the obstacle that I collided with.  See Character::checkCollision()
-	enum CollisionType {C_NONE, C_UP, C_DOWN, C_LEFT, C_RIGHT, C_SLOPELEFT, C_SLOPERIGHT};
-	enum TileType{t_null, t_nonsolid, t_under, t_slopeleft, t_sloperight};
 
 	class Platform
 	{

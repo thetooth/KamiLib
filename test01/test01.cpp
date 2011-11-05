@@ -34,7 +34,7 @@ int main(){
 
 	clock_t t0 = clock(), t1 = clock();
 	bool quit = false, pPixelLight = true, vsync = true, internalTimer = false;
-	int th_id, demoMode = 0;
+	int th_id, demoMode = 1;
 	int nthreads = sysinfo.dwNumberOfProcessors-1;
 
 	float theta = -360.0f, thetap = -360.0f;

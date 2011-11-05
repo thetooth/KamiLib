@@ -176,6 +176,7 @@
     <None Include="common\map01.bmd">
       <DeploymentContent>true</DeploymentContent>
     </None>
+    <None Include="common\map01.lua" />
     <None Include="common\map01.smp">
       <DeploymentContent>true</DeploymentContent>
     </None>

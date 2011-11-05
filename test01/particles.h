@@ -3,6 +3,7 @@
 #include "kami.h"
 namespace klib{
 
+	#define FPM 9
 	class LiquidParticleThread : KLGLThread{
 	public:
 		int status;
@@ -66,8 +67,8 @@ namespace klib{
 		void draw(KLGL* gc);
 	private:
 
-		float mouseVX;
-		float mouseVY;
+		int mouseVX;
+		int mouseVY;
 		int prevMouseX;
 		int prevMouseY;
 

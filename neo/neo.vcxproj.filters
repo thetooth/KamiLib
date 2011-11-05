@@ -83,6 +83,9 @@
     <None Include="common\gameover.png">
       <Filter>common</Filter>
     </None>
+    <None Include="common\map01.lua">
+      <Filter>common</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="neo.rc">
