@@ -86,6 +86,9 @@
     <None Include="common\map01.lua">
       <Filter>common</Filter>
     </None>
+    <None Include="common\gaussianBlur.frag">
+      <Filter>common</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="neo.rc">

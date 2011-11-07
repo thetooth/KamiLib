@@ -12,7 +12,7 @@
 using namespace klib;
 using namespace NeoPlatformer;
 
-void Loading(KLGL *gc, KLGLTexture *texture);
+void Loading(KLGL *gc, KLGLTexture *loading, KLGLTexture *splash);
 
 int main(){
 	int consoleInput = 1;
@@ -44,17 +44,17 @@ int main(){
 		// Init display
 		gc = new KLGL("Neo", APP_SCREEN_W, APP_SCREEN_H, 60, false, 2, 2);
 
-		// Loading screen
+		// Loading screen and menu buffer
 		loadingTexture = new KLGLTexture("common/loading.png");
-		Loading(gc, loadingTexture);
+		titleTexture = new KLGLTexture("common/title.png");
+		//Loading(gc, loadingTexture, titleTexture);
 
 		// Configuration values
-		internalTimer = gc->config->GetBoolean("neo", "useInternalTimer", true);
+		internalTimer = gc->config->GetBoolean("neo", "useInternalTimer", false);
 		qualityPreset = gc->config->GetInteger("neo", "qualityPreset", 1);
 
 		// Textures
 		charmapTexture = new KLGLTexture("common/charmap.png");		
-		titleTexture = new KLGLTexture("common/title.png");
 		backdropTexture = new KLGLTexture("common/clouds.png");
 		gameoverTexture = new KLGLTexture("common/gameover.png");
 
@@ -72,12 +72,12 @@ int main(){
 
 	cl("\nNeo %s R%d", APP_VERSION, APP_BUILD_VERSION);
 	luaopen_neo(gc->lua);
-	int s = luaL_loadfile(gc->lua, "common/init.lua");
-	if ( s==0 ) {
+	int luaStat = luaL_loadfile(gc->lua, "common/init.lua");
+	if ( luaStat==0 ) {
 		// execute Lua program
-		s = lua_pcall(gc->lua, 0, LUA_MULTRET, 0);
+		luaStat = lua_pcall(gc->lua, 0, LUA_MULTRET, 0);
 	}
-	gc->LuaCheckError(gc->lua, s);
+	gc->LuaCheckError(gc->lua, luaStat);
 
 	if (quit)
 	{
@@ -138,9 +138,7 @@ int main(){
 							inputBuffer[strlen(inputBuffer)]='\t';
 						} else if (gc->msg.wParam == VK_RETURN) {
 							if(strlen(inputBuffer) > 0){
-								if (strcmp(inputBuffer, "start") == 0) {
-									mode = GameMode::_MAPLOAD;
-								}else if (strcmp(inputBuffer, "exit") == 0){
+								if (strcmp(inputBuffer, "exit") == 0){
 									PostQuitMessage(0);
 									quit = true;
 								}else{
@@ -152,7 +150,8 @@ int main(){
 									gc->LuaCheckError(gc->lua, s);
 								}
 							}else{
-								cl("--\n");
+								cl("-- %c\n", 13);
+								mode = GameMode::_MAPLOAD;
 							}
 							fill_n(inputBuffer, 256, '\0');
 						}
@@ -230,12 +229,24 @@ int main(){
 				gc->OpenFBO(50, 0.0, 0.0, 80.0);
 				gc->OrthogonalStart();
 				{
-					gc->Blit2D(titleTexture, 0, 0);
+					// Reset pallet
+					KLGLColor(255, 255, 255, 255).Set();
+					// Draw BG
+					glBindTexture(GL_TEXTURE_2D, gc->fbo_texture[1]);
+					glBegin(GL_QUADS);
+					glTexCoord2d(0.0,0.0); glVertex2i(0,					0);
+					glTexCoord2d(1.0,0.0); glVertex2i(0+gc->window.width,	0);
+					glTexCoord2d(1.0,1.0); glVertex2i(0+gc->window.width,	0+gc->window.height);
+					glTexCoord2d(0.0,1.0); glVertex2i(0,					0+gc->window.height);
+					glEnd();
+					glBindTexture(GL_TEXTURE_2D, 0);
+					// Fake high res
 					glViewport(0, gc->buffer_height-APP_SCREEN_H, APP_SCREEN_W, APP_SCREEN_H);
+					// Draw console
 					font->Draw(8, 8, textBuffer);
 				}
 				gc->OrthogonalEnd();
-
+				gc->Swap();
 				break;
 			case GameMode::_MAPLOAD:										// ! Threaded map loader :D
 
@@ -285,6 +296,10 @@ int main(){
 						"common/tile.vert",
 						"common/tile.frag"
 						);
+					gc->InitShaders(3, 
+						"common/postDefaultV.glsl",
+						"common/gaussianBlur.frag"
+						);
 					mode = GameMode::_INGAME;
 				}catch(KLGLException e){
 					MessageBox(NULL, e.getMessage(), "KLGLException", MB_OK | MB_ICONERROR);
@@ -292,13 +307,14 @@ int main(){
 				}
 
 				envCallbackPtr = gameEnv;
-				
+
 				cl("Running user script common/map01.lua...\n");
-				int s = luaL_loadfile(gc->lua, "common/map01.lua");
-				if ( s==0 ) {
-					s = lua_pcall(gc->lua, 0, LUA_MULTRET, 0);
+				luaStat = luaL_loadfile(gc->lua, "common/map01.lua");
+				if (luaStat == 0)
+				{
+					luaStat = lua_pcall(gc->lua, 0, LUA_MULTRET, 0);
 				}
-				gc->LuaCheckError(gc->lua, s);
+				gc->LuaCheckError(gc->lua, luaStat);
 
 				cl("\nGame created successfully.\n");
 
@@ -406,6 +422,38 @@ int main(){
 					gameEnv->character->draw(gameEnv, gc, mapSpriteSheet, frame);
 					gameEnv->drawHUD(gc, gameoverTexture);
 
+					glFlush();
+
+					// Experimental multipass blur
+					for (int i = 0; i < 10; i++)
+					{
+						glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, gc->fbo[1]);
+						glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+						glBindTexture(GL_TEXTURE_2D, gc->fbo_texture[0]);
+
+						gc->BindShaders(3);
+						glBegin(GL_QUADS);
+						glTexCoord2d(0.0,0.0); glVertex2i(1,					0);
+						glTexCoord2d(1.0,0.0); glVertex2i(0+gc->window.width,	0);
+						glTexCoord2d(1.0,1.0); glVertex2i(0+gc->window.width,	0+gc->window.height);
+						glTexCoord2d(0.0,1.0); glVertex2i(0,					0+gc->window.height);
+						glEnd();
+						gc->UnbindShaders();
+						glBindTexture(GL_TEXTURE_2D, 0);
+
+						glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, gc->fbo[0]);
+						glBindTexture(GL_TEXTURE_2D, gc->fbo_texture[1]);
+
+						glBegin(GL_QUADS);
+						glTexCoord2d(0.0,0.0); glVertex2i(0,					0);
+						glTexCoord2d(1.0,0.0); glVertex2i(0+gc->window.width,	0);
+						glTexCoord2d(1.0,1.0); glVertex2i(0+gc->window.width,	0+gc->window.height);
+						glTexCoord2d(0.0,1.0); glVertex2i(0,					0+gc->window.height);
+						glEnd();
+						glBindTexture(GL_TEXTURE_2D, 0);
+						glFlush();
+					}
+
 					if (KLGLDebug)
 					{
 						glViewport(0, gc->buffer_height-APP_SCREEN_H, APP_SCREEN_W, APP_SCREEN_H);
@@ -413,9 +461,9 @@ int main(){
 					}
 				}
 				gc->OrthogonalEnd();
+				gc->Swap();
 				break;
 			}
-			gc->Swap();
 			frame++;
 			cycle++;
 		}
@@ -425,10 +473,20 @@ int main(){
 	return 0;
 }
 
-void Loading(KLGL *gc, KLGLTexture *texture){
+void Loading(KLGL *gc, KLGLTexture *loading, KLGLTexture *splash){
+	gc->OpenFBO();
 	gc->OrthogonalStart();
-	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-	gc->Blit2D(texture, 0, 0);
+	{
+		// Initialize auxiliary buffer(pretty bg)
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, gc->fbo[1]);
+		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+		gc->Blit2D(splash, 0, 0);
+
+		// Draw loading screen
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, gc->fbo[0]);
+		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+		gc->Blit2D(loading, 0, 0);
+	}
 	gc->OrthogonalEnd();
-	SwapBuffers(gc->hDC);
+	gc->Swap();
 }

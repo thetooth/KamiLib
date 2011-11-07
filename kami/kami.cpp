@@ -96,6 +96,7 @@ namespace klib{
 			overSampleFactor	= OSAA;
 			scaleFactor			= scale;
 			fps					= framerate;
+			shaderClock			= 0.0f;
 
 			// Attempt to load runtime configuration
 			config = new KLGLINIReader("configuration.ini");
@@ -195,53 +196,9 @@ namespace klib{
 			glMatrixMode(GL_MODELVIEW);
 			glLoadIdentity();
 
-			// Init OpenGL OK!
-			cl("Initialized GL %s\n", glGetString(GL_VERSION));
-
-			// Load Lua API
-			lua = lua_open();
-			if (lua != NULL)
-			{
-				cl("Initialized %s\n", LUA_VERSION);
-			}else{
-				throw KLGLException("luaInit: %s", lua_tostring(lua, -1));
-			}
-			luaL_openlibs(lua);
-			luaL_openkami(lua);
-
 			// Continue setup of OpenGL and framebuffer
-			glGenRenderbuffersEXT(1, &fbo_depth); // Generate one render buffer and store the ID in fbo_depth  
-			glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, fbo_depth); // Bind the fbo_depth render buffer  
-			glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT, buffer_width, buffer_height); // Set the render buffer storage to be a depth component, with a width and height of the window  
-			glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fbo_depth); // Set the render buffer of this buffer to the depth buffer 
-			glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0); // Unbind the render buffer
-
-			glGenTextures(1, &fbo_texture); // Generate one texture
-			glBindTexture(GL_TEXTURE_2D, fbo_texture); // Bind the texture fbo_texture  
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, buffer_width, buffer_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL); // Create a standard texture with the width and height of our window
-
-			// Setup the basic texture parameters
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);  
-			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);  
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-			// Unbind the texture  
-			glBindTexture(GL_TEXTURE_2D, 0);
-
-			glGenFramebuffersEXT(1, &fbo); // Generate one frame buffer and store the ID in fbo  
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo); // Bind our frame buffer
-			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, fbo_texture, 0); // Attach the texture fbo_texture to the color buffer in our frame buffer
-			glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
-			glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fbo_depth); // Attach the depth buffer fbo_depth to our frame buffer
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0); // Unbind our frame buffer
-
-			GLenum status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT); // Check that status of our generated frame buffer
-
-			if(status != GL_FRAMEBUFFER_COMPLETE_EXT){  
-				cl("Couldn't create frame buffer!\n");
-				exit(EXIT_FAILURE);
-			}
+			GenFrameBuffer(fbo[0], fbo_texture[0], fbo_depth[0]);
+			GenFrameBuffer(fbo[1], fbo_texture[1], fbo_depth[1]);
 
 			// Initialize gl parmas
 			glViewport(0, 0, window.width*scaleFactor, window.height*scaleFactor);				// Create initial 2D view
@@ -271,23 +228,36 @@ namespace klib{
 				wglSwapIntervalEXT(vsync);
 			}
 
-			cl("Initialized Frame Buffer Object @%dx%dx32\n", buffer_width, buffer_height);
+			// Init OpenGL OK!
+			cl("Initialized GL %s @%dx%d 32bits\n", glGetString(GL_VERSION), buffer_width, buffer_height);
 
-			shaderClock = 0.0f;
+			// Initialize the Lua API
+			lua = lua_open();
+			if (lua != NULL){
+				cl("Initialized %s\n", LUA_VERSION);
+			}else{
+				throw KLGLException("luaInit: %s", lua_tostring(lua, -1));
+			}
+			luaL_openlibs(lua);
+			luaL_openkami(lua);
 
 			// Draw logo and load internal resources
 			InfoBlue = new KLGLTexture(KLGLInfoBluePNG, 205);
 			CheepCheepDebug = new KLGLTexture(KLGLCheepCheepDebugPNG, 296);
 			klibLogo = new KLGLTexture(KLGLStartupLogoPNG, 370);
 
-#if defined(_DEBUG)
+			framebuffer = new KLGLTexture();
+			framebuffer->width = window.width;
+			framebuffer->height = window.height;
+
+//#if defined(_DEBUG)
 			OrthogonalStart();
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 			//Tile2D(InfoBlue, 0, 0, buffer_width/32, buffer_height/32);
 			Blit2D(klibLogo, 18, window.height-32);
 			OrthogonalEnd();
 			SwapBuffers(hDC);
-#endif
+//#endif
 
 			// Setup audio API
 			//audio = new KLGLSound();
@@ -322,7 +292,7 @@ namespace klib{
 	}
 
 	void KLGL::OpenFBO(float fov, float eyex, float eyey, float eyez){
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo); // Bind our frame buffer for rendering
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo[0]); // Bind our frame buffer for rendering
 		glPushAttrib(GL_VIEWPORT_BIT | GL_ENABLE_BIT); // Push our glEnable and glViewport states
 
 		// Set the size of the frame buffer view port
@@ -358,7 +328,7 @@ namespace klib{
 			shaderClock = 0.0f;
 		}
 
-		glBindTexture(GL_TEXTURE_2D, fbo_texture); // Bind our frame buffer texture
+		glBindTexture(GL_TEXTURE_2D, fbo_texture[0]); // Bind our frame buffer texture
 		glBegin(GL_QUADS);
 		{
 			glTexCoord2d(0.0,0.0); glVertex3d(-1.0,-1.0, 0);
@@ -372,6 +342,46 @@ namespace klib{
 
 		// Swap!
 		SwapBuffers(hDC);
+	}
+
+	void KLGL::GenFrameBuffer(GLuint& fbo, GLuint &fbo_texture, GLuint &fbo_depth) {
+		// Depth Buffer
+		glGenRenderbuffersEXT(1, &fbo_depth); // Generate one render buffer and store the ID in fbo_depth  
+		glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, fbo_depth); // Bind the fbo_depth render buffer  
+		glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT, buffer_width, buffer_height); // Set the render buffer storage to be a depth component, with a width and height of the window  
+		glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fbo_depth); // Set the render buffer of this buffer to the depth buffer 
+		glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0); // Unbind the render buffer
+
+		// Texture Buffer
+		glGenTextures(1, &fbo_texture);
+		glBindTexture(GL_TEXTURE_2D, fbo_texture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, buffer_width, buffer_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		glGenFramebuffers(1, &fbo);
+		glBindFramebuffer(GL_FRAMEBUFFER_EXT, fbo);
+		glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture, 0);
+		glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
+		glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fbo_depth);
+
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
+		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER_EXT);
+
+		switch (status) {
+		case GL_FRAMEBUFFER_COMPLETE:
+			break;
+		case GL_FRAMEBUFFER_UNSUPPORTED:
+			throw KLGLException("Error: unsupported framebuffer format!\n");
+			break;
+		default:
+			throw KLGLException("Error: invalid framebuffer config!\n");
+		}
 	}
 
 	void KLGL::Blit2D(KLGLTexture* texture, int x, int y, float rotation, KLGLColor vcolor){

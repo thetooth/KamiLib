@@ -4,6 +4,10 @@
 #define KLGLENV64
 #endif
 
+#ifndef GLEW_STATIC
+#define GLEW_STATIC
+#endif
+
 #pragma comment(lib,"glu32.lib")
 #pragma comment(lib,"opengl32.lib")
 //#pragma comment(lib,"opencl.lib")
@@ -175,16 +179,16 @@ namespace klib{
 		int overSampleFactor, scaleFactor;
 		bool vsync;
 
-		unsigned int fbo; // The frame buffer object  
-		unsigned int fbo_depth; // The depth buffer for the frame buffer object  
-		unsigned int fbo_texture; // The texture object to write our frame buffer object to
+		unsigned int fbo[128]; // The frame buffer object  
+		unsigned int fbo_depth[128]; // The depth buffer for the frame buffer object  
+		unsigned int fbo_texture[128]; // The texture object to write our frame buffer object to
 		unsigned int shader_id[128];
 		unsigned int shader_vp[128]; // 128 shaders should be enough!
 		unsigned int shader_fp[128];
 
 		float shaderClock;
 		KLGLINIReader *config;
-		KLGLTexture *klibLogo, *InfoBlue, *CheepCheepDebug;
+		KLGLTexture *framebuffer, *klibLogo, *InfoBlue, *CheepCheepDebug;
 		KLGLSound *audio;
 		int fps;
 
@@ -199,9 +203,10 @@ namespace klib{
 		}
 
 		// Prepare current frame for drawing
-		void OpenFBO(float fov, float eyex, float eyey, float eyez);
+		void OpenFBO(float fov = 0.0f, float eyex = 0.0f, float eyey = 0.0f, float eyez = 0.0f);
 		// Render FBO to the display and reset
 		void Swap();
+		void GenFrameBuffer(GLuint& fbo, GLuint &fbtex, GLuint &fbo_depth);
 		void Resize(){
 			windowResize(hWnd);
 		}
@@ -226,7 +231,6 @@ namespace klib{
 			return shader_id[shaderProgId];
 		}
 		void BindShaders(int shaderProgId = 0) {
-			glColor3f(1.0f, 1.0f, 1.0f);
 			glUseProgram(shader_id[shaderProgId]);
 		}
 		void UnbindShaders() {

@@ -11,12 +11,9 @@ function hex_dump(buf)
 end
 
 -- Hello ^D^
-kami.cl(' Lua Console\n'
-		..'Type "start" to begin game, or "exit" to end.\n'
+kami.cl(' Interactive Lua Console\n'
+		..'Press \'Return\' to begin game, or type "exit" to end.\n'
 		..'You may also setup parameters now.\n'
 )
-
--- Just incase someone trys to write to stdin...
-io.write('\n--NOT AN INTERACTIVE TERMINAL--\n')
 
 -- TODO: hook game and physics settings so they can be controlled via scripts
