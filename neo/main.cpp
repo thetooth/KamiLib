@@ -19,7 +19,7 @@ int main(){
 	char inputBuffer[256] = {};
 	char textBuffer[4096] = {};
 	bool quit = false, internalTimer = false, mapScroll = false;
-	int frame = 0,fps = 0,cycle = 0, th_id = 0, nthreads = 0, qualityPreset = 0;
+	int frame = 0,fps = 0,cycle = 0, th_id = 0, nthreads = 0, qualityPreset = 0, shaderAlliterations = 0;
 	POINT mouseXY;
 	clock_t t0 = 0,t1 = 0,t2 = 0;
 	char wTitle[256] = {};
@@ -47,14 +47,15 @@ int main(){
 		// Loading screen and menu buffer
 		loadingTexture = new KLGLTexture("common/loading.png");
 		titleTexture = new KLGLTexture("common/title.png");
-		//Loading(gc, loadingTexture, titleTexture);
+		Loading(gc, loadingTexture, titleTexture);
 
 		// Configuration values
-		internalTimer = gc->config->GetBoolean("neo", "useInternalTimer", false);
-		qualityPreset = gc->config->GetInteger("neo", "qualityPreset", 1);
+		internalTimer		= gc->config->GetBoolean("neo", "useInternalTimer", false);
+		qualityPreset		= gc->config->GetInteger("neo", "qualityPreset", 1);
+		shaderAlliterations	= gc->config->GetInteger("neo", "blurAlliterations", 4);
 
 		// Textures
-		charmapTexture = new KLGLTexture("common/charmap.png");		
+		charmapTexture  = new KLGLTexture("common/charmap.png");		
 		backdropTexture = new KLGLTexture("common/clouds.png");
 		gameoverTexture = new KLGLTexture("common/gameover.png");
 
@@ -243,6 +244,7 @@ int main(){
 					// Fake high res
 					glViewport(0, gc->buffer_height-APP_SCREEN_H, APP_SCREEN_W, APP_SCREEN_H);
 					// Draw console
+					font->Draw(7, 9, textBuffer, new KLGLColor(0, 0, 0, 127));
 					font->Draw(8, 8, textBuffer);
 				}
 				gc->OrthogonalEnd();
@@ -424,8 +426,13 @@ int main(){
 
 					glFlush();
 
-					// Experimental multipass blur
-					for (int i = 0; i < 10; i++)
+					// Experimental multi-pass blur
+					shaderAlliterations = mouseXY.y/50;
+					gc->BindShaders(3);
+					glUniform1f(glGetUniformLocation(gc->GetShaderID(3), "time"), gc->shaderClock);
+					glUniform1f(glGetUniformLocation(gc->GetShaderID(3), "BLUR_BIAS"), (max(mouseXY.x, 0)/1000.0f)/100.0f);
+					gc->UnbindShaders();
+					for (int i = 0; i < shaderAlliterations; i++)
 					{
 						glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, gc->fbo[1]);
 						glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
@@ -433,7 +440,7 @@ int main(){
 
 						gc->BindShaders(3);
 						glBegin(GL_QUADS);
-						glTexCoord2d(0.0,0.0); glVertex2i(1,					0);
+						glTexCoord2d(0.0,0.0); glVertex2i(0,					0);
 						glTexCoord2d(1.0,0.0); glVertex2i(0+gc->window.width,	0);
 						glTexCoord2d(1.0,1.0); glVertex2i(0+gc->window.width,	0+gc->window.height);
 						glTexCoord2d(0.0,1.0); glVertex2i(0,					0+gc->window.height);
@@ -442,6 +449,7 @@ int main(){
 						glBindTexture(GL_TEXTURE_2D, 0);
 
 						glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, gc->fbo[0]);
+						glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 						glBindTexture(GL_TEXTURE_2D, gc->fbo_texture[1]);
 
 						glBegin(GL_QUADS);
@@ -457,6 +465,7 @@ int main(){
 					if (KLGLDebug)
 					{
 						glViewport(0, gc->buffer_height-APP_SCREEN_H, APP_SCREEN_W, APP_SCREEN_H);
+						font->Draw(7, 15, textBuffer, new KLGLColor(0, 0, 0, 127));
 						font->Draw(8, 14, textBuffer);
 					}
 				}
@@ -480,7 +489,7 @@ void Loading(KLGL *gc, KLGLTexture *loading, KLGLTexture *splash){
 		// Initialize auxiliary buffer(pretty bg)
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, gc->fbo[1]);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-		gc->Blit2D(splash, 0, 0);
+		//gc->Blit2D(splash, 0, 0);
 
 		// Draw loading screen
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, gc->fbo[0]);

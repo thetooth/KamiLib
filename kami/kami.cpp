@@ -299,12 +299,12 @@ namespace klib{
 		glViewport(0, 0, buffer_width, buffer_height);
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
-		gluPerspective(fov, 1.0f*buffer_width/buffer_height, 0.1, 1000.0);
+		gluPerspective(fov, 1.0f*buffer_width/buffer_height, 0.1, 2400.0);
 		gluLookAt(eyex, eyey, eyez, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0);
 
 		// Set MODELVIEW matrix mode
 		glMatrixMode(GL_MODELVIEW);
-		//glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear (GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_LIGHTING);
 	}
@@ -602,7 +602,7 @@ namespace klib{
 		c_per_row = m_width/c_width;
 	}
 
-	void KLGLFont::Draw(int x, int y, char* text)
+	void KLGLFont::Draw(int x, int y, char* text, KLGLColor* vcolor)
 	{
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, c_texture);
@@ -634,12 +634,19 @@ namespace klib{
 					if (*(c+1) == 'C'){ // Change color
 						static char *token = (char*)malloc(8);
 						strcpy(token, substr(text, cp+2, 6));
-
-						color->r = strtoul(substr(token, 0, 2), NULL, 16);
-						color->g = strtoul(substr(token, 2, 2), NULL, 16);
-						color->b = strtoul(substr(token, 4, 2), NULL, 16);
-
 						c += 8;
+
+						if (vcolor != NULL)
+						{
+							// Ignore color codes if global paramater is set
+							color = vcolor;
+							break;
+						}else{
+							color->r = strtoul(substr(token, 0, 2), NULL, 16);
+							color->g = strtoul(substr(token, 2, 2), NULL, 16);
+							color->b = strtoul(substr(token, 4, 2), NULL, 16);
+							color->a = 255;
+						}
 					}
 					break;
 				}
