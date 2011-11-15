@@ -50,7 +50,16 @@ namespace NeoPlatformer{
 
 	// The direction of the obstacle that I collided with.  See Character::checkCollision()
 	enum CollisionType {C_NONE, C_UP, C_DOWN, C_LEFT, C_RIGHT, C_SLOPELEFT, C_SLOPERIGHT};
-	enum TileType{t_null, t_nonsolid, t_under, t_slopeleft, t_sloperight};
+	enum TileType {T_NULL, T_NONSOLID, T_UNDER, T_LEFTSLOPE, T_RIGHTSLOPE, T_LAVA};
+	enum TileFlag {
+		F_NONSOLID		= 0x00,
+		F_CEIL			= 0x01,
+		F_FLOOR			= 0x02,
+		F_LEFT			= 0x04,
+		F_RIGHT			= 0x08,
+		F_LEFTSLOPE		= 0x10,
+		F_RIGHTSLOPE	= 0x20,
+	};
 
 	class Environment
 	{
@@ -172,6 +181,7 @@ namespace NeoPlatformer{
 	{
 	public:
 		int tileId;
+		int tileFlags;
 		char* mapDataPtr;
 		char* mapMaskPtr;
 		bool ceiling; // No pass through : Character collides with bottom while moving upward
@@ -183,9 +193,8 @@ namespace NeoPlatformer{
 		Rect<int> collisionRect;
 		Point<float> pos;
 
-		Platform(float x, float y, int w, int h, int sprId, bool* flags, char* mapDataPtrI, char* mapMaskPtrI);
+		Platform(float x, float y, int w, int h, int sprId, int flags, char* mapDataPtrI, char* mapMaskPtrI);
 		~Platform(){};
-		void checkCollisionType();
 		void scroll_normal();
 		void draw(KLGL* gc, Environment* env, KLGLSprite* sprite);
 		CollisionType checkCollision(Environment &env);

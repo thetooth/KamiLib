@@ -181,6 +181,8 @@
     <None Include="common\map01.smp">
       <DeploymentContent>true</DeploymentContent>
     </None>
+    <None Include="common\passthrough.frag" />
+    <None Include="common\passthrough.vert" />
     <None Include="common\postDefaultF.glsl">
       <DeploymentContent>true</DeploymentContent>
     </None>

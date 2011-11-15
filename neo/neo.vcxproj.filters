@@ -89,6 +89,12 @@
     <None Include="common\gaussianBlur.frag">
       <Filter>common</Filter>
     </None>
+    <None Include="common\passthrough.vert">
+      <Filter>common</Filter>
+    </None>
+    <None Include="common\passthrough.frag">
+      <Filter>common</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="neo.rc">

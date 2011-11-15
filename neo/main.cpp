@@ -55,7 +55,7 @@ int main(){
 		shaderAlliterations	= gc->config->GetInteger("neo", "blurAlliterations", 4);
 
 		// Textures
-		charmapTexture  = new KLGLTexture("common/charmap.png");		
+		charmapTexture  = new KLGLTexture("common/internalfont.png");
 		backdropTexture = new KLGLTexture("common/clouds.png");
 		gameoverTexture = new KLGLTexture("common/gameover.png");
 
@@ -64,7 +64,13 @@ int main(){
 		//soundTest->open(NeoSoundServer);
 
 		// Fonts
-		font = new KLGLFont(charmapTexture->gltexture, charmapTexture->width, charmapTexture->height, 6, 8, -1);
+		font = new KLGLFont(charmapTexture->gltexture, charmapTexture->width, charmapTexture->height, 8, 8, -1);
+
+		// Default shaders
+		gc->InitShaders(0, 0, 
+			"common/passthrough.vert",
+			"common/passthrough.frag"
+		);
 
 	} catch(KLGLException e){
 		quit = 1;
@@ -112,7 +118,6 @@ int main(){
 				switch (gc->msg.wParam){
 				case VK_ESCAPE:
 					PostQuitMessage(0);
-					quit = true;
 					break;
 				case VK_D:
 					KLGLDebug = !KLGLDebug;
@@ -222,7 +227,7 @@ int main(){
 			switch(mode){
 			case GameMode::_MENU:											// ! Start menu
 
-				sprintf(textBuffer, "@CFFFFFF%s\n> %s%c", clBuffer, inputBuffer, (frame%16 <= 4 ? '_' : '\0'));
+				sprintf(textBuffer, "@CFFFFFF@D%s\n> %s%c", clBuffer, inputBuffer, (frame%16 <= 4 ? '_' : '\0'));
 
 				// Update clock
 				t1 = clock();
@@ -233,18 +238,9 @@ int main(){
 					// Reset pallet
 					KLGLColor(255, 255, 255, 255).Set();
 					// Draw BG
-					glBindTexture(GL_TEXTURE_2D, gc->fbo_texture[1]);
-					glBegin(GL_QUADS);
-					glTexCoord2d(0.0,0.0); glVertex2i(0,					0);
-					glTexCoord2d(1.0,0.0); glVertex2i(0+gc->window.width,	0);
-					glTexCoord2d(1.0,1.0); glVertex2i(0+gc->window.width,	0+gc->window.height);
-					glTexCoord2d(0.0,1.0); glVertex2i(0,					0+gc->window.height);
-					glEnd();
-					glBindTexture(GL_TEXTURE_2D, 0);
-					// Fake high res
-					glViewport(0, gc->buffer_height-APP_SCREEN_H, APP_SCREEN_W, APP_SCREEN_H);
+					gc->Blit2D(titleTexture, 0, 0);
 					// Draw console
-					font->Draw(7, 9, textBuffer, new KLGLColor(0, 0, 0, 127));
+					gc->OrthogonalStart(gc->scaleFactor);
 					font->Draw(8, 8, textBuffer);
 				}
 				gc->OrthogonalEnd();
@@ -270,11 +266,10 @@ int main(){
 						sprintf(textBuffer, "@CFFFFFF%s", clBuffer);
 
 						gc->OrthogonalStart();
-						{
-							glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-							gc->Blit2D(loadingTexture, 0, 0);
-							font->Draw(8, 14, textBuffer);
-						}
+						glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+						gc->Blit2D(loadingTexture, 0, 0);
+						gc->OrthogonalStart(gc->scaleFactor);
+						font->Draw(8, 14, textBuffer);
 						gc->OrthogonalEnd();
 						SwapBuffers(gc->hDC);
 						// No need to rush
@@ -290,15 +285,15 @@ int main(){
 					// Map sprites
 					mapSpriteSheet = new KLGLSprite("common/tilemap.png", 16, 16);
 					delete mapLoader;
-					gc->InitShaders(1, 
+					gc->InitShaders(1, 0, 
 						"common/postDefaultV.glsl",
 						"common/productionfrag.glsl"
 						);
-					gc->InitShaders(2, 
+					/*gc->InitShaders(2, 0, 
 						"common/tile.vert",
 						"common/tile.frag"
-						);
-					gc->InitShaders(3, 
+						);*/
+					gc->InitShaders(3, 0, 
 						"common/postDefaultV.glsl",
 						"common/gaussianBlur.frag"
 						);
@@ -309,6 +304,7 @@ int main(){
 				}
 
 				envCallbackPtr = gameEnv;
+				ShowCursor(false);
 
 				cl("Running user script common/map01.lua...\n");
 				luaStat = luaL_loadfile(gc->lua, "common/map01.lua");
@@ -327,11 +323,14 @@ int main(){
 				try{
 					delete gameEnv;
 					delete mapSpriteSheet;
-					gc->UnloadShader(1);
+					gc->UnloadShaders(1);
+					gc->UnloadShaders(2);
+					gc->UnloadShaders(3);
 				}catch(KLGLException e){
 					MessageBox(NULL, e.getMessage(), "KLGLException", MB_OK | MB_ICONERROR);
 					mode = GameMode::_MENU;
 				}
+				ShowCursor(true);
 
 				mode = GameMode::_MENU;
 				cl("[OK]\n");
@@ -346,7 +345,7 @@ int main(){
 				// Debug info
 				if (KLGLDebug)
 				{
-					sprintf(textBuffer, "@CFFFFFF%s \n\nNeo\n-------------------------\n"\
+					sprintf(textBuffer, "@CFFFFFF@D%s \n\nNeo\n-------------------------\n"\
 						"Render FPS: %d\n"\
 						"       Syn: V%dT%d\n"\
 						"       Buf: %dx%d\n"\
@@ -356,9 +355,9 @@ int main(){
 						"Map    Pos: %d,%d\n"\
 						"       Rel: %d,%d >> %d\n"\
 						"       Tar: %d,%d >> %d\n\n"\
-						"Debug  act: %d\n"\
-						"       db0: %d\n"\
-						"       db1: %d\n", 
+						"Debug  Act: %d\n"\
+						"       DB0: %d\n"\
+						"       DB1: %d\n", 
 						clBuffer,
 						fps,
 						gc->vsync,
@@ -420,53 +419,22 @@ int main(){
 
 					gameEnv->drawMap(gc, mapSpriteSheet);
 
-					// Player and HUD
-					gameEnv->character->draw(gameEnv, gc, mapSpriteSheet, frame);
-					gameEnv->drawHUD(gc, gameoverTexture);
-
-					glFlush();
-
 					// Experimental multi-pass blur
-					shaderAlliterations = mouseXY.y/50;
 					gc->BindShaders(3);
 					glUniform1f(glGetUniformLocation(gc->GetShaderID(3), "time"), gc->shaderClock);
-					glUniform1f(glGetUniformLocation(gc->GetShaderID(3), "BLUR_BIAS"), (max(mouseXY.x, 0)/1000.0f)/100.0f);
+					glUniform2f(glGetUniformLocation(gc->GetShaderID(3), "BUFFER_EXTENSITY"), gc->window.width*gc->scaleFactor, gc->window.height*gc->scaleFactor);
 					gc->UnbindShaders();
-					for (int i = 0; i < shaderAlliterations; i++)
-					{
-						glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, gc->fbo[1]);
-						glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-						glBindTexture(GL_TEXTURE_2D, gc->fbo_texture[0]);
 
-						gc->BindShaders(3);
-						glBegin(GL_QUADS);
-						glTexCoord2d(0.0,0.0); glVertex2i(0,					0);
-						glTexCoord2d(1.0,0.0); glVertex2i(0+gc->window.width,	0);
-						glTexCoord2d(1.0,1.0); glVertex2i(0+gc->window.width,	0+gc->window.height);
-						glTexCoord2d(0.0,1.0); glVertex2i(0,					0+gc->window.height);
-						glEnd();
-						gc->UnbindShaders();
-						glBindTexture(GL_TEXTURE_2D, 0);
-
-						glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, gc->fbo[0]);
-						glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-						glBindTexture(GL_TEXTURE_2D, gc->fbo_texture[1]);
-
-						glBegin(GL_QUADS);
-						glTexCoord2d(0.0,0.0); glVertex2i(0,					0);
-						glTexCoord2d(1.0,0.0); glVertex2i(0+gc->window.width,	0);
-						glTexCoord2d(1.0,1.0); glVertex2i(0+gc->window.width,	0+gc->window.height);
-						glTexCoord2d(0.0,1.0); glVertex2i(0,					0+gc->window.height);
-						glEnd();
-						glBindTexture(GL_TEXTURE_2D, 0);
-						glFlush();
-					}
+					gameEnv->character->draw(gameEnv, gc, mapSpriteSheet, frame);
+					// Player and HUD
+					gameEnv->drawHUD(gc, gameoverTexture);
 
 					if (KLGLDebug)
 					{
-						glViewport(0, gc->buffer_height-APP_SCREEN_H, APP_SCREEN_W, APP_SCREEN_H);
-						font->Draw(7, 15, textBuffer, new KLGLColor(0, 0, 0, 127));
+						gc->OrthogonalStart(gc->scaleFactor);
 						font->Draw(8, 14, textBuffer);
+						sprintf(textBuffer, "@CFFFFFF@D%c", 16);
+						font->Draw(mouseXY.x, mouseXY.y, textBuffer);
 					}
 				}
 				gc->OrthogonalEnd();

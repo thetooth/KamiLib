@@ -183,10 +183,12 @@ namespace klib{
 		unsigned int fbo_depth[128]; // The depth buffer for the frame buffer object  
 		unsigned int fbo_texture[128]; // The texture object to write our frame buffer object to
 		unsigned int shader_id[128];
-		unsigned int shader_vp[128]; // 128 shaders should be enough!
+		unsigned int shader_vp[128];
+		unsigned int shader_tp[128]; // 128 shaders should be enough!
+		unsigned int shader_gp[128];
 		unsigned int shader_fp[128];
 
-		float shaderClock;
+		int shaderClock;
 		KLGLINIReader *config;
 		KLGLTexture *framebuffer, *klibLogo, *InfoBlue, *CheepCheepDebug;
 		KLGLSound *audio;
@@ -222,11 +224,13 @@ namespace klib{
 		};
 		void Tile2D(KLGLTexture* texture, int x, int y, int w, int h);
 		void Rectangle2D(int x, int y, int width, int height, KLGLColor vcolor = KLGLColor(255, 0, 0, 255));
-		void OrthogonalStart();
+		void OrthogonalStart(float scale = 1.0f);
 		void OrthogonalEnd();
+		void BindMultiPassShader(int shaderProgId = 0, int alliterations = 1);
 
 		// Automatically load and setup a shader program for given vertex and frag shader scripts
-		int InitShaders(int shaderProgId, const char *vsFile, const char *fsFile, int internalString = 0);
+		int InitShaders(int shaderProgId, int isString, const char *vsFile, const char *fsFile, const char *gpFile = NULL, const char *tsFile = NULL);
+		unsigned int ComputeShader(unsigned int &shaderProgram, unsigned int shaderType, const char* shaderString);
 		unsigned int GetShaderID(int shaderProgId = 0){
 			return shader_id[shaderProgId];
 		}
@@ -236,12 +240,17 @@ namespace klib{
 		void UnbindShaders() {
 			glUseProgram(0);
 		}
-		void UnloadShader(int id){
-			glDetachShader(shader_id[id], shader_fp[id]);
+		void UnloadShaders(int id){
 			glDetachShader(shader_id[id], shader_vp[id]);
+			glDetachShader(shader_id[id], shader_tp[id]);
+			glDetachShader(shader_id[id], shader_gp[id]);
+			glDetachShader(shader_id[id], shader_fp[id]);
 
-			glDeleteShader(shader_fp[id]);
 			glDeleteShader(shader_vp[id]);
+			glDeleteShader(shader_tp[id]);
+			glDeleteShader(shader_gp[id]);
+			glDeleteShader(shader_fp[id]);
+
 			glDeleteProgram(shader_id[id]);
 		}
 		void LuaCheckError(lua_State *L, int status){

@@ -26,7 +26,7 @@ int main(int argc, char **argv)
 
 	KLGLTexture *charmap = new KLGLTexture((unsigned char*)chaTextureSrc.pointer, chaTextureSrc.size);
 
-	gc->InitShaders(1, (const char*)vertShaderSrc.pointer, (const char*)fragShaderSrc.pointer, 1);
+	gc->InitShaders(1, 1, (const char*)vertShaderSrc.pointer, (const char*)fragShaderSrc.pointer);
 	KLGLFont* text = new KLGLFont(charmap->gltexture, charmap->width, charmap->height, 8, 10);
 
 	Game game;

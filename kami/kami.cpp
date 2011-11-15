@@ -41,16 +41,15 @@ namespace klib{
 		data[size] = '\0';
 		fclose(fin);
 		InitTexture(data, size);
-		delete[] data;
+		delete data;
 		cl("[OK]\n");
 		return 0;
 	}
 
 	int KLGLTexture::InitTexture(unsigned char *data, int size){
-		std::vector<unsigned char> swap;
+		static std::vector<unsigned char> swap;
 		// PNG DECODER OMG OMG OMG
 		decodePNG(swap, width, height, data, size);
-		//delete data;
 
 		// Throw them thar pixels at the VRAM
 		glGenTextures(1, &gltexture);
@@ -201,10 +200,10 @@ namespace klib{
 			GenFrameBuffer(fbo[1], fbo_texture[1], fbo_depth[1]);
 
 			// Initialize gl parmas
-			glViewport(0, 0, window.width*scaleFactor, window.height*scaleFactor);				// Create initial 2D view
+			glViewport(0, 0, window.width*scaleFactor, window.height*scaleFactor);	// Create initial 2D view
 			glEnable(GL_TEXTURE_2D);												// Enable Texture Mapping ( NEW )
 			glShadeModel(GL_SMOOTH);												// Enable Smooth Shading
-			glClearColor(ubtof(153), ubtof(51), ubtof(51), ubtof(255));									// Black Background
+			glClearColor(ubtof(153), ubtof(51), ubtof(51), ubtof(255));				// Background Color
 			glClearDepth(1.0f);														// Depth Buffer Setup
 			glEnable(GL_DEPTH_TEST);												// Enables Depth Testing
 			glDepthFunc(GL_LEQUAL);													// The Type Of Depth Testing To Do
@@ -214,8 +213,8 @@ namespace klib{
 			glEnable(GL_BLEND);
 			glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);						// Really Nice Perspective Calculations
 
-			GLfloat light_diffuse[] = {1.0, 1.0, 1.0, 1.0};  /* Diffuse light. */
-			GLfloat light_position[] = {1.0, 1.0, 1.0, 0.0};  /* Infinite light location. */
+			GLfloat light_diffuse[] = {1.0, 1.0, 1.0, 1.0};							// Default Diffuse light
+			GLfloat light_position[] = {1.0, 1.0, 1.0, 0.0};						// Default Infinite light location.
 			glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
 			glLightfv(GL_LIGHT0, GL_POSITION, light_position);
 			glEnable(GL_LIGHT0);
@@ -273,7 +272,7 @@ namespace klib{
 	KLGL::~KLGL(){
 		for (int i = 0; i < 10; i++)
 		{
-			UnloadShader(i);
+			UnloadShaders(i);
 		}
 
 		wglMakeCurrent(NULL, NULL);
@@ -322,11 +321,7 @@ namespace klib{
 
 		BindShaders(1);
 		glUniform1f(glGetUniformLocation(GetShaderID(1), "time"), shaderClock);
-		shaderClock += 0.0001f;
-		if (shaderClock > fps/100.0f)
-		{
-			shaderClock = 0.0f;
-		}
+		shaderClock = (clock()%1000)+fps;
 
 		glBindTexture(GL_TEXTURE_2D, fbo_texture[0]); // Bind our frame buffer texture
 		glBegin(GL_QUADS);
@@ -471,13 +466,13 @@ namespace klib{
 		glEnd();
 	}
 
-	void KLGL::OrthogonalStart(){
+	void KLGL::OrthogonalStart(float scale){
 		glMatrixMode(GL_PROJECTION);
 		glPushMatrix();
 		glLoadIdentity();
-		glOrtho(0, window.width, 0, window.height, -1, 1);
+		glOrtho(0, window.width*scale, 0, window.height*scale, -1, 1);
 		glScalef(1.0f, -1.0f, 1.0f);
-		glTranslatef(0.0f, -window.height*1.0f, 0.0f);
+		glTranslatef(0.0f, -window.height*scale, 0.0f);
 		glMatrixMode(GL_MODELVIEW);
 		glDisable(GL_LIGHTING);
 	}
@@ -489,54 +484,44 @@ namespace klib{
 		glEnable(GL_LIGHTING);
 	}
 
-	int KLGL::InitShaders(int shaderProgId, const char *vsFile, const char *fsFile, int isString){
+	int KLGL::InitShaders(int shaderProgId, int isString, const char *vsFile, const char *fsFile, const char *gsFile, const char *tsFile){
 		cl("Computing Shaders...");
 
-		shader_vp[shaderProgId] = glCreateShader(GL_VERTEX_SHADER);
-		shader_fp[shaderProgId] = glCreateShader(GL_FRAGMENT_SHADER);
-
-		const char* vsText;
-		const char* fsText;
-
-		if (isString){
-			vsText = vsFile;
-			fsText = fsFile;
-		}else{
-			vsText = static_cast<char*>(LoadShaderFile(vsFile));
-			fsText = static_cast<char*>(LoadShaderFile(fsFile));
-		}
-
-		if (vsText == NULL || fsText == NULL) {
-			cl("Vertex or fragment shader error.\n");
-			return -1;
-		}
-
-		glShaderSource(shader_vp[shaderProgId], 1, &vsText, 0);
-		glShaderSource(shader_fp[shaderProgId], 1, &fsText, 0);
-
-		glCompileShader(shader_vp[shaderProgId]);
-		glCompileShader(shader_fp[shaderProgId]);
-
-		if(KLGLDebug){
-			PrintShaderInfoLog(shader_vp[shaderProgId]);
-			PrintShaderInfoLog(shader_fp[shaderProgId]);
-		}
-
 		shader_id[shaderProgId] = glCreateProgram();
-		glAttachShader(shader_id[shaderProgId], shader_fp[shaderProgId]);
-		glAttachShader(shader_id[shaderProgId], shader_vp[shaderProgId]);
+
+		#define sLoad(x) (isString ? x : static_cast<char*>(LoadShaderFile(x)))
+		if (vsFile != NULL){
+			shader_vp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_VERTEX_SHADER,	 sLoad(vsFile));
+		}
+		if (fsFile != NULL){
+			shader_fp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_FRAGMENT_SHADER, sLoad(fsFile));
+		}
+		if (gsFile != NULL){
+			shader_gp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_GEOMETRY_SHADER, sLoad(gsFile));
+		}
+		if (tsFile != NULL){
+			shader_tp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_ARB_tessellation_shader, sLoad(tsFile));
+		}
 
 		glLinkProgram(shader_id[shaderProgId]);
 		if(KLGLDebug){
 			PrintShaderInfoLog(shader_id[shaderProgId], 0);
 		}
-		if (!isString){
-			free(const_cast<char*>(vsText));
-			free(const_cast<char*>(fsText));
-		}
 
 		cl("[OK]\n");
 		return 0;
+	}
+
+	unsigned int KLGL::ComputeShader(unsigned int &shaderProgram, unsigned int shaderType, const char* shaderString){
+		unsigned int tmpLinker = glCreateShader(shaderType);
+		glShaderSource(tmpLinker, 1, &shaderString, 0);
+		glCompileShader(tmpLinker);
+		if(KLGLDebug){
+			PrintShaderInfoLog(tmpLinker);
+		}
+		glAttachShader(shaderProgram, tmpLinker);
+		free(const_cast<char *>(shaderString));
+		return tmpLinker;
 	}
 
 	char* KLGL::LoadShaderFile(const char *fname){
@@ -582,6 +567,45 @@ namespace klib{
 		}
 	}
 
+	void KLGL::BindMultiPassShader(int shaderProgId, int alliterations){
+		for (int i = 0; i < alliterations; i++)
+		{
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo[1]);
+			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+			glBindTexture(GL_TEXTURE_2D, fbo_texture[0]);
+
+			BindShaders(shaderProgId);
+			glBegin(GL_QUADS);
+			glTexCoord2d(0.0,0.0); glVertex2i(0,				0);
+			glTexCoord2d(1.0,0.0); glVertex2i(window.width,		0);
+			glTexCoord2d(1.0,1.0); glVertex2i(window.width,		window.height);
+			glTexCoord2d(0.0,1.0); glVertex2i(0,				window.height);
+			glEnd();
+			UnbindShaders();
+			glBindTexture(GL_TEXTURE_2D, 0);
+
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo[0]);
+			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+			glBindTexture(GL_TEXTURE_2D, fbo_texture[1]);
+
+			glBegin(GL_QUADS);
+			// Fix for odd flipping when using gl_FragCoord
+			if (i%4 == 4){
+				glTexCoord2d(0.0,0.0); glVertex2i(0,				0);
+				glTexCoord2d(1.0,0.0); glVertex2i(window.width,		0);
+				glTexCoord2d(1.0,1.0); glVertex2i(window.width,		window.height);
+				glTexCoord2d(0.0,1.0); glVertex2i(0,				window.height);
+			}else{
+				glTexCoord2d(0.0,0.0); glVertex2i(0,				window.height);
+				glTexCoord2d(1.0,0.0); glVertex2i(window.width,		window.height);
+				glTexCoord2d(1.0,1.0); glVertex2i(window.width,		0);
+				glTexCoord2d(0.0,1.0); glVertex2i(0,				0);
+			}
+			glEnd();
+			glBindTexture(GL_TEXTURE_2D, 0);
+		}
+	}
+
 	KLGLFont::KLGLFont(){
 		auto *tmtex = new KLGLTexture(KLGLFontDefault, 760);
 		c_texture = tmtex->gltexture;
@@ -607,75 +631,91 @@ namespace klib{
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, c_texture);
 		glBegin(GL_QUADS);
-		{
-			//character location and dimensions
-			int cp = 0;
-			int cx = 0;
-			int cy = 0;
-			int cw = c_width;
-			int ch = c_height;
-			int twidth = 4;
 
-			//calculate how wide each character is in term of texture coords
-			GLfloat dtx = (float)c_width/(float)m_width;
-			GLfloat dty = (float)c_height/(float)m_height;
+		//character location and dimensions
+		int cp = 0;
+		int cx = 0;
+		int cy = 0;
+		int cw = c_width;
+		int ch = c_height;
+		int twidth = 4;
+		int dropshadow = 0;
 
-			for (char* c = text; *c != 0; c++,cp++) {
-				// Per-character logic
-				switch(*c){
-				case '\n':
-					cx = 0;
-					cy += ch;
-					continue;
-				case '\t':
-					cx += cw*(twidth-cp%twidth);
-					continue;
-				case '@':
-					if (*(c+1) == 'C'){ // Change color
-						static char *token = (char*)malloc(8);
-						strcpy(token, substr(text, cp+2, 6));
-						c += 8;
+		//calculate how wide each character is in term of texture coords
+		GLfloat dtx = (float)c_width/(float)m_width;
+		GLfloat dty = (float)c_height/(float)m_height;
 
-						if (vcolor != NULL)
-						{
-							// Ignore color codes if global paramater is set
-							color = vcolor;
-							break;
-						}else{
-							color->r = strtoul(substr(token, 0, 2), NULL, 16);
-							color->g = strtoul(substr(token, 2, 2), NULL, 16);
-							color->b = strtoul(substr(token, 4, 2), NULL, 16);
-							color->a = 255;
-						}
+		for (char* c = text; *c != 0; c++,cp++) {
+			// Per-character logic
+			switch(*c){
+			case '\n':
+				cx = 0;
+				cy += ch;
+				continue;
+			case '\t':
+				cx += cw*(twidth-cp%twidth);
+				continue;
+			case '@':
+				if (*(c+1) == 'C'){ // Change color
+					static char *token = (char*)malloc(8);
+					strcpy(token, substr(text, cp+2, 6));
+					c += 7;
+
+					if (vcolor != NULL)
+					{
+						// Ignore color codes if global parameter is set
+						color = vcolor;
+						break;
+					}else{
+						color->r = strtoul(substr(token, 0, 2), NULL, 16);
+						color->g = strtoul(substr(token, 2, 2), NULL, 16);
+						color->b = strtoul(substr(token, 4, 2), NULL, 16);
+						color->a = 255;
 					}
-					break;
+					continue;
+				}else if (*(c+1) == 'D'){ // Drop shadow
+					c += 1;
+					dropshadow = 1;
+					continue;
 				}
+				break;
+			}
 
+			// Increment current cursor position
+			cx += cw;
+
+			// If not in extended mode subtract the value of the first
+			// char in the character map to get the index in our map
+			int index = *c;
+			if(extended == 0){
+				index -= ' ';
+			}else if(extended > 0){
+				index -= extended;
+			}
+
+			int col = index%c_per_row;
+			int row = (index-col)/c_per_row;
+
+			// find the texture coords
+			GLfloat tx = (float)(col * c_width)/(float)m_width;
+			GLfloat ty = (float)(row * c_height)/(float)m_height;
+
+			if (dropshadow == 1){
+				glColor4ub(0, 0, 0, 127);
+
+				glTexCoord2f(tx,		ty+dty);	glVertex2i(x+cx-1,		y+cy+ch+1);
+				glTexCoord2f(tx+dtx,	ty+dty);	glVertex2i(x+cx+cw-1,	y+cy+ch+1);
+				glTexCoord2f(tx+dtx,	ty);		glVertex2i(x+cx+cw-1,	y+cy+1);
+				glTexCoord2f(tx,		ty);		glVertex2i(x+cx-1,		y+cy+1);
+			}
+			{
 				color->Set();
 
-				// Increment current cursor posision
-				cx += cw;
-
-				// If not in extended mode subtract the value of the first
-				// char in the character map to get the index in our map
-				int index = *c;
-				if(extended == 0){
-					index -= ' ';
-				}else if(extended > 0){
-					index -= extended;
-				}
-
-				int col = index%c_per_row;
-				int row = (index-col)/c_per_row;
-
-				// find the texture coords
-				GLfloat tx = (float)(col * c_width)/(float)m_width;
-				GLfloat ty = (float)(row * c_height)/(float)m_height;
-
-				glTexCoord2f(tx,		ty+dty);	glVertex2i(x+cx,	y+cy+ch);
-				glTexCoord2f(tx+dtx,	ty+dty);	glVertex2i(x+cx+cw,	y+cy+ch);
-				glTexCoord2f(tx+dtx,	ty);		glVertex2i(x+cx+cw,	y+cy);
-				glTexCoord2f(tx,		ty);		glVertex2i(x+cx,	y+cy);
+				glTexCoord2f(tx,		ty+dty);	glVertex2i(x+cx,		y+cy+ch);
+				glTexCoord2f(tx+dtx,	ty+dty);	glVertex2i(x+cx+cw,		y+cy+ch);
+				glTexCoord2f(tx+dtx,	ty);		glVertex2i(x+cx+cw,		y+cy);
+				glTexCoord2f(tx,		ty);		glVertex2i(x+cx,		y+cy);
+				
 			}
 		}
 		glEnd();

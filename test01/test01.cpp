@@ -34,7 +34,7 @@ int main(){
 
 	clock_t t0 = clock(), t1 = clock();
 	bool quit = false, pPixelLight = true, vsync = true, internalTimer = false;
-	int th_id, demoMode = 1;
+	int th_id, demoMode = 0;
 	int nthreads = sysinfo.dwNumberOfProcessors-1;
 
 	float theta = -360.0f, thetap = -360.0f;
@@ -67,8 +67,8 @@ int main(){
 		SendMessage(gc->hWnd, WM_SETICON, ICON_SMALL, (LPARAM)const_cast<HANDLE>(hsicon));
 
 		// Load Shaders
-		gc->InitShaders(1, "common/postDefaultV.glsl", "common/postDefaultF.glsl");
-		quit = gc->InitShaders(2, "common/modelDefaultV.glsl", "common/modelDefaultF.glsl");
+		quit = gc->InitShaders(1, 0, "common/postDefaultV.glsl", "common/postDefaultF.glsl");
+		quit = gc->InitShaders(2, 0, "common/modelDefaultV.glsl", "common/modelDefaultF.glsl");
 
 		// Setup textures
 		testTexture = new KLGLTexture("common/glory.png");

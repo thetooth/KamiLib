@@ -1,18 +1,20 @@
-#version 130
-#extension GL_EXT_gpu_shader4 : enable
+#version 330 core
 
 #define KERNEL_SIZE 4.0
 
-uniform float time;
-uniform float BLUR_CLAMP = 0.5/KERNEL_SIZE;
-uniform float BLUR_BIAS = 0.01/KERNEL_SIZE;
-uniform float BRIGHT_PASS_THRESHOLD = 0.75;
-uniform float BRIGHT_PASS_OFFSET = 1.5;
-uniform float BRIGHT_PASS_COMPENSATION = 2.01;
+uniform float time							= 234587.235845;
+uniform float BLUR_CLAMP					= 0.5/KERNEL_SIZE;
+uniform float BLUR_BIAS						= 0.01/KERNEL_SIZE;
+uniform float BRIGHT_PASS_THRESHOLD			= 0.75;
+uniform float BRIGHT_PASS_OFFSET			= 0.25;
+uniform float BRIGHT_PASS_COMPENSATION		= 2.01;
+uniform vec2  BUFFER_EXTENSITY				= vec2(1024.0f, 1024.0f);
+
+out vec4 FragmentColor;
 uniform sampler2D sceneTex;
 
-vec2 texcoord = vec2(gl_TexCoord[0]).st;
-vec4 texcolor = texture2D(sceneTex, gl_TexCoord[0].st);
+vec2 texcoord = vec2(gl_FragCoord.x/BUFFER_EXTENSITY.x, gl_FragCoord.y/BUFFER_EXTENSITY.y);
+vec4 texcolor = texture2D(sceneTex, texcoord);
 
 float rand(vec2 co){
 	return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
@@ -40,9 +42,9 @@ void main()
 	{
 		for (float y = -KERNEL_SIZE + 1.0; y < KERNEL_SIZE; y += 1.0 )
 		{
-			blurTex += bright(texcoord + vec2( blur.x * x * (rand(gl_FragCoord.xy*time)/4.0+1.0), blur.y * y * (rand(gl_FragCoord.xy*time)/4.0+1.0)), false);
+			blurTex += bright(texcoord + vec2( blur.x * x * (rand(texcoord*time)/1.0+1.0), blur.y * y * (rand(texcoord*time)/1.0+1.0)), false);
 		}
 	}
 	blurTex /= ((KERNEL_SIZE*BRIGHT_PASS_COMPENSATION)-1.0)*((KERNEL_SIZE*BRIGHT_PASS_COMPENSATION)-1.0);
-	gl_FragColor = vec4(blurTex.rgb, 1.0);
+	FragmentColor = vec4(blurTex.rgb, 1.0);
 }

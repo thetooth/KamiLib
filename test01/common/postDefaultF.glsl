@@ -2,8 +2,7 @@
 //  Copyright 2005-2011 Ameoto Systems. All Rights Reserved.
 //  Written by Jeffrey Jenner, thetooth@ameoto.com
 
-#version 130
-#extension GL_EXT_gpu_shader4 : enable
+#version 330 core
 
 #define blurclamp 0.002
 #define bias 0.01
@@ -12,16 +11,20 @@
 #define BRIGHT_PASS_THRESHOLD 0.5
 #define BRIGHT_PASS_OFFSET 1.5
 
-in vec2 shaderClock;
+in	vec2 shaderClock;
+out	vec4 FragmentColor;
+
 uniform sampler2D sceneTex;
 uniform sampler2D depthTex;
+
+uniform vec2  BUFFER_EXTENSITY				= vec2(1280.0f, 720.0f);
+
+vec2 texcoord = vec2(gl_FragCoord.x/BUFFER_EXTENSITY.x, gl_FragCoord.y/BUFFER_EXTENSITY.y);
+vec4 texcolor = texture2D(sceneTex, texcoord);
 
 float rand(vec2 co){
 	return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
-
-vec2 texcoord = vec2(gl_TexCoord[0]).st;
-vec4 texcolor = texture2D(sceneTex, gl_TexCoord[0].st/*+vec2(rand(vec2(shaderClock.x, gl_TexCoord[0].y))/1000.0f)*/);
 
 /*
 ** Photoshop & misc math
@@ -325,6 +328,6 @@ void main()
 	//vec3 stage2 = BlendNormal(stage0, stage1);
 	vec3 stage3 = vec3(vignette(1.5, 0.0, vec2(0.1, 0.5)))/1.5;
 	vec3 stage4 = BlendColorDodge(stage0, stage3);
-	gl_FragColor = vec4(stage4, 1.0);
+	FragmentColor = vec4(stage4, 1.0);
 }
 

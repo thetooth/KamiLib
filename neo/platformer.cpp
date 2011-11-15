@@ -79,7 +79,15 @@ namespace NeoPlatformer{
 
 		// Check for collisions and set character state.
 		for(list<Platform>::iterator e = platforms->begin(); e != platforms->end(); e++){
-			e->checkCollision(*this);
+			CollisionType state = e->checkCollision(*this);
+			if (state != C_NONE)
+			{
+				if (e->mapMaskPtr[e->tileId] == TileType::T_LAVA)
+				{
+					character->vel.y = character->jumpAccel/2.0f;
+					character->health -= 10;
+				}
+			}
 		}
 		
 		debugflags.x = character->health;
@@ -88,6 +96,8 @@ namespace NeoPlatformer{
 	void Environment::drawHUD(KLGL* gc, KLGLTexture* tex){
 		if (character->health <= 0)
 		{
+			gc->BindMultiPassShader(3, 4);
+			gc->Rectangle2D(0, 0, gc->window.width, gc->window.height, KLGLColor(0, 0, 0, (min(-character->health, 1000)/1000.0f)*255));
 			gc->Blit2D(tex, 0, 0);
 		}
 	}
@@ -112,42 +122,26 @@ namespace NeoPlatformer{
 				cl("- [%d, %d -> %d, %d]\n", x0, y0, x1, y1);
 			}
 
-			bool flags[6] = {};
+			int flags = 0;
+			//memset(flags, 0, 6);
+
 			switch (mapMask[type])
 			{
-			case TileType::t_nonsolid:
-				flags[0] = false;
-				flags[1] = false;
-				flags[2] = false;
-				flags[3] = false;
+			case TileType::T_NONSOLID:
+				flags = TileFlag::F_NONSOLID;
 				break;
-			case TileType::t_under:
-				flags[0] = false;
-				flags[1] = true;
-				flags[2] = false;
-				flags[3] = false;
+			case TileType::T_UNDER:
+				flags = TileFlag::F_FLOOR;
 				break;
-			case TileType::t_slopeleft:
-				flags[0] = false;
-				flags[1] = false;
-				flags[2] = false;
-				flags[3] = false;
-				flags[4] = true;
-				flags[5] = false;
+			case TileType::T_LEFTSLOPE:
+				flags = TileFlag::F_LEFTSLOPE;
 				break;
-			case TileType::t_sloperight:
-				flags[0] = false;
-				flags[1] = false;
-				flags[2] = false;
-				flags[3] = false;
-				flags[4] = false;
-				flags[5] = true;
+			case TileType::T_RIGHTSLOPE:
+				flags = TileFlag::F_RIGHTSLOPE;
 				break;
+			case TileType::T_LAVA:
 			default:
-				flags[0] = true;
-				flags[1] = true;
-				flags[2] = true;
-				flags[3] = true;
+				flags = TileFlag::F_CEIL | TileFlag::F_FLOOR | TileFlag::F_LEFT | TileFlag::F_RIGHT;
 			}
 			platforms->push_back(Platform(x0*tileWidth, y0*tileHeight, x1*tileWidth, y1*tileHeight, type, flags, mapData, mapMask));
 		}
@@ -571,21 +565,22 @@ namespace NeoPlatformer{
 	};
 
 	// Platform management
-	Platform::Platform(float x, float y, int w, int h, int sprId, bool* flags, char* mapDataPtrI, char* mapMaskPtrI){
+	Platform::Platform(float x, float y, int w, int h, int sprId, int flags, char* mapDataPtrI, char* mapMaskPtrI){
 		tileId = sprId;
+		tileFlags = flags;
 		mapDataPtr = mapDataPtrI;
 		mapMaskPtr = mapMaskPtrI;
 
-		// Assume solid
-		if (flags == NULL){
-			ceiling = floor = wallLeft = wallRight =	1;
+		// Assume non-solid
+		if (tileFlags == 0){
+			ceiling = floor = wallLeft = wallRight = slopeLeft = slopeRight = 0;
 		}else{
-			ceiling =	flags[0];
-			floor =	flags[1];
-			wallLeft =	flags[2];
-			wallRight =	flags[3];
-			slopeLeft = flags[4];
-			slopeRight= flags[5];
+			ceiling =	(tileFlags & TileFlag::F_CEIL);
+			floor =		(tileFlags & TileFlag::F_FLOOR);
+			wallLeft =	(tileFlags & TileFlag::F_LEFT);
+			wallRight =	(tileFlags & TileFlag::F_RIGHT);
+			slopeLeft = (tileFlags & TileFlag::F_LEFTSLOPE);
+			slopeRight= (tileFlags & TileFlag::F_RIGHTSLOPE);
 		}
 		pos.x = x;
 		pos.y = y;
@@ -593,12 +588,6 @@ namespace NeoPlatformer{
 		collisionRect.y = y;
 		collisionRect.setWidth(w);
 		collisionRect.setHeight(h);
-	}
-
-	void Platform::checkCollisionType(){
-		int y = chop(collisionRect.x/16);
-		int x = chop(collisionRect.y/16);
-		int width = chop(collisionRect.getWidth()/16);
 	}
 
 	void Platform::draw(KLGL* gc, Environment* env, KLGLSprite* sprite){
@@ -650,8 +639,12 @@ namespace NeoPlatformer{
 
 	CollisionType Platform::checkCollision(Environment &env)
 	{
-		if(env.character == NULL)
+		if(env.character == NULL){
+			throw KLGLException("Character does not exist!");
 			return C_NONE;
+		}else if (env.character->health < 0){
+			return C_NONE;
+		}
 
 		// For algorithmic ease, here are the edges of the collision rects.
 		/*  Here's the position (P) relative to the character.
