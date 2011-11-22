@@ -184,8 +184,7 @@ int main(){
 						}
 						break;
 					case VK_R:
-						delete gameEnv->character;
-						gameEnv->character = new Character(128, 0, 8, 16);
+						mode = GameMode::_MAPLOAD;
 						break;
 					case VK_M:
 						mapScroll = !mapScroll;
@@ -345,7 +344,7 @@ int main(){
 				// Debug info
 				if (KLGLDebug)
 				{
-					sprintf(textBuffer, "@CFFFFFF@D%s \n\nNeo\n-------------------------\n"\
+					sprintf(textBuffer, "@CF8F8F8@D%s \n\nNeo\n-------------------------\n"\
 						"Render FPS: %d\n"\
 						"       Syn: V%dT%d\n"\
 						"       Buf: %dx%d\n"\

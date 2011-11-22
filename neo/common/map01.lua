@@ -2,3 +2,5 @@
 -- settings or create events!
 
 --neo.characterMaxWalkSpeed = 450.0
+kami.cl("Get: " .. neo.scrollspeed)
+neo.scrollspeed = 5

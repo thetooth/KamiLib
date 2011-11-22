@@ -657,13 +657,16 @@ namespace klib{
 				continue;
 			case '@':
 				if (*(c+1) == 'C'){ // Change color
-					static char *token = (char*)malloc(8);
+					static char *token;
+					if (token == NULL){
+						token = (char*)malloc(6);
+					}
+					
+					memset(token, 0, 6);
 					strcpy(token, substr(text, cp+2, 6));
 					c += 7;
 
-					if (vcolor != NULL)
-					{
-						// Ignore color codes if global parameter is set
+					if (vcolor != NULL){ // Ignore color codes if global parameter is set
 						color = vcolor;
 						break;
 					}else{

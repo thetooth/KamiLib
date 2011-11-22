@@ -8,15 +8,16 @@ using namespace klib;
 namespace NeoPlatformer{
 
 	Environment *envCallbackPtr = NULL;
+	map<char*, void*> neoVarList;
 
 	int l_get( lua_State *L ){
 		const char *key = luaL_checkstring(L, 2);
 
-		if (strcmp(key, "characterMaxWalkSpeed") == 0)
-		{
-			lua_pushnumber(L, envCallbackPtr->character->maxWalkSpeed);
+		if (neoVarList.count(const_cast<char*>(key)) > 0){
+			lua_pushnumber(L, (long)neoVarList[const_cast<char*>(key)]);
 			return 1;
 		}else{
+			lua_pushnil(L);
 			return LUA_ERRERR;
 		}
 		return 1;
@@ -26,12 +27,13 @@ namespace NeoPlatformer{
 		const char *key = luaL_checkstring(L, 2);
 		int val = luaL_checkint(L, 3);
 
-		if (strcmp(key, "characterMaxWalkSpeed") == 0){
-			envCallbackPtr->character->maxWalkSpeed = val;
+		if (neoVarList.count(const_cast<char*>(key)) > 0){
+			long *srcPtr = (long*)neoVarList[const_cast<char*>(key)];
+			*srcPtr = val;
+			return 1;
 		}else{
 			return LUA_ERRERR;
 		}
-		return 1;
 	}
 
 	int luaopen_neo(lua_State *L) {
@@ -56,6 +58,10 @@ namespace NeoPlatformer{
 		character = NULL;
 		platforms = NULL;
 		envCallbackPtr = this;
+
+		neoVarList["scrollX"] = &scroll.x;
+		neoVarList["scrollspeed"] = &scrollspeed;
+		neoVarList["scrollspeedMulti"] = &scrollspeedMulti;
 	}
 
 	Environment::~Environment(){

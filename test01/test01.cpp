@@ -24,7 +24,7 @@ using namespace klib;
 #define APP_SCREEN_W 1280
 #define APP_SCREEN_H 720
 #define APP_FRAMERATE 60
-#define APP_OVERSAMPLE_FACTOR 2
+#define APP_OVERSAMPLE_FACTOR 1
 
 int main(){
 	// Status's
@@ -34,7 +34,7 @@ int main(){
 
 	clock_t t0 = clock(), t1 = clock();
 	bool quit = false, pPixelLight = true, vsync = true, internalTimer = false;
-	int th_id, demoMode = 0;
+	int th_id, demoMode = 1;
 	int nthreads = sysinfo.dwNumberOfProcessors-1;
 
 	float theta = -360.0f, thetap = -360.0f;
@@ -69,6 +69,7 @@ int main(){
 		// Load Shaders
 		quit = gc->InitShaders(1, 0, "common/postDefaultV.glsl", "common/postDefaultF.glsl");
 		quit = gc->InitShaders(2, 0, "common/modelDefaultV.glsl", "common/modelDefaultF.glsl");
+		quit = gc->InitShaders(3, 0, "common/postDefaultV.glsl", "common/gaussianBlur.frag");
 
 		// Setup textures
 		testTexture = new KLGLTexture("common/glory.png");
@@ -241,6 +242,12 @@ int main(){
 					particleTest.mouseX = mouseXY.x;
 					particleTest.mouseY = mouseXY.y;
 					particleTest.draw(gc);
+					gc->BindShaders(3);
+					glUniform1f(glGetUniformLocation(gc->GetShaderID(3), "time"), gc->shaderClock);
+					glUniform1f(glGetUniformLocation(gc->GetShaderID(3), "BLUR_BIAS"), 0.0001f);
+					glUniform2f(glGetUniformLocation(gc->GetShaderID(3), "BUFFER_EXTENSITY"), gc->buffer_width, gc->buffer_height);
+					gc->UnbindShaders();
+					gc->BindMultiPassShader(3, 4);
 				}
 				gc->OrthogonalEnd();
 				break;

@@ -3,6 +3,8 @@
 #include "kami.h"
 #include "logicalObjects.h"
 #include <list>
+#include <map>
+#include <unordered_map>
 
 using namespace std;
 using namespace klib;
@@ -12,17 +14,15 @@ using namespace klib;
 
 namespace NeoPlatformer{
 
-	class ObjectInterface;
+	// Classes in this file
 	class Environment;
+	class ObjectInterface;
 	class Character;
 	class Platform;
 
+	// Global pointer to our environment(used for lua)
 	extern Environment *envCallbackPtr;
-
-	struct luatoInteralMap{
-		char* varName;
-		void* dataPtr;
-	};
+	extern map<char*, void*> neoVarList;
 
 	static void neo_register_info (lua_State *L) {
 		lua_pushliteral (L, "_COPYRIGHT");

@@ -27,47 +27,52 @@ namespace klib {
 #pragma region Inline_System_Utilitys
 
 	inline int cl(const char* format, ...){
-		static FILE *fp = fopen("stdout.txt", "a+");
-		if (fp == NULL)
-		{
-			printf("\nFATAL ERROR: COULD NOT OPEN LOG FILE, CHECK YOUR FILE PERMISSIONS. WILL NOW TERMINATE!\n");
-			assert(fp != NULL);
-			exit(EXIT_FAILURE);
+
+		// File handle
+		static FILE *fp;
+		if (fp == NULL){
+			fp = fopen("stdout.txt", "a+");
 		}
-		static char tBuffer[1024] = {};
-		int ret = -1;
-		va_list arg;
-		va_start (arg, format);
-		int numLn = 0, numLnP = 0;
+		
+		// Temporary buffer
+		static char *tBuffer;
+		if (tBuffer == NULL){
+			tBuffer = new char[1024];
+		}
+		
+		int ret = 0, numLn = 0, numLnP = 0;
 		size_t bufferLen = strlen(clBuffer);
 
-		// Append the new string to the buffer and temporary buffer
-		vsprintf(clBuffer+bufferLen, format, arg);
+		va_list arg;
+		va_start(arg, format);
+
+		// Append the new string to the buffer
 		vsprintf(tBuffer, format, arg);
+		strcpy(clBuffer+bufferLen, tBuffer);
+
+		// Do normal output
+		ret = vprintf(format, arg);
+		va_end(arg);
 
 		// Flush to log file
-		fwrite(tBuffer, 1, strlen(tBuffer), fp);
-		fflush(fp);
+		if (fp != NULL){
+			fwrite(tBuffer, 1, strlen(tBuffer), fp);
+			fflush(fp);
+		}
 
 		// Count newlines
-		for (char* c = clBuffer; *c != '\0'; c++)
-		{
+		for (char* c = clBuffer; *c != '\0'; c++){
 			// Number of newlines before first termination
 			if (*c == '\n') numLn++;
 			// Char position of the first newline
 			if (numLn == 0) numLnP++;
 		}
 
-		if (numLn > 16)
-		{
-			// Remove the first line from our string yo
+		// Remove first line if we have to many lines.
+		if (numLn > 16){
 			sprintf(clBuffer, "%s", clBuffer+numLnP+1);
 		}
-
-		// Do normal output
-		ret = vprintf (format, arg);
-		va_end (arg);
-
+		
 		return ret;
 	}
 
@@ -76,7 +81,16 @@ namespace klib {
 		if (pstr == 0 || strlen(pstr) == 0 || strlen(pstr) < start || strlen(pstr) < (start+len)){
 			return 0;
 		}
-		static char *pnew = new char[len];
+
+		static size_t prev_allocsize;
+		static char *pnew;
+		if (prev_allocsize == NULL){
+			prev_allocsize = 0;
+		}
+		if (pnew == NULL || prev_allocsize < len){
+			prev_allocsize = len;
+			pnew = new char[len];
+		}
 		strncpy(pnew, pstr + start, len);
 		pnew[len] = '\0';
 		return pnew;
