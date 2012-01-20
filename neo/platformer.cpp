@@ -8,28 +8,36 @@ using namespace klib;
 namespace NeoPlatformer{
 
 	Environment *envCallbackPtr = NULL;
-	map<char*, void*> neoVarList;
+	map<const char*, void*, cmp_cstring> neoVarList;
 
 	int l_get( lua_State *L ){
 		const char *key = luaL_checkstring(L, 2);
 
-		if (neoVarList.count(const_cast<char*>(key)) > 0){
-			lua_pushnumber(L, (long)neoVarList[const_cast<char*>(key)]);
+		if (neoVarList.count(key) > 0 && neoVarList[key] != NULL){
+			float* val = (float*)neoVarList[key];
+			if (KLGLDebug){
+				printf("-- GET %s[0x%X] with value of %f\n", key, val, *val);
+			}
+			lua_pushnumber(L, *val);
+			
 			return 1;
 		}else{
 			lua_pushnil(L);
 			return LUA_ERRERR;
 		}
-		return 1;
 	}
 
 	int l_set( lua_State *L ){
 		const char *key = luaL_checkstring(L, 2);
-		int val = luaL_checkint(L, 3);
+		float val = luaL_checknumber(L, 3);		
 
-		if (neoVarList.count(const_cast<char*>(key)) > 0){
-			long *srcPtr = (long*)neoVarList[const_cast<char*>(key)];
+		if (neoVarList.count(key) > 0 && neoVarList[key] != NULL){
+			float *srcPtr = (float*)neoVarList[key];
+			if (KLGLDebug){
+				printf("-- SET %s[0x%X] with value of %f\n", key, srcPtr, val);
+			}
 			*srcPtr = val;
+
 			return 1;
 		}else{
 			return LUA_ERRERR;
@@ -37,7 +45,7 @@ namespace NeoPlatformer{
 	}
 
 	int luaopen_neo(lua_State *L) {
-		lua_newuserdata(L, sizeof(void *));
+		lua_newuserdata(L, 1);
 		luaL_newmetatable(L, "neolib");
 		luaL_register(L, "neo", neolib);
 		neo_register_info(L);
@@ -50,6 +58,7 @@ namespace NeoPlatformer{
 	Environment::Environment(){
 		mode = 0;
 		dt = 0.0;
+		dtMulti = 1.0;
 		scroll.x = scroll.y = 0;
 		scroll_real.x = scroll_real.y = 0;
 		target.x = target.y = 0;
@@ -57,6 +66,7 @@ namespace NeoPlatformer{
 		scrollspeedMulti = 80;
 		character = NULL;
 		platforms = NULL;
+		mapProg = new char[4096];
 		envCallbackPtr = this;
 
 		neoVarList["scrollX"] = &scroll.x;
@@ -69,7 +79,8 @@ namespace NeoPlatformer{
 		delete platforms;
 	}
 
-	void Environment::comp(int offsetX, int offsetY){
+	void Environment::comp(KLGL* gc, int offsetX, int offsetY){
+
 		// Compute map position based on character pos and scroll delta
 		target.x = int((character->pos.x+offsetX) - APP_SCREEN_W / 2) << FPM;
 		target.y = int((character->pos.y+offsetY) - APP_SCREEN_H / 2) << FPM;
@@ -79,6 +90,12 @@ namespace NeoPlatformer{
 
 		scroll.x = scroll_real.x >> FPM;
 		scroll.y = scroll_real.y >> FPM;
+
+		// Sanitize timer, if were delayed any more then 500ms theres something wrong!
+		dt = min(dt, 0.5);
+
+		// Multiply the timer by the dtMulti modifier, this should produce a slow motion effect for numbers < 1.0
+		dt = max(dt*dtMulti, 0.00005);
 
 		// Update the character based on velocity, gravity and FPU errors.
 		character->comp(*this);
@@ -95,29 +112,66 @@ namespace NeoPlatformer{
 				}
 			}
 		}
+
+		// Do lua events
+		/*int luaStat = luaL_loadstring(gc->lua, mapProg);
+		if (luaStat == 0)
+		{
+			luaStat = lua_pcall(gc->lua, 0, LUA_MULTRET, 0);
+		}
+		gc->LuaCheckError(gc->lua, luaStat);*/
 		
 		debugflags.x = character->health;
+		debugflags.y = gc->shaderClock;
 	}
 
 	void Environment::drawHUD(KLGL* gc, KLGLTexture* tex){
 		if (character->health <= 0)
 		{
+			// Blur shader data
+			float relHealth = min(-character->health, 1000);
+			gc->BindShaders(3);
+			glUniform1f(glGetUniformLocation(gc->GetShaderID(3), "time"), gc->shaderClock);
+			glUniform2f(glGetUniformLocation(gc->GetShaderID(3), "BUFFER_EXTENSITY"), gc->window.width*gc->overSampleFactor, gc->window.height*gc->overSampleFactor);
+			glUniform1f(glGetUniformLocation(gc->GetShaderID(3), "BLUR_BIAS"), relHealth/500000.0f);
 			gc->BindMultiPassShader(3, 4);
-			gc->Rectangle2D(0, 0, gc->window.width, gc->window.height, KLGLColor(0, 0, 0, (min(-character->health, 1000)/1000.0f)*255));
+			gc->Rectangle2D(0, 0, gc->window.width, gc->window.height, KLGLColor(200, 0, 0, (relHealth/1000.0f)*255));
 			gc->Blit2D(tex, 0, 0);
+			gc->UnbindShaders();
+
 		}
+		gc->OrthogonalStart(gc->overSampleFactor);
+		if (character->health <= 0 && gc->shaderClock >= 500 && gc->shaderClock <= 1000){
+
+		}else{
+			int offset = gc->buffer.width-152;
+			for (int i = 0; i <= 16; i++){
+				gc->BlitSprite2D(hudSpriteSheet, offset+(i*8), 16, 1);
+				if (i == 16){
+					gc->BlitSprite2D(hudSpriteSheet, offset+((i+1)*8), 16, 2);
+				}else if (i == 0){
+					gc->BlitSprite2D(hudSpriteSheet, offset+((i-1)*8), 16, 0);
+				}
+
+				if (i <= (character->health * 16) / 100){
+					gc->BlitSprite2D(hudSpriteSheet, offset+(i*8), 16, 3);
+				}
+			}
+			hudFont->Draw(offset-(16*8), 16, "@DSCORE: 00000");
+		}
+		gc->OrthogonalEnd();
 	}
 
-	void Environment::drawMap(KLGL* gc, KLGLSprite* spriteSheet){
+	void Environment::drawMap(KLGL* gc){
 		// Per-tile shader
-		//gc->BindShaders(2);
-		//glUniform1f(glGetUniformLocation(gc->GetShaderID(2), "time"), gc->shaderClock);
+		gc->BindShaders(2);
+		glUniform1f(glGetUniformLocation(gc->GetShaderID(2), "time"), gc->shaderClock);
 
 		// Draw each platform
 		for(list<Platform>::iterator e = platforms->begin(); e != platforms->end(); e++){
-			e->draw(gc, this, spriteSheet);
+			e->draw(gc, this, mapSpriteSheet);
 		}
-		//gc->UnbindShaders();
+		gc->UnbindShaders();
 	}
 
 	void Environment::map_span(int type, int x0, int y0, int x1, int y1)
@@ -185,7 +239,7 @@ namespace NeoPlatformer{
 		{
 			wordSize = sizeof(char);
 		}else{
-			wordSize = sizeof(int);
+			wordSize = sizeof(unsigned short);
 		}
 
 		fseek(mapFile, 8, SEEK_SET);
@@ -282,11 +336,8 @@ namespace NeoPlatformer{
 		Environment *EnvPtr = (Environment*)loaderPtr;
 
 		try{
-			// Wait for the console to become available
-			wait("KLGL_Console");
 			// Load the map
 			EnvPtr->load_map("common/map01.smp");
-			release("KLGL_Console");
 		}catch(KLGLException e){
 			MessageBox(NULL, e.getMessage(), "KLGLException", MB_OK | MB_ICONERROR);
 			status = false;
@@ -321,12 +372,14 @@ namespace NeoPlatformer{
 		gravity = 800.0f;
 		jumpAccel = -350.0f;
 		walkAccel = 650.0f;
-		maxWalkSpeed = 150.0f;
+		maxWalkSpeed = 250.0f;
 		brakeAccel = 900.0f;
 		groundDrag = 600.0f;
 		slideDrag = 200.0f;
 		airDrag = 30.0f;
 		airAccel = 100.0f;
+
+		neoVarList["characterMaxWalkSpeed"] = &maxWalkSpeed;
 	}
 
 	Character::~Character(){
@@ -554,12 +607,12 @@ namespace NeoPlatformer{
 		vel.y += gravity*env.dt;
 
 		// Update positions
-		pos.x = pos.x += vel.x*env.dt;
-		pos.y = pos.y += vel.y*env.dt;
+		pos.x += vel.x*env.dt;
+		pos.y += vel.y*env.dt;
 
 		// Check if falling to death
 		if(pos.y > env.map.height*env.tileHeight){
-			health -= 10;
+			health -= 3;
 		}
 
 		collisionDetect = 0;
@@ -610,13 +663,12 @@ namespace NeoPlatformer{
 		}
 
 		// Get number of rows/columns
-		int w = chop(collisionRect.getWidth()/sprite->swidth);
-		int h = chop(collisionRect.getHeight()/sprite->sheight);
+		int w = chop(collisionRect.width/sprite->swidth);
+		int h = chop(collisionRect.height/sprite->sheight);
 
 		int scrX = 0;
 		int scrY = 0;
 
-		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, sprite->texturePtr->gltexture);
 		glBegin(GL_QUADS);
 
@@ -632,7 +684,6 @@ namespace NeoPlatformer{
 		}
 
 		glEnd();
-		glBindTexture(GL_TEXTURE_2D, 0);
 
 		if (KLGLDebug && x > 0 && y > 0 && x < APP_SCREEN_W && y < APP_SCREEN_H)
 		{

@@ -8,9 +8,8 @@
 namespace klib{
 
 	// Make extern local to klib
-	char clBuffer[1024] = {};
+	char *clBuffer;
 	bool KLGLDebug = false;
-	KLGLMutex clBufferSpinLock("KLGL_Console");
 
 	KLGLTexture::KLGLTexture(){
 		gltexture = 1;
@@ -34,19 +33,22 @@ namespace klib{
 
 		// Pass a big file and we could be sitting here for a long time
 		fseek(fin, 0, SEEK_END);
-		unsigned int size = (unsigned)ftell(fin);
-		unsigned char *data = new unsigned char[size+1];
+		size_t size = ftell(fin);
 		rewind(fin);
-		fread((char*)data, sizeof(char), size, fin);
-		data[size] = '\0';
+
+		unsigned char *data = new unsigned char[size+8];
+		fread((unsigned char*)data, 1, size, fin);
 		fclose(fin);
+
 		InitTexture(data, size);
+		data[size+1] = '\0';
 		delete data;
+
 		cl("[OK]\n");
 		return 0;
 	}
 
-	int KLGLTexture::InitTexture(unsigned char *data, int size){
+	int KLGLTexture::InitTexture(unsigned char *data, size_t size){
 		static std::vector<unsigned char> swap;
 		// PNG DECODER OMG OMG OMG
 		decodePNG(swap, width, height, data, size);
@@ -82,7 +84,8 @@ namespace klib{
 #endif
 
 			// Clear the console buffer(VERY IMPORTANT)
-			fill_n(clBuffer, 1024, '\0');
+			clBuffer = new char[APP_CONSOLE_BUFFER];
+			fill_n(clBuffer, APP_CONSOLE_BUFFER, '\0');
 
 			//MOTD
 			cl("KamiLib, (c) 2005-2011 Ameoto Systems Inc. All Rights Reserved.\n\n");
@@ -116,8 +119,8 @@ namespace klib{
 			}
 
 			// Get buffer size from window and sampling parameters
-			buffer_width	= window.width*overSampleFactor;
-			buffer_height	= window.height*overSampleFactor;
+			buffer.width	= window.width*overSampleFactor;
+			buffer.height	= window.height*overSampleFactor;
 
 			// Register win32 class
 			wc.style = CS_OWNDC;
@@ -228,7 +231,7 @@ namespace klib{
 			}
 
 			// Init OpenGL OK!
-			cl("Initialized GL %s @%dx%d 32bits\n", glGetString(GL_VERSION), buffer_width, buffer_height);
+			cl("Initialized GL %s @%dx%d 32bits\n", glGetString(GL_VERSION), buffer.width, buffer.height);
 
 			// Initialize the Lua API
 			lua = lua_open();
@@ -285,9 +288,8 @@ namespace klib{
 
 		lua_close(lua);
 
-		clBufferSpinLock.release();
-
 		cl("\n0x%x :3\n", internalStatus);
+		cl(NULL);
 	}
 
 	void KLGL::OpenFBO(float fov, float eyex, float eyey, float eyez){
@@ -295,10 +297,10 @@ namespace klib{
 		glPushAttrib(GL_VIEWPORT_BIT | GL_ENABLE_BIT); // Push our glEnable and glViewport states
 
 		// Set the size of the frame buffer view port
-		glViewport(0, 0, buffer_width, buffer_height);
+		glViewport(0, 0, buffer.width, buffer.height);
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
-		gluPerspective(fov, 1.0f*buffer_width/buffer_height, 0.1, 2400.0);
+		gluPerspective(fov, 1.0f*buffer.width/buffer.height, 0.1, 2400.0);
 		gluLookAt(eyex, eyey, eyez, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0);
 
 		// Set MODELVIEW matrix mode
@@ -319,8 +321,9 @@ namespace klib{
 		glLoadIdentity();
 		glDisable(GL_LIGHTING);
 
-		BindShaders(1);
-		glUniform1f(glGetUniformLocation(GetShaderID(1), "time"), shaderClock);
+		BindShaders(0);
+		glUniform1f(glGetUniformLocation(GetShaderID(0), "time"), shaderClock);
+		glUniform2f(glGetUniformLocation(GetShaderID(0), "BUFFER_EXTENSITY"), window.width*scaleFactor, window.height*scaleFactor);
 		shaderClock = (clock()%1000)+fps;
 
 		glBindTexture(GL_TEXTURE_2D, fbo_texture[0]); // Bind our frame buffer texture
@@ -343,14 +346,14 @@ namespace klib{
 		// Depth Buffer
 		glGenRenderbuffersEXT(1, &fbo_depth); // Generate one render buffer and store the ID in fbo_depth  
 		glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, fbo_depth); // Bind the fbo_depth render buffer  
-		glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT, buffer_width, buffer_height); // Set the render buffer storage to be a depth component, with a width and height of the window  
+		glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT, buffer.width, buffer.height); // Set the render buffer storage to be a depth component, with a width and height of the window  
 		glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fbo_depth); // Set the render buffer of this buffer to the depth buffer 
 		glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0); // Unbind the render buffer
 
 		// Texture Buffer
 		glGenTextures(1, &fbo_texture);
 		glBindTexture(GL_TEXTURE_2D, fbo_texture);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, buffer_width, buffer_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, buffer.width, buffer.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -446,7 +449,7 @@ namespace klib{
 			for(int iX = 0; iX < w; iX++){
 				scrX = x+(iX*texture->width);
 				scrY = y+(iY*texture->height);
-				if(scrX < 0-texture->width || scrX > buffer_width || scrY < 0-texture->height || scrY > buffer_height){
+				if(scrX < 0-texture->width || scrX > buffer.width || scrY < 0-texture->height || scrY > buffer.height){
 					//continue;
 				}
 				Blit2D(texture, scrX, scrY);
@@ -485,22 +488,26 @@ namespace klib{
 	}
 
 	int KLGL::InitShaders(int shaderProgId, int isString, const char *vsFile, const char *fsFile, const char *gsFile, const char *tsFile){
-		cl("Computing Shaders...");
+		cl("Loading Shader[%d] ", shaderProgId);
 
 		shader_id[shaderProgId] = glCreateProgram();
 
-		#define sLoad(x) (isString ? x : static_cast<char*>(LoadShaderFile(x)))
+		#define sLoad(x) (isString ? x : file_contents(const_cast<char*>(x)))
 		if (vsFile != NULL){
 			shader_vp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_VERTEX_SHADER,	 sLoad(vsFile));
+			cl("[%s] ", DEFASSTR(GL_VERTEX_SHADER));
 		}
 		if (fsFile != NULL){
 			shader_fp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_FRAGMENT_SHADER, sLoad(fsFile));
+			cl("[%s] ", DEFASSTR(GL_FRAGMENT_SHADER));
 		}
 		if (gsFile != NULL){
 			shader_gp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_GEOMETRY_SHADER, sLoad(gsFile));
+			cl("[%s] ", DEFASSTR(GL_GEOMETRY_SHADER));
 		}
 		if (tsFile != NULL){
 			shader_tp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_ARB_tessellation_shader, sLoad(tsFile));
+			cl("[%s] ", DEFASSTR(GL_ARB_tessellation_shader));
 		}
 
 		glLinkProgram(shader_id[shaderProgId]);
@@ -520,7 +527,7 @@ namespace klib{
 			PrintShaderInfoLog(tmpLinker);
 		}
 		glAttachShader(shaderProgram, tmpLinker);
-		free(const_cast<char *>(shaderString));
+		//free(const_cast<char *>(shaderString));
 		return tmpLinker;
 	}
 
@@ -590,7 +597,7 @@ namespace klib{
 
 			glBegin(GL_QUADS);
 			// Fix for odd flipping when using gl_FragCoord
-			if (i%4 == 4){
+			if (i%4 == 4 || alliterations == 1){
 				glTexCoord2d(0.0,0.0); glVertex2i(0,				0);
 				glTexCoord2d(1.0,0.0); glVertex2i(window.width,		0);
 				glTexCoord2d(1.0,1.0); glVertex2i(window.width,		window.height);

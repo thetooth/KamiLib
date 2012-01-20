@@ -22,7 +22,7 @@ namespace NeoPlatformer{
 
 	// Global pointer to our environment(used for lua)
 	extern Environment *envCallbackPtr;
-	extern map<char*, void*> neoVarList;
+	extern map<const char*, void*, cmp_cstring> neoVarList;
 
 	static void neo_register_info (lua_State *L) {
 		lua_pushliteral (L, "_COPYRIGHT");
@@ -43,6 +43,7 @@ namespace NeoPlatformer{
 	{
 		{ "__index",	l_get	},
 		{ "__newindex",	l_set	},
+		{"cl",			clL		},
 		{ NULL,			NULL	}
 	};
 
@@ -69,7 +70,9 @@ namespace NeoPlatformer{
 		int mode;
 		Point<int> debugflags;
 
+		// Env geometrys
 		double dt;
+		double dtMulti;
 		int tileWidth, tileHeight;
 		Rect<int> map;
 		Point<int> scroll;
@@ -78,16 +81,23 @@ namespace NeoPlatformer{
 		int scrollspeed;
 		int scrollspeedMulti;
 
+		// Map data
 		Character* character;
 		list<Platform>* platforms;
 		char *mapData;
 		char *mapMask;
+		char *mapProg;
+
+		// Textures
+		KLGLFont* hudFont;
+		KLGLSprite* mapSpriteSheet;
+		KLGLSprite* hudSpriteSheet;
 
 		Environment();
 		~Environment();
-		void comp(int offsetX = 0, int offsetY = 0);
+		void comp(KLGL* gc, int offsetX = 0, int offsetY = 0);
 		void drawHUD(KLGL* gc, KLGLTexture* tex);
-		void drawMap(KLGL* gc, KLGLSprite* spriteSheet);
+		void drawMap(KLGL* gc);
 		void load_map(char* mapfile);
 		void map_span(int type, int x0, int y0, int x1, int y1);
 	};

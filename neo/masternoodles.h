@@ -2,14 +2,14 @@
 
 #include "kami.h"
 #include "version.h"
-#include <omp.h>
 
 #define PI 3.14159265
 #define round(x) ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
 #define chop(x)  ((x)>=0?(long)((x)+0.9):(long)((x)-0.9))
 #define frand() (float)rand()/(float)RAND_MAX
 
-#define APP_VERSION "v0.1.0"
+#define APP_VERSION "v0.1.1"
+#define APP_NAMESPACE "neo"
 const int APP_SCREEN_W = 640;
 const int APP_SCREEN_H = 360;
 

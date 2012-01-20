@@ -4,7 +4,7 @@
 #define KERNEL_SIZE  4.0
 
 uniform float time;
-uniform int preset = 3;
+uniform int preset = 0;
 uniform vec2 center = vec2(0.5, 0.5);
 uniform sampler2D sceneTex;
 uniform sampler2D depthTex;
@@ -110,12 +110,12 @@ void main(){
 		break;
 	case 1: // Normal
 		stage0 = gradient(texcolor).rgb;
-		gl_FragColor = vec4(stage0, texcolor.a);
+		gl_FragColor = vec4(stage0, 1.0);
 		break;
 	case 2: // High
 		grain = (rand(gl_FragCoord.xy*time)/20.0)+1.0;
 		stage0 = (gradient(texcolor).rgb)*grain;
-		gl_FragColor = vec4(stage0*vignette(1.8, 0.0, vec2(0.5, 0.5)), texcolor.a);
+		gl_FragColor = vec4(stage0*vignette(1.8, 0.0, vec2(0.5, 0.5)), 1.0);
 		break;
 	case 3: // Full Retard
 		grain = (rand(gl_FragCoord.xy*time)/20.0)+1.0;
@@ -125,7 +125,7 @@ void main(){
 		gl_FragColor = vec4(stage0*vignette(1.8, 0.0, vec2(0.5, 0.5)), 1.0);
 		break;
 	default:
-		gl_FragColor = vec4(1.0, 0.0, 0.0, texcolor.a);
+		gl_FragColor = vec4(texcolor.a, texcolor.a, texcolor.a, 1.0);
 	}
 }
 

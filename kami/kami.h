@@ -22,7 +22,7 @@
 #include <string.h>
 #include <time.h>
 #ifdef _DEBUG
-#include <vld.h>
+//#include <vld.h>
 #endif
 
 #include "pure.h"
@@ -39,6 +39,7 @@
 
 #pragma region Constants
 
+#define APP_CONSOLE_BUFFER 8192
 #define APP_ENABLE_MIPMAP 0
 #define APP_ANISOTROPY 4.0
 
@@ -49,7 +50,7 @@ namespace klib{
 #pragma region KLGL_Interop
 
 	// Lua interop
-	static void KLGLLuaInfo(lua_State *L) {
+	static void kami_register_info(lua_State *L) {
 		lua_pushliteral (L, "_COPYRIGHT");
 		lua_pushliteral (L, "Copyright (C) 2005-2011 Ameoto Systems Inc. All Rights Reserved.");
 		lua_settable (L, -3);
@@ -74,7 +75,7 @@ namespace klib{
 
 	inline int luaL_openkami(lua_State *L) {
 		luaL_register(L, "kami", kamiL);
-		KLGLLuaInfo(L);
+		kami_register_info(L);
 		return 1;
 	}
 
@@ -109,7 +110,7 @@ namespace klib{
 		~KLGLTexture();
 	private:
 		int LoadTexture(const char *fname);
-		int InitTexture(unsigned char *data, int size);
+		int InitTexture(unsigned char *data, size_t size);
 	};
 
 	// Colors
@@ -175,7 +176,7 @@ namespace klib{
 
 		// Window regions
 		Rect<int> window;
-		int buffer_width, buffer_height;
+		Rect<int> buffer;
 		int overSampleFactor, scaleFactor;
 		bool vsync;
 
@@ -192,7 +193,7 @@ namespace klib{
 		KLGLINIReader *config;
 		KLGLTexture *framebuffer, *klibLogo, *InfoBlue, *CheepCheepDebug;
 		KLGLSound *audio;
-		int fps;
+		double fps;
 
 		KLGL(const char* title = "Application", int width = 640, int height = 480, int framerate = 60, bool fullscreen = false, int OSAA = 1, int scale = 1, float anisotropy = 4.0);
 		~KLGL();

@@ -19,26 +19,29 @@ namespace klib {
 	static int cursor_x = 0, cursor_y = 0;
 	static bool cursor_L_down = false;
 	extern bool KLGLDebug;
-	extern char clBuffer[];
-	extern KLGLMutex clBufferSpinLock;
+	extern char *clBuffer;
 
 #pragma endregion
 
 #pragma region Inline_System_Utilitys
 
+#define DEFASSTR(x)	#x
 	inline int cl(const char* format, ...){
 
 		// File handle
 		static FILE *fp;
 		if (fp == NULL){
-			fp = fopen("stdout.txt", "a+");
+			fp = fopen("cl.log", "w+");
+		}
+
+		// Exit situation
+		if (format == NULL && fp != NULL){
+			fclose(fp);
+			return -1;
 		}
 		
 		// Temporary buffer
-		static char *tBuffer;
-		if (tBuffer == NULL){
-			tBuffer = new char[1024];
-		}
+		char *tBuffer = new char[1024];
 		
 		int ret = 0, numLn = 0, numLnP = 0;
 		size_t bufferLen = strlen(clBuffer);
@@ -48,7 +51,7 @@ namespace klib {
 
 		// Append the new string to the buffer
 		vsprintf(tBuffer, format, arg);
-		strcpy(clBuffer+bufferLen, tBuffer);
+		strcpy_s(clBuffer+bufferLen, 1024, tBuffer);
 
 		// Do normal output
 		ret = vprintf(format, arg);
@@ -70,8 +73,11 @@ namespace klib {
 
 		// Remove first line if we have to many lines.
 		if (numLn > 16){
-			sprintf(clBuffer, "%s", clBuffer+numLnP+1);
+			strcpy_s(tBuffer, 1024, clBuffer+numLnP+1);
+			strcpy_s(clBuffer, 1024, tBuffer);
 		}
+
+		delete tBuffer;
 		
 		return ret;
 	}
@@ -121,6 +127,20 @@ namespace klib {
 
 		return buffer;
 	}
+
+#pragma endregion
+
+#pragma region Misc
+
+	struct cmp_cstring : public std::binary_function<const char*, const char*, bool> {
+	public:
+		bool operator()(const char* str1, const char* str2) const {
+			if (str1 == NULL || str2 == NULL){
+				return false;
+			}
+			return std::strcmp(str1, str2) < 0;
+		}
+	};
 
 #pragma endregion
 

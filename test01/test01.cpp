@@ -30,7 +30,7 @@ int main(){
 	// Status's
 	SYSTEM_INFO sysinfo;
 	GetSystemInfo( &sysinfo );
-	virtualPageCommit(sysinfo);
+	//virtualPageCommit(sysinfo);
 
 	clock_t t0 = clock(), t1 = clock();
 	bool quit = false, pPixelLight = true, vsync = true, internalTimer = false;
@@ -69,7 +69,7 @@ int main(){
 		// Load Shaders
 		quit = gc->InitShaders(1, 0, "common/postDefaultV.glsl", "common/postDefaultF.glsl");
 		quit = gc->InitShaders(2, 0, "common/modelDefaultV.glsl", "common/modelDefaultF.glsl");
-		quit = gc->InitShaders(3, 0, "common/postDefaultV.glsl", "common/gaussianBlur.frag");
+		quit = gc->InitShaders(3, 0, "common/particleRandom.vert", "common/gaussianBlur.frag");
 
 		// Setup textures
 		testTexture = new KLGLTexture("common/glory.png");
@@ -244,8 +244,8 @@ int main(){
 					particleTest.draw(gc);
 					gc->BindShaders(3);
 					glUniform1f(glGetUniformLocation(gc->GetShaderID(3), "time"), gc->shaderClock);
-					glUniform1f(glGetUniformLocation(gc->GetShaderID(3), "BLUR_BIAS"), 0.0001f);
-					glUniform2f(glGetUniformLocation(gc->GetShaderID(3), "BUFFER_EXTENSITY"), gc->buffer_width, gc->buffer_height);
+					glUniform1f(glGetUniformLocation(gc->GetShaderID(3), "BLUR_BIAS"), 0.00005f);
+					glUniform2f(glGetUniformLocation(gc->GetShaderID(3), "BUFFER_EXTENSITY"), gc->buffer.width, gc->buffer.height);
 					gc->UnbindShaders();
 					gc->BindMultiPassShader(3, 4);
 				}

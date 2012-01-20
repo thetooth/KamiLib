@@ -16,9 +16,10 @@ namespace klib {
 				PostQuitMessage(0);
 			}
 			break;
-		case WM_SIZE:
+		/*case WM_SIZE:
 			//windowResize(hWnd);
 			break;
+*/
 		default:
 			return DefWindowProc( hWnd, message, wParam, lParam );
 		}

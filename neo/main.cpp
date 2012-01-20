@@ -1,4 +1,4 @@
-﻿// Copyright 2005-2011 The Department of Redundancy Department, Dept.
+﻿// Copyright 2005-2011 The Department of Redundancy Department.
 
 #include "masternoodles.h"
 #include "platformer.h"
@@ -35,7 +35,6 @@ int main(){
 	*/
 	KLGL* gc;
 	KLGLTexture* charmapTexture, *titleTexture, *loadingTexture, *backdropTexture, *gameoverTexture;
-	KLGLSprite* mapSpriteSheet;
 	KLGLFont* font;
 	KLGLSound* soundTest;
 
@@ -94,6 +93,7 @@ int main(){
 	while (!quit)
 	{
 		t0 = clock();
+		
 		if(PeekMessage( &gc->msg, NULL, 0, 0, PM_REMOVE)){
 			if(gc->msg.message == WM_QUIT){
 				quit = true;
@@ -218,7 +218,7 @@ int main(){
 			gc->BindShaders(1);
 			glUniform1i(glGetUniformLocation(gc->GetShaderID(1), "preset"), qualityPreset);
 			gc->UnbindShaders();
-		}else if (t0-t1 >= CLOCKS_PER_SEC/50.0f || !internalTimer){
+		}else if (t0-t1 >= CLOCKS_PER_SEC/gc->fps || !internalTimer){
 
 			GetCursorPos(&mouseXY);
 			ScreenToClient(gc->hWnd, &mouseXY);
@@ -239,7 +239,7 @@ int main(){
 					// Draw BG
 					gc->Blit2D(titleTexture, 0, 0);
 					// Draw console
-					gc->OrthogonalStart(gc->scaleFactor);
+					gc->OrthogonalStart(gc->overSampleFactor);
 					font->Draw(8, 8, textBuffer);
 				}
 				gc->OrthogonalEnd();
@@ -267,8 +267,8 @@ int main(){
 						gc->OrthogonalStart();
 						glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 						gc->Blit2D(loadingTexture, 0, 0);
-						gc->OrthogonalStart(gc->scaleFactor);
-						font->Draw(8, 14, textBuffer);
+						gc->OrthogonalStart(gc->overSampleFactor);
+						//font->Draw(8, 14, textBuffer);
 						gc->OrthogonalEnd();
 						SwapBuffers(gc->hDC);
 						// No need to rush
@@ -282,36 +282,47 @@ int main(){
 						stars[i]->y = rand()%(gameEnv->map.height*16+1);
 					}
 					// Map sprites
-					mapSpriteSheet = new KLGLSprite("common/tilemap.png", 16, 16);
+					gameEnv->mapSpriteSheet = new KLGLSprite("common/tilemap.png", 16, 16);
+					gameEnv->hudSpriteSheet = new KLGLSprite("common/hud.png", 8, 8);
+					// Misc
+					gameEnv->hudFont = new KLGLFont(charmapTexture->gltexture, charmapTexture->width, charmapTexture->height, 8, 8, -1);
+
 					delete mapLoader;
+
+					// Load shader programs
 					gc->InitShaders(1, 0, 
 						"common/postDefaultV.glsl",
 						"common/productionfrag.glsl"
 						);
-					/*gc->InitShaders(2, 0, 
-						"common/tile.vert",
+					// Setup initial quality
+					gc->BindShaders(1);
+					glUniform1i(glGetUniformLocation(gc->GetShaderID(1), "preset"), qualityPreset);
+					gc->UnbindShaders();
+					gc->InitShaders(2, 0, 
+						"common/postDefaultV.glsl",
 						"common/tile.frag"
-						);*/
+						);
 					gc->InitShaders(3, 0, 
 						"common/postDefaultV.glsl",
 						"common/gaussianBlur.frag"
 						);
+
 					mode = GameMode::_INGAME;
 				}catch(KLGLException e){
 					MessageBox(NULL, e.getMessage(), "KLGLException", MB_OK | MB_ICONERROR);
 					mode = GameMode::_MENU;
 				}
 
-				envCallbackPtr = gameEnv;
-				ShowCursor(false);
+				//envCallbackPtr = gameEnv;
 
-				cl("Running user script common/map01.lua...\n");
-				luaStat = luaL_loadfile(gc->lua, "common/map01.lua");
+				//cl("Running user script common/map01.lua...\n");
+				//gameEnv->mapProg = file_contents("common/map01.lua");
+				/*luaStat = luaL_loadstring(gc->lua, gameEnv->mapProg);
 				if (luaStat == 0)
 				{
 					luaStat = lua_pcall(gc->lua, 0, LUA_MULTRET, 0);
 				}
-				gc->LuaCheckError(gc->lua, luaStat);
+				gc->LuaCheckError(gc->lua, luaStat);*/
 
 				cl("\nGame created successfully.\n");
 
@@ -321,7 +332,6 @@ int main(){
 				cl("Unloading game...");
 				try{
 					delete gameEnv;
-					delete mapSpriteSheet;
 					gc->UnloadShaders(1);
 					gc->UnloadShaders(2);
 					gc->UnloadShaders(3);
@@ -329,7 +339,6 @@ int main(){
 					MessageBox(NULL, e.getMessage(), "KLGLException", MB_OK | MB_ICONERROR);
 					mode = GameMode::_MENU;
 				}
-				ShowCursor(true);
 
 				mode = GameMode::_MENU;
 				cl("[OK]\n");
@@ -338,8 +347,9 @@ int main(){
 			case GameMode::_INGAME:											// ! Main game test environment
 
 				// Compute game physics and update events
-				gameEnv->dt = double(t0 - t1)/1000.0;
-				gameEnv->comp((mapScroll ? mouseXY.x - gc->buffer_width / 2 : 0), (mapScroll ? mouseXY.y - gc->buffer_height / 2 : 0));
+				gameEnv->dt = (t0 - t1)/double(CLOCKS_PER_SEC);
+				//gameEnv->dtMulti = mouseXY.x/1000.0;
+				gameEnv->comp(gc, (mapScroll ? mouseXY.x - gc->buffer.width / 2 : 0), (mapScroll ? mouseXY.y - gc->buffer.height / 2 : 0));
 
 				// Debug info
 				if (KLGLDebug)
@@ -348,7 +358,7 @@ int main(){
 						"Render FPS: %d\n"\
 						"       Syn: V%dT%d\n"\
 						"       Buf: %dx%d\n"\
-						"       Acu: %f (less is more)\n\n"\
+						"       Acu: %Lf (less is more)\n\n"\
 						"Player Pos: %f,%f\n"\
 						"       Vel: %f,%f\n\n"\
 						"Map    Pos: %d,%d\n"\
@@ -395,9 +405,9 @@ int main(){
 					glEnd();
 
 					// Barell rotation
-					//glTranslatef(APP_SCREEN_W/2.0f, APP_SCREEN_H/2.0f, 0.0f);
-					//glRotatef(t1/10.0f, 0.0f, 0.0f, 1.0f );
-					//glTranslatef(-APP_SCREEN_W/2.0f, -APP_SCREEN_H/2.0f, 0.0f);
+					//glTranslatef(gc->window.width/gc->scaleFactor, gc->window.height/gc->scaleFactor, 0.0f);
+					//glRotatef(mouseXY.x/10.0f, 0.0f, 0.0f, 1.0f );
+					//glTranslatef(-gc->window.width/gc->scaleFactor, -gc->window.height/gc->scaleFactor, 0.0f);
 
 					// Stars
 					for (int i = 0; i < 100; i++)
@@ -416,21 +426,23 @@ int main(){
 					// Cloud
 					gc->Blit2D(backdropTexture, (APP_SCREEN_W/2)-(gameEnv->scroll.x/4), (APP_SCREEN_H/3)-(gameEnv->scroll.y/4));
 
-					gameEnv->drawMap(gc, mapSpriteSheet);
+					gameEnv->drawMap(gc);
 
-					// Experimental multi-pass blur
-					gc->BindShaders(3);
-					glUniform1f(glGetUniformLocation(gc->GetShaderID(3), "time"), gc->shaderClock);
-					glUniform2f(glGetUniformLocation(gc->GetShaderID(3), "BUFFER_EXTENSITY"), gc->window.width*gc->scaleFactor, gc->window.height*gc->scaleFactor);
-					gc->UnbindShaders();
+					// Draw Player
+					gameEnv->character->draw(gameEnv, gc, gameEnv->mapSpriteSheet, frame);
 
-					gameEnv->character->draw(gameEnv, gc, mapSpriteSheet, frame);
-					// Player and HUD
+					// Master post shader data
+					gc->BindShaders(1);
+					glUniform1f(glGetUniformLocation(gc->GetShaderID(1), "time"), gc->shaderClock);
+					glUniform2f(glGetUniformLocation(gc->GetShaderID(1), "BUFFER_EXTENSITY"), gc->window.width*gc->scaleFactor, gc->window.height*gc->scaleFactor);
+					gc->BindMultiPassShader(1);
+
+					// HUD, Score, Health, etc
 					gameEnv->drawHUD(gc, gameoverTexture);
 
 					if (KLGLDebug)
 					{
-						gc->OrthogonalStart(gc->scaleFactor);
+						gc->OrthogonalStart(gc->overSampleFactor);
 						font->Draw(8, 14, textBuffer);
 						sprintf(textBuffer, "@CFFFFFF@D%c", 16);
 						font->Draw(mouseXY.x, mouseXY.y, textBuffer);
@@ -456,7 +468,7 @@ void Loading(KLGL *gc, KLGLTexture *loading, KLGLTexture *splash){
 		// Initialize auxiliary buffer(pretty bg)
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, gc->fbo[1]);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-		//gc->Blit2D(splash, 0, 0);
+		gc->Blit2D(splash, 0, 0);
 
 		// Draw loading screen
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, gc->fbo[0]);

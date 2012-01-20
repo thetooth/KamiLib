@@ -3,8 +3,10 @@
 
 in vec3 vertex_light_position;
 in vec3 vertex_normal;
+in vec2 vTexCoord;
 
 uniform sampler2D sceneTex;
+uniform sampler2D AmbientOcclusion;
 uniform sampler2D sceneDepthTex;
 
 vec3 crosshatch(){
@@ -23,5 +25,6 @@ void main()
 
 	float diffuse_value = max(dot(vertex_normal, vertex_light_position), 0.0);
 	float fDepth = 1.0 - (gl_FragCoord.z / gl_FragCoord.w) / 100.0;
+    float ambientOcclusion = texture2D(AmbientOcclusion, vTexCoord).r;
 	gl_FragColor = vec4(texture2D(sceneTex, uv).rgb*diffuse_value, texture2D(sceneTex, uv).a);
 }

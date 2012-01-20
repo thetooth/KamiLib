@@ -1,6 +1,6 @@
--- This script runs at the begining of the level, use it to adjust player 
--- settings or create events!
+-- This script runs before the player is spawned, and then throughout the 
+-- rest of the level. Use it to adjust player settings or create events!
 
---neo.characterMaxWalkSpeed = 450.0
-kami.cl("Get: " .. neo.scrollspeed)
-neo.scrollspeed = 5
+if neo.characterMaxWalkSpeed < 400.0 then
+	neo.characterMaxWalkSpeed = neo.characterMaxWalkSpeed+math.random(0.0, 4.0)
+end

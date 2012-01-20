@@ -68,7 +68,7 @@ namespace klib{
 		prevMouseX = mouseX;
 		prevMouseY = mouseY;
 
-		float toDist   = canvasW * 0.86f;
+		float toDist   = canvasW * 0.96f;
 		float stirDist = canvasW * 0.125f;
 		float blowDist = canvasW * 0.125f;
 
@@ -137,7 +137,7 @@ namespace klib{
 			sc = max( min( sc , 2.0f ) , 1.0f );
 
 			// Gravity
-			vY += Mrnd();
+			vY += Mrnd()/2.0f;
 
 			float nextX = x + vX;
 			float nextY = y + vY;
@@ -183,9 +183,9 @@ namespace klib{
 			{
 				continue;
 			}
-			//glColor4f(1.0f, 1.0f, 1.0f, movers[i].size/2.0f);
+			//glColor4f(1.0f, 1.0f, 1.0f, max(0.25f, movers[i].size-1.0f));
 			//gc->Blit2D(gc->CheepCheepDebug, movers[i].x, movers[i].y, movers[i].vX*10.0f);
-			glVertex2f(movers[i].pX-1, movers[i].pY);
+			glVertex2i(movers[i].pX, movers[i].pY);
 			glVertex2i(movers[i].x, movers[i].y);
 		}
 		glEnd();
@@ -210,7 +210,7 @@ namespace klib{
 					particleTestPtr.simulate();
 					t_prev = clock();
 				}else{
-					Sleep(t - t_prev);
+					//Sleep(t - t_prev);
 				}
 			}
 			status = particleTestPtr.threadingState;

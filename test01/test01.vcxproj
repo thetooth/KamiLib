@@ -160,6 +160,7 @@
     <None Include="..\kami\info_blue.png" />
     <None Include="common\gaussianBlur.frag" />
     <None Include="common\glory.png" />
+    <None Include="common\particleRandom.vert" />
     <None Include="common\postDefaultF.glsl" />
     <None Include="common\postDefaultV.glsl" />
     <None Include="common\test.png" />

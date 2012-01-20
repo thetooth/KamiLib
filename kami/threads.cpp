@@ -233,15 +233,23 @@ namespace klib{
 	}
 
 	void KLGLMutex::release() {
-		if(m_hMutex != NULL) {
-			CloseHandle(m_hMutex);
+		__try
+		{
+			if(m_hMutex != NULL) {
+				ReleaseMutex(m_hMutex);
+				CloseHandle(m_hMutex);
+				m_hMutex = NULL;
+			}
+		}
+		__except(EXCEPTION_EXECUTE_HANDLER)
+		{
+			m_hMutex = NULL;
+			printf("KLGLThreadException:: Failed to close mutex handle, it has been nullified to prevent further exceptions.\n");
 		}
 	}
 
 	KLGLMutex::~KLGLMutex() {
-		/*if(m_hMutex != NULL) {
-		CloseHandle(m_hMutex);
-		}*/
+		release();
 	}
 
 	// ThreadException
