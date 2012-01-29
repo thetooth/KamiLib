@@ -1,5 +1,6 @@
 #pragma once
 
+#include "kami.h"
 #include <Windows.h>
 #include "GL/glew.h"
 #include "GL/wglew.h"

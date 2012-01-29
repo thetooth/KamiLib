@@ -88,7 +88,7 @@ namespace klib{
 			fill_n(clBuffer, APP_CONSOLE_BUFFER, '\0');
 
 			//MOTD
-			cl("KamiLib, (c) 2005-2011 Ameoto Systems Inc. All Rights Reserved.\n\n");
+			cl(APP_MOTD);
 
 			// Initialize the window geometry
 			window.width		= width;
@@ -382,7 +382,7 @@ namespace klib{
 		}
 	}
 
-	void KLGL::Blit2D(KLGLTexture* texture, int x, int y, float rotation, KLGLColor vcolor){
+	void KLGL::Blit2D(KLGLTexture* texture, int x, int y, float rotation, float scale, KLGLColor vcolor){
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, texture->gltexture);
 
@@ -395,6 +395,16 @@ namespace klib{
 				int resetH = (texture->height/2);
 				glTranslatef(x+resetW, y+resetH, 0);
 				glRotatef( rotation, 0.0f, 0.0f, 1.0f );
+				glTranslatef(-x-resetW, -y-resetH, 0);
+			}
+
+			if (scale != 1.0f)
+			{
+				//glLoadIdentity();
+				int resetW = (texture->width/2);
+				int resetH = (texture->height/2);
+				glTranslatef(x+resetW, y+resetH, 0);
+				glScalef(scale, scale, 1.0f);
 				glTranslatef(-x-resetW, -y-resetH, 0);
 			}
 
@@ -574,7 +584,12 @@ namespace klib{
 		}
 	}
 
-	void KLGL::BindMultiPassShader(int shaderProgId, int alliterations){
+	void KLGL::BindMultiPassShader(int shaderProgId, int alliterations, float x, float y, float width, float height){
+		if (width < 0.0f || height < 0.0f)
+		{
+			width = window.width;
+			height = window.height;
+		}
 		for (int i = 0; i < alliterations; i++)
 		{
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo[1]);
@@ -583,10 +598,10 @@ namespace klib{
 
 			BindShaders(shaderProgId);
 			glBegin(GL_QUADS);
-			glTexCoord2d(0.0,0.0); glVertex2i(0,				0);
-			glTexCoord2d(1.0,0.0); glVertex2i(window.width,		0);
-			glTexCoord2d(1.0,1.0); glVertex2i(window.width,		window.height);
-			glTexCoord2d(0.0,1.0); glVertex2i(0,				window.height);
+			glTexCoord2d(0.0,0.0); glVertex2i(x,			y);
+			glTexCoord2d(1.0,0.0); glVertex2i(width,		y);
+			glTexCoord2d(1.0,1.0); glVertex2i(width,		height);
+			glTexCoord2d(0.0,1.0); glVertex2i(x,			height);
 			glEnd();
 			UnbindShaders();
 			glBindTexture(GL_TEXTURE_2D, 0);
@@ -598,15 +613,15 @@ namespace klib{
 			glBegin(GL_QUADS);
 			// Fix for odd flipping when using gl_FragCoord
 			if (i%4 == 4 || alliterations == 1){
-				glTexCoord2d(0.0,0.0); glVertex2i(0,				0);
-				glTexCoord2d(1.0,0.0); glVertex2i(window.width,		0);
-				glTexCoord2d(1.0,1.0); glVertex2i(window.width,		window.height);
-				glTexCoord2d(0.0,1.0); glVertex2i(0,				window.height);
+				glTexCoord2d(0.0,0.0); glVertex2i(x,			y);
+				glTexCoord2d(1.0,0.0); glVertex2i(width,		y);
+				glTexCoord2d(1.0,1.0); glVertex2i(width,		height);
+				glTexCoord2d(0.0,1.0); glVertex2i(x,			height);
 			}else{
-				glTexCoord2d(0.0,0.0); glVertex2i(0,				window.height);
-				glTexCoord2d(1.0,0.0); glVertex2i(window.width,		window.height);
-				glTexCoord2d(1.0,1.0); glVertex2i(window.width,		0);
-				glTexCoord2d(0.0,1.0); glVertex2i(0,				0);
+				glTexCoord2d(0.0,0.0); glVertex2i(x,			height);
+				glTexCoord2d(1.0,0.0); glVertex2i(width,		height);
+				glTexCoord2d(1.0,1.0); glVertex2i(width,		y);
+				glTexCoord2d(0.0,1.0); glVertex2i(x,			y);
 			}
 			glEnd();
 			glBindTexture(GL_TEXTURE_2D, 0);

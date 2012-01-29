@@ -39,6 +39,9 @@
 
 #pragma region Constants
 
+#ifndef APP_MOTD
+#define APP_MOTD "KamiLib, (c) 2005-2011 Ameoto Systems Inc. All Rights Reserved.\n\n"
+#endif
 #define APP_CONSOLE_BUFFER 8192
 #define APP_ENABLE_MIPMAP 0
 #define APP_ANISOTROPY 4.0
@@ -211,10 +214,10 @@ namespace klib{
 		void Swap();
 		void GenFrameBuffer(GLuint& fbo, GLuint &fbtex, GLuint &fbo_depth);
 		void Resize(){
-			windowResize(hWnd);
+			//windowResize(hWnd);
 		}
 		// Blit
-		void Blit2D(KLGLTexture* texture, int x, int y, float rotation = 0.0f, KLGLColor vcolor = KLGLColor(255, 255, 255, 255));
+		void Blit2D(KLGLTexture* texture, int x, int y, float rotation = 0.0f, float scale = 1.0f, KLGLColor vcolor = KLGLColor(255, 255, 255, 255));
 		void BlitSprite2D(KLGLSprite* sprite, int x, int y, int row, int col, bool managed = 1);
 		void BlitSprite2D(KLGLSprite* sprite, int x, int y, int index = 0, bool managed = 1){
 			int length = sprite->width/sprite->swidth;
@@ -227,7 +230,7 @@ namespace klib{
 		void Rectangle2D(int x, int y, int width, int height, KLGLColor vcolor = KLGLColor(255, 0, 0, 255));
 		void OrthogonalStart(float scale = 1.0f);
 		void OrthogonalEnd();
-		void BindMultiPassShader(int shaderProgId = 0, int alliterations = 1);
+		void BindMultiPassShader(int shaderProgId = 0, int alliterations = 1, float x = 0.0f, float y = 0.0f, float width = -1.0f, float height = -1.0f);
 
 		// Automatically load and setup a shader program for given vertex and frag shader scripts
 		int InitShaders(int shaderProgId, int isString, const char *vsFile, const char *fsFile, const char *gpFile = NULL, const char *tsFile = NULL);
@@ -260,6 +263,7 @@ namespace klib{
 				lua_pop(L, 1); // remove error message
 			}
 		}
+		void ProcessEvent(int *status);
 
 	private:
 		float getElapsedTimeInMs(){

@@ -26,6 +26,18 @@ namespace klib {
 		return 0;
 	}
 
+	void KLGL::ProcessEvent(int *status){
+		if(PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE)){
+			if(msg.message == WM_QUIT){
+				PostQuitMessage(0);
+				*status = 0;
+			}else{
+				TranslateMessage(&msg);
+				DispatchMessage(&msg);
+			}
+		}
+	}
+
 	void Win32Resource::ExtractBinResource(char* strCustomResName, int nResourceId){
 		HGLOBAL hResourceLoaded;		// handle to loaded resource 
 		HRSRC hRes;						// handle/ptr. to res. info. 

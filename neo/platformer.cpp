@@ -333,11 +333,16 @@ namespace NeoPlatformer{
 
 	void EnvLoaderThread::run(){
 		// Cast it cunt
-		Environment *EnvPtr = (Environment*)loaderPtr;
+		Environment *gameEnv = (Environment*)loaderPtr;
 
 		try{
 			// Load the map
-			EnvPtr->load_map("common/map01.smp");
+			gameEnv->platforms = new list<Platform>;
+			gameEnv->load_map("common/map01.smp");
+			// Create our character
+			gameEnv->character = new Character(128, 0, 8, 16);
+			
+			
 		}catch(KLGLException e){
 			MessageBox(NULL, e.getMessage(), "KLGLException", MB_OK | MB_ICONERROR);
 			status = false;

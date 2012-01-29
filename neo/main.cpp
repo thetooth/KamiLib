@@ -254,7 +254,6 @@ int main(){
 					//soundTest->open(NeoSoundServer);
 					// Initialize the game engine
 					gameEnv = new Environment();
-					gameEnv->platforms = new list<Platform>;
 					// Setup a thread to load and parse our map(if the map is large we want to be able to check its progress).
 					mapLoader = new EnvLoaderThread(gameEnv);
 					//soundTest->close();
@@ -274,18 +273,12 @@ int main(){
 						// No need to rush
 						Sleep(100);
 					}
-					gameEnv->character = new Character(128, 0, 8, 16);
-					for (int i = 0; i < 100; i++)
-					{
-						stars[i] = new Point<int>;
-						stars[i]->x = rand()%(gameEnv->map.width*16+1);
-						stars[i]->y = rand()%(gameEnv->map.height*16+1);
-					}
+					
+					// Pass-through our font
+					gameEnv->hudFont = font;
 					// Map sprites
 					gameEnv->mapSpriteSheet = new KLGLSprite("common/tilemap.png", 16, 16);
 					gameEnv->hudSpriteSheet = new KLGLSprite("common/hud.png", 8, 8);
-					// Misc
-					gameEnv->hudFont = new KLGLFont(charmapTexture->gltexture, charmapTexture->width, charmapTexture->height, 8, 8, -1);
 
 					delete mapLoader;
 
@@ -294,10 +287,6 @@ int main(){
 						"common/postDefaultV.glsl",
 						"common/productionfrag.glsl"
 						);
-					// Setup initial quality
-					gc->BindShaders(1);
-					glUniform1i(glGetUniformLocation(gc->GetShaderID(1), "preset"), qualityPreset);
-					gc->UnbindShaders();
 					gc->InitShaders(2, 0, 
 						"common/postDefaultV.glsl",
 						"common/tile.frag"
@@ -306,6 +295,18 @@ int main(){
 						"common/postDefaultV.glsl",
 						"common/gaussianBlur.frag"
 						);
+					// Setup initial post quality
+					gc->BindShaders(1);
+					glUniform1i(glGetUniformLocation(gc->GetShaderID(1), "preset"), qualityPreset);
+					gc->UnbindShaders();
+
+					// Misc
+					for (int i = 0; i < 100; i++)
+					{
+						stars[i] = new Point<int>;
+						stars[i]->x = rand()%(gameEnv->map.width*16+1);
+						stars[i]->y = rand()%(gameEnv->map.height*16+1);
+					}
 
 					mode = GameMode::_INGAME;
 				}catch(KLGLException e){
