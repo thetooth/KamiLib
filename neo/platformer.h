@@ -93,6 +93,10 @@ namespace NeoPlatformer{
 		KLGLSprite* mapSpriteSheet;
 		KLGLSprite* hudSpriteSheet;
 
+		// Display list
+		int mapDispListState;
+		unsigned int mapDispList;
+
 		Environment();
 		~Environment();
 		void comp(KLGL* gc, int offsetX = 0, int offsetY = 0);

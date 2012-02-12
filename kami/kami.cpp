@@ -590,6 +590,7 @@ namespace klib{
 			width = window.width;
 			height = window.height;
 		}
+
 		for (int i = 0; i < alliterations; i++)
 		{
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo[1]);

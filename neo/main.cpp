@@ -462,7 +462,8 @@ int main(){
 	return 0;
 }
 
-void Loading(KLGL *gc, KLGLTexture *loading, KLGLTexture *splash){
+void Loading(KLGL *gc, KLGLTexture *loading, KLGLTexture *splash)
+{
 	gc->OpenFBO();
 	gc->OrthogonalStart();
 	{

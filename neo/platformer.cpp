@@ -67,6 +67,8 @@ namespace NeoPlatformer{
 		character = NULL;
 		platforms = NULL;
 		mapProg = new char[4096];
+		mapDispListState = 0;
+		mapDispList = glGenLists(1);
 		envCallbackPtr = this;
 
 		neoVarList["scrollX"] = &scroll.x;
@@ -167,10 +169,19 @@ namespace NeoPlatformer{
 		gc->BindShaders(2);
 		glUniform1f(glGetUniformLocation(gc->GetShaderID(2), "time"), gc->shaderClock);
 
-		// Draw each platform
-		for(list<Platform>::iterator e = platforms->begin(); e != platforms->end(); e++){
-			e->draw(gc, this, mapSpriteSheet);
+		glTranslatef(-scroll.x, -scroll.y, 0);
+		if (mapDispListState == 1){
+			glCallList(mapDispList);
+		}else{
+			glNewList(mapDispList, GL_COMPILE_AND_EXECUTE);
+			// Draw each platform
+			for(list<Platform>::iterator e = platforms->begin(); e != platforms->end(); e++){
+				e->draw(gc, this, mapSpriteSheet);
+			}
+			glEndList();
+			mapDispListState = 1;
 		}
+		glTranslatef(scroll.x, scroll.y, 0);
 		gc->UnbindShaders();
 	}
 
@@ -655,47 +666,19 @@ namespace NeoPlatformer{
 	}
 
 	void Platform::draw(KLGL* gc, Environment* env, KLGLSprite* sprite){
-		// Offset by the scrolling coords
-		float x = pos.x - env->scroll.x;
-		float y = pos.y - env->scroll.y;
-
-		// Check if were even on screen.
-		if((x+collisionRect.getWidth()) < 0 || x > APP_SCREEN_W){
-			return;
-		}
-		if((y+collisionRect.getHeight()) < 0 || y > APP_SCREEN_H){
-			return;
-		}
-
 		// Get number of rows/columns
 		int w = chop(collisionRect.width/sprite->swidth);
 		int h = chop(collisionRect.height/sprite->sheight);
 
-		int scrX = 0;
-		int scrY = 0;
-
-		glBindTexture(GL_TEXTURE_2D, sprite->texturePtr->gltexture);
-		glBegin(GL_QUADS);
-
 		for(int iY = 0; iY < h; iY++){
 			for(int iX = 0; iX < w; iX++){
-				scrX = floorMpl(x, 16)+(iX*sprite->swidth);
-				scrY = floorMpl(y, 16)+(iY*sprite->sheight);
+				int scrX = floorMpl(pos.x, 16)+(iX*sprite->swidth);
+				int scrY = floorMpl(pos.y, 16)+(iY*sprite->sheight);
 				if(scrX < 0-sprite->swidth || scrX > APP_SCREEN_W || scrY < 0-sprite->sheight || scrY > APP_SCREEN_H){
-					continue;
+					//continue;
 				}
-				gc->BlitSprite2D(sprite, scrX, scrY, mapDataPtr[tileId+(iY*env->map.width+iX)], false);
+				gc->BlitSprite2D(sprite, scrX, scrY, mapDataPtr[tileId+(iY*env->map.width+iX)]);
 			}
-		}
-
-		glEnd();
-
-		if (KLGLDebug && x > 0 && y > 0 && x < APP_SCREEN_W && y < APP_SCREEN_H)
-		{
-			glBegin(GL_LINES);
-			glVertex2i(x,y);
-			glVertex2i(x+collisionRect.width, y+collisionRect.height);
-			glEnd();
 		}
 	}
 
