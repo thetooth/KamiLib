@@ -21,9 +21,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="model.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="logicalObjects.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -51,9 +48,6 @@
     <ClInclude Include="md5.h">
       <Filter>Header Files\3rd Party</Filter>
     </ClInclude>
-    <ClInclude Include="lolcode.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="lualoader.h">
       <Filter>Header Files\3rd Party</Filter>
     </ClInclude>
@@ -75,11 +69,11 @@
     <ClInclude Include="sound.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="objload.h">
+      <Filter>Header Files\3rd Party</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="model.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="kami.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -106,6 +100,9 @@
     </ClCompile>
     <ClCompile Include="sound.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="objload.cpp">
+      <Filter>Source Files\3rd Party</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

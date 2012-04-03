@@ -46,5 +46,36 @@ namespace klib{
 			height = newheight;
 		};
 	};
+
+	// Vec4
+	LOType class Vec4: public LObject<LOValue> {
+	public:
+		LOValue x;
+		LOValue y;
+		LOValue z;
+		LOValue w;
+		
+		Vec4(): LObject(){
+			x = 0;
+			y = 0;
+			z = 0;
+			w = 0;
+		}
+		Vec4(LOValue newx, LOValue newy, LOValue newz, LOValue neww): LObject(newx, newy) {
+			x = newx;
+			y = newy;
+			z = newz;
+			w = neww;
+		}
+		inline LOValue* Data(){
+			rawTypePtr[0] = x;
+			rawTypePtr[1] = y;
+			rawTypePtr[2] = z;
+			rawTypePtr[3] = w;
+			return rawTypePtr;
+		}
+	private:
+		LOValue rawTypePtr[4];
+	};
 }
 #undef LOType

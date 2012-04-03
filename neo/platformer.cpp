@@ -77,6 +77,7 @@ namespace NeoPlatformer{
 	}
 
 	Environment::~Environment(){
+		glDeleteLists(mapDispList, 1);
 		delete character;
 		delete platforms;
 	}
@@ -342,6 +343,25 @@ namespace NeoPlatformer{
 		cl("[OK]\n");
 	}
 
+	void Environment::drawLoader(KLGL* gc, int y, int height, int length, int speed){
+		static int i;
+		if (i == NULL || i < 0 || i >= gc->buffer.width+length){
+			i = 0;
+		}
+		int x = gc->buffer.width-i;
+		gc->OrthogonalStart(gc->overSampleFactor);
+		glBegin(GL_QUADS);
+		glColor4ub(255, 255, 255, 127);
+		glVertex2i(x, y);
+		glColor4ub(255, 255, 255, 60);
+		glVertex2i(x+(length*((x+(length/2))/(float)gc->buffer.width)), y);
+		glVertex2i(x+(length*((x+(length/2))/(float)gc->buffer.width)), y+height);
+		glColor4ub(255, 255, 255, 127);
+		glVertex2i(x, y+height);
+		glEnd();
+		i += speed;
+	}
+
 	void EnvLoaderThread::run(){
 		// Cast it cunt
 		Environment *gameEnv = (Environment*)loaderPtr;
@@ -352,8 +372,9 @@ namespace NeoPlatformer{
 			gameEnv->load_map("common/map01.smp");
 			// Create our character
 			gameEnv->character = new Character(128, 0, 8, 16);
-			
-			
+#ifndef _DEBUG
+			sleep(1000);
+#endif
 		}catch(KLGLException e){
 			MessageBox(NULL, e.getMessage(), "KLGLException", MB_OK | MB_ICONERROR);
 			status = false;

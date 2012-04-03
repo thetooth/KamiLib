@@ -40,7 +40,7 @@
 #pragma region Constants
 
 #ifndef APP_MOTD
-#define APP_MOTD "KamiLib, (c) 2005-2011 Ameoto Systems Inc. All Rights Reserved.\n\n"
+#define APP_MOTD "KamiLib, (c) 2005-2012 Ameoto Systems Inc. All Rights Reserved.\n\n"
 #endif
 #define APP_CONSOLE_BUFFER 8192
 #define APP_ENABLE_MIPMAP 0
@@ -192,6 +192,9 @@ namespace klib{
 		unsigned int shader_gp[128];
 		unsigned int shader_fp[128];
 
+		Vec4<GLfloat> light_diffuse;		// Default Diffuse light
+		Vec4<GLfloat> light_position;		// Default Infinite light location.
+
 		int shaderClock;
 		KLGLINIReader *config;
 		KLGLTexture *framebuffer, *klibLogo, *InfoBlue, *CheepCheepDebug;
@@ -230,7 +233,7 @@ namespace klib{
 		void Rectangle2D(int x, int y, int width, int height, KLGLColor vcolor = KLGLColor(255, 0, 0, 255));
 		void OrthogonalStart(float scale = 1.0f);
 		void OrthogonalEnd();
-		void BindMultiPassShader(int shaderProgId = 0, int alliterations = 1, float x = 0.0f, float y = 0.0f, float width = -1.0f, float height = -1.0f);
+		void BindMultiPassShader(int shaderProgId = 0, int alliterations = 1, bool flipOddBuffer = true, float x = 0.0f, float y = 0.0f, float width = -1.0f, float height = -1.0f);
 
 		// Automatically load and setup a shader program for given vertex and frag shader scripts
 		int InitShaders(int shaderProgId, int isString, const char *vsFile, const char *fsFile, const char *gpFile = NULL, const char *tsFile = NULL);
@@ -281,7 +284,8 @@ namespace klib{
 	public:
 		KLGLFont();
 		KLGLFont(GLuint init_texture, GLuint init_m_width, GLuint init_m_height, GLuint init_c_width, GLuint init_c_height, int init_extended = 0);
-		void Draw(int x, int y, char * text, KLGLColor* vcolor = NULL);
+		void Draw(int x, int y, char* text, KLGLColor* vcolor = NULL);
+		void Draw(int x, int y, wchar_t* text, KLGLColor* vcolor = NULL);
 		~KLGLFont();
 		//private:
 		GLuint c_texture;

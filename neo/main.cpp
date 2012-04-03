@@ -266,12 +266,12 @@ int main(){
 						gc->OrthogonalStart();
 						glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 						gc->Blit2D(loadingTexture, 0, 0);
-						gc->OrthogonalStart(gc->overSampleFactor);
-						//font->Draw(8, 14, textBuffer);
+						gameEnv->drawLoader(gc, gc->buffer.height-(24*gc->overSampleFactor), 1*gc->overSampleFactor, 100*gc->overSampleFactor, 16*gc->overSampleFactor);
+						if (KLGLDebug){
+							font->Draw(8, 14, textBuffer);
+						}
 						gc->OrthogonalEnd();
 						SwapBuffers(gc->hDC);
-						// No need to rush
-						Sleep(100);
 					}
 					
 					// Pass-through our font
@@ -427,10 +427,19 @@ int main(){
 					// Cloud
 					gc->Blit2D(backdropTexture, (APP_SCREEN_W/2)-(gameEnv->scroll.x/4), (APP_SCREEN_H/3)-(gameEnv->scroll.y/4));
 
+					/*glTranslatef(gc->window.width/2.0f, gc->window.height/2.0f, 0.0f);
+					glScalef(mouseXY.y/100.0f, mouseXY.y/100.0f, 1.0f);
+					glTranslatef(-gc->window.width/2.0f, -gc->window.height/2.0f, 0.0f);*/
+
+					// Draw Map
 					gameEnv->drawMap(gc);
 
 					// Draw Player
 					gameEnv->character->draw(gameEnv, gc, gameEnv->mapSpriteSheet, frame);
+
+					/*glTranslatef(gc->window.width/2.0f, gc->window.height/2.0f, 0.0f);
+					glScalef(-mouseXY.y/100.0f, -mouseXY.y/100.0f, 1.0f);
+					glTranslatef(-gc->window.width/2.0f, -gc->window.height/2.0f, 0.0f);*/
 
 					// Master post shader data
 					gc->BindShaders(1);

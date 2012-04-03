@@ -165,10 +165,9 @@
     <ClInclude Include="databin.h" />
     <ClInclude Include="ini.h" />
     <ClInclude Include="inireader.h" />
-    <ClInclude Include="lolcode.h" />
     <ClInclude Include="lualoader.h" />
     <ClInclude Include="md5.h" />
-    <ClInclude Include="model.h" />
+    <ClInclude Include="objload.h" />
     <ClInclude Include="pure.h" />
     <ClInclude Include="sound.h" />
     <ClInclude Include="threads.h" />
@@ -183,7 +182,7 @@
     <ClCompile Include="ini.c" />
     <ClCompile Include="inireader.cpp" />
     <ClCompile Include="md5.cpp" />
-    <ClCompile Include="model.cpp" />
+    <ClCompile Include="objload.cpp" />
     <ClCompile Include="sound.cpp" />
     <ClCompile Include="threads.cpp" />
     <ClCompile Include="kami.cpp" />

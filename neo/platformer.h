@@ -102,6 +102,7 @@ namespace NeoPlatformer{
 		void comp(KLGL* gc, int offsetX = 0, int offsetY = 0);
 		void drawHUD(KLGL* gc, KLGLTexture* tex);
 		void drawMap(KLGL* gc);
+		void drawLoader(KLGL* gc, int y, int height, int length, int speed);
 		void load_map(char* mapfile);
 		void map_span(int type, int x0, int y0, int x1, int y1);
 	};

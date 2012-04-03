@@ -216,10 +216,10 @@ namespace klib{
 			glEnable(GL_BLEND);
 			glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);						// Really Nice Perspective Calculations
 
-			GLfloat light_diffuse[] = {1.0, 1.0, 1.0, 1.0};							// Default Diffuse light
-			GLfloat light_position[] = {1.0, 1.0, 1.0, 0.0};						// Default Infinite light location.
-			glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
-			glLightfv(GL_LIGHT0, GL_POSITION, light_position);
+			light_diffuse = Vec4<GLfloat>(1.0, 1.0, 1.0, 1.0);
+			light_position = Vec4<GLfloat>(1.0, 1.0, 1.0, 0.0);						// Default Infinite light location.
+			glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse.Data());
+			glLightfv(GL_LIGHT0, GL_POSITION, light_position.Data());
 			glEnable(GL_LIGHT0);
 
 			// Vertical synchronization
@@ -255,10 +255,10 @@ namespace klib{
 //#if defined(_DEBUG)
 			OrthogonalStart();
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-			//Tile2D(InfoBlue, 0, 0, buffer_width/32, buffer_height/32);
 			Blit2D(klibLogo, 18, window.height-32);
 			OrthogonalEnd();
 			SwapBuffers(hDC);
+			glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 //#endif
 
 			// Setup audio API
@@ -273,9 +273,15 @@ namespace klib{
 	}
 
 	KLGL::~KLGL(){
-		for (int i = 0; i < 10; i++)
+		//Bind 0, which means render to back buffer, as a result, fb is unbound
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+		// Destroy shaders and framebuffers
+		for (int i = 0; i < 128; i++)
 		{
 			UnloadShaders(i);
+			glDeleteTextures(1, &fbo_texture[i]);
+			glDeleteTextures(1, &fbo_depth[i]);
+			glDeleteFramebuffersEXT(1, &fbo[0]);
 		}
 
 		wglMakeCurrent(NULL, NULL);
@@ -293,19 +299,24 @@ namespace klib{
 	}
 
 	void KLGL::OpenFBO(float fov, float eyex, float eyey, float eyez){
+		glLoadIdentity();
+		//glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT); //Clear the colour buffer (more buffers later on)
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo[0]); // Bind our frame buffer for rendering
 		glPushAttrib(GL_VIEWPORT_BIT | GL_ENABLE_BIT); // Push our glEnable and glViewport states
 
 		// Set the size of the frame buffer view port
 		glViewport(0, 0, buffer.width, buffer.height);
 		glMatrixMode(GL_PROJECTION);
+		//glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 		glLoadIdentity();
 		gluPerspective(fov, 1.0f*buffer.width/buffer.height, 0.1, 2400.0);
 		gluLookAt(eyex, eyey, eyez, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0);
 
 		// Set MODELVIEW matrix mode
 		glMatrixMode(GL_MODELVIEW);
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		//glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
 		glClear (GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_LIGHTING);
 	}
@@ -315,7 +326,6 @@ namespace klib{
 		glPopAttrib();
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 
-		//glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT); //Clear the colour buffer (more buffers later on)
 		glLoadIdentity(); // Load the Identity Matrix to reset our drawing locations
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
@@ -361,20 +371,20 @@ namespace klib{
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glBindTexture(GL_TEXTURE_2D, 0);
 
-		glGenFramebuffers(1, &fbo);
-		glBindFramebuffer(GL_FRAMEBUFFER_EXT, fbo);
-		glFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture, 0);
+		glGenFramebuffersEXT(1, &fbo);
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo);
+		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, fbo_texture, 0);
 		glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
 		glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fbo_depth);
 
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 
-		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER_EXT);
+		GLenum status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 
 		switch (status) {
-		case GL_FRAMEBUFFER_COMPLETE:
+		case GL_FRAMEBUFFER_COMPLETE_EXT:
 			break;
-		case GL_FRAMEBUFFER_UNSUPPORTED:
+		case GL_FRAMEBUFFER_UNSUPPORTED_EXT:
 			throw KLGLException("Error: unsupported framebuffer format!\n");
 			break;
 		default:
@@ -491,10 +501,10 @@ namespace klib{
 	}
 
 	void KLGL::OrthogonalEnd(){
+		glEnable(GL_LIGHTING);
 		glMatrixMode(GL_PROJECTION);
 		glPopMatrix();
 		glMatrixMode(GL_MODELVIEW);
-		glEnable(GL_LIGHTING);
 	}
 
 	int KLGL::InitShaders(int shaderProgId, int isString, const char *vsFile, const char *fsFile, const char *gsFile, const char *tsFile){
@@ -519,6 +529,7 @@ namespace klib{
 			shader_tp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_ARB_tessellation_shader, sLoad(tsFile));
 			cl("[%s] ", DEFASSTR(GL_ARB_tessellation_shader));
 		}
+		#undef sLoad
 
 		glLinkProgram(shader_id[shaderProgId]);
 		if(KLGLDebug){
@@ -579,17 +590,20 @@ namespace klib{
 			}else{
 				glGetProgramInfoLog(obj, infologLength, &charsWritten, infoLog);
 			}
-			cl(" ! 0x%X\n%s\n", status, infoLog);
+			cl("[ERROR] 0x%X\n%s\n", status, infoLog);
 			free(infoLog);
 		}
 	}
 
-	void KLGL::BindMultiPassShader(int shaderProgId, int alliterations, float x, float y, float width, float height){
+	void KLGL::BindMultiPassShader(int shaderProgId, int alliterations, bool flipOddBuffer, float x, float y, float width, float height){
 		if (width < 0.0f || height < 0.0f)
 		{
 			width = window.width;
 			height = window.height;
 		}
+
+		glPushMatrix();
+		glLoadIdentity();
 
 		for (int i = 0; i < alliterations; i++)
 		{
@@ -608,35 +622,37 @@ namespace klib{
 			glBindTexture(GL_TEXTURE_2D, 0);
 
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo[0]);
-			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+			//glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 			glBindTexture(GL_TEXTURE_2D, fbo_texture[1]);
 
 			glBegin(GL_QUADS);
 			// Fix for odd flipping when using gl_FragCoord
-			if (i%4 == 4 || alliterations == 1){
+			if (flipOddBuffer && (i%2 == 0 )){
+				glTexCoord2d(0.0,1.0); glVertex2i(x,			y);
+				glTexCoord2d(1.0,1.0); glVertex2i(width,		y);
+				glTexCoord2d(1.0,0.0); glVertex2i(width,		height);
+				glTexCoord2d(0.0,0.0); glVertex2i(x,			height);
+			}else{
 				glTexCoord2d(0.0,0.0); glVertex2i(x,			y);
 				glTexCoord2d(1.0,0.0); glVertex2i(width,		y);
 				glTexCoord2d(1.0,1.0); glVertex2i(width,		height);
 				glTexCoord2d(0.0,1.0); glVertex2i(x,			height);
-			}else{
-				glTexCoord2d(0.0,0.0); glVertex2i(x,			height);
-				glTexCoord2d(1.0,0.0); glVertex2i(width,		height);
-				glTexCoord2d(1.0,1.0); glVertex2i(width,		y);
-				glTexCoord2d(0.0,1.0); glVertex2i(x,			y);
 			}
 			glEnd();
 			glBindTexture(GL_TEXTURE_2D, 0);
 		}
+
+		glPopMatrix();
 	}
 
 	KLGLFont::KLGLFont(){
-		auto *tmtex = new KLGLTexture(KLGLFontDefault, 760);
+		auto *tmtex = new KLGLTexture(KLGLFontDefault, 2576);
 		c_texture = tmtex->gltexture;
-		m_width = 1097;
-		m_height= 10;
+		m_width = 128;
+		m_height= 192;
 		c_width = 8;
-		c_height= 10;
-		extended = 0;
+		c_height= 8;
+		extended = -1;
 		color = new KLGLColor(255, 255, 255);
 		c_per_row = m_width/c_width;
 	}
@@ -651,6 +667,16 @@ namespace klib{
 
 	void KLGLFont::Draw(int x, int y, char* text, KLGLColor* vcolor)
 	{
+		int len = strlen(text);
+		wchar_t* tmpStr = (wchar_t*)malloc(len*sizeof(wchar_t));
+		tmpStr[len] = L'\0';
+		mbstowcs(tmpStr, text, len);
+		Draw(x, y, tmpStr, vcolor);
+		//delete tmpStr;
+	}
+
+	void KLGLFont::Draw(int x, int y, wchar_t* text, KLGLColor* vcolor)
+	{
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, c_texture);
 		glBegin(GL_QUADS);
@@ -663,12 +689,16 @@ namespace klib{
 		int ch = c_height;
 		int twidth = 4;
 		int dropshadow = 0;
+		size_t stringLen = wcslen(text);
 
 		//calculate how wide each character is in term of texture coords
 		GLfloat dtx = (float)c_width/(float)m_width;
 		GLfloat dty = (float)c_height/(float)m_height;
 
-		for (char* c = text; *c != 0; c++,cp++) {
+		static char* sbtext = (char*)malloc(stringLen+1);
+		sbtext[stringLen] = '\0';
+		wcstombs(sbtext, text, stringLen);
+		for (char* c = sbtext; *c != 0; c++,cp++) {
 			// Per-character logic
 			switch(*c){
 			case '\n':
@@ -686,8 +716,9 @@ namespace klib{
 					}
 					
 					memset(token, 0, 6);
-					strcpy(token, substr(text, cp+2, 6));
+					strcpy(token, substr(sbtext, cp+2, 6));
 					c += 7;
+					cp+= 7;
 
 					if (vcolor != NULL){ // Ignore color codes if global parameter is set
 						color = vcolor;
@@ -701,6 +732,7 @@ namespace klib{
 					continue;
 				}else if (*(c+1) == 'D'){ // Drop shadow
 					c += 1;
+					cp+= 1;
 					dropshadow = 1;
 					continue;
 				}
@@ -712,7 +744,7 @@ namespace klib{
 
 			// If not in extended mode subtract the value of the first
 			// char in the character map to get the index in our map
-			int index = *c;
+			int index = text[cp];
 			if(extended == 0){
 				index -= ' ';
 			}else if(extended > 0){
