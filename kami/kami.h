@@ -16,15 +16,16 @@
 #define APP_CONSOLE_BUFFER 8192
 #define APP_ENABLE_MIPMAP 0
 #define APP_ANISOTROPY 4.0
-#define APP_ENABLE_LUA 1
+//#define APP_ENABLE_LUA 1
 
 #pragma endregion
 
 #pragma comment(lib,"glu32.lib")
 #pragma comment(lib,"opengl32.lib")
 #pragma comment(lib,"Winmm.lib")
+#pragma comment(lib,"SLB.lib")
 #ifdef APP_ENABLE_LUA
-#pragma comment(lib,"lua-5.2.0.lib")
+#pragma comment(lib,"SLB.lib")
 #endif
 #ifdef APP_ENABLE_SQUIRREL
 #pragma comment(lib,"squirrel.lib")
@@ -46,6 +47,8 @@
 #ifdef _WIN32
 #include "win32.h"
 #endif
+#define SLB_STATIC_LIBRARY
+#include "../../SLB/SLB/SLB.hpp"
 #ifdef APP_ENABLE_LUA
 #include "lualoader.h"
 #endif
@@ -96,7 +99,9 @@ namespace klib{
 	};
 
 	inline int luaL_openkami(lua_State *L) {
-		luaL_setfuncs(L, kamiL, NULL);
+		//luaL_newlib(L, kamiL);
+		//luaL_setfuncs(L, kamiL, 0);
+		luaL_openlib(L, "kami", kamiL, 0);
 		kami_register_info(L);
 		return 1;
 	}

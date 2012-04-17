@@ -2,6 +2,8 @@
 // Lua header files for C++
 // <<extern "C">> not supplied automatically because Lua also compiles as C++
 
+#define LUA_COMPAT_MODULE 1
+
 extern "C" {
 #include "../../lua-5.2.0/lua-5.2.0/lua.h"
 #include "../../lua-5.2.0/lua-5.2.0/lualib.h"

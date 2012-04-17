@@ -10,7 +10,7 @@ namespace NeoPlatformer{
 	Environment *envCallbackPtr = NULL;
 	map<const char*, void*, cmp_cstring> neoVarList;
 
-	int l_get( lua_State *L ){
+	/*int l_get( lua_State *L ){
 		const char *key = luaL_checkstring(L, 2);
 
 		if (neoVarList.count(key) > 0 && neoVarList[key] != NULL){
@@ -53,7 +53,7 @@ namespace NeoPlatformer{
 		lua_setglobal(L, "neo");
 		
 		return 1;
-	}
+	}*/
 
 	Environment::Environment(){
 		mode = 0;

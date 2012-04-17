@@ -14,22 +14,6 @@ using namespace NeoPlatformer;
 
 void Loading(KLGL *gc, KLGLTexture *loading, KLGLTexture *splash);
 
-/*
-void call_foo(HSQUIRRELVM v, int n,float f,const SQChar *s)
-{
-	int top = sq_gettop(v); //saves the stack size before the call
-	sq_pushroottable(v); //pushes the global table
-	sq_pushstring(v,_SC("foo"),-1);
-	if(SQ_SUCCEEDED(sq_get(v,-2))) { //gets the field 'foo' from the global table
-		sq_pushroottable(v); //push the 'this' (in this case is the global table)
-		sq_pushinteger(v,n); 
-		sq_pushfloat(v,f);
-		sq_pushstring(v,s,-1);
-		sq_call(v,4,0,0); //calls the function 
-	}
-	sq_settop(v,top); //restores the original stack size
-}*/
-
 int main(){
 	int consoleInput = 1;
 	char inputBuffer[256] = {};
@@ -95,18 +79,13 @@ int main(){
 	}
 
 	cl("\nNeo %s R%d", APP_VERSION, APP_BUILD_VERSION); 
-	luaopen_neo(gc->lua);
+	/*luaopen_neo(gc->lua);
 	int luaStat = luaL_loadfile(gc->lua, "common/init.lua");
 	if ( luaStat==0 ) {
 		// execute Lua program
 		luaStat = lua_pcall(gc->lua, 0, LUA_MULTRET, 0);
 	}
-	LuaCheckError(gc->lua, luaStat);
-	/*sq_pushroottable(gc->squirrel); //push the root table(were the globals of the script will be stored)
-	if (SQ_SUCCEEDED(sqstd_dofile(gc->squirrel, _SC("test.nut"), 0, 1))){
-		call_foo(gc->squirrel, 1, 2.5, _SC("teststring"));
-	}
-	sq_pop(gc->squirrel, 1); //pops the root table*/
+	LuaCheckError(gc->lua, luaStat);*/
 
 	if (quit){
 		MessageBox(NULL, "An important resource is missing or failed to load, check the console window _now_ for more details.", "Error", MB_OK | MB_ICONERROR);
@@ -170,12 +149,12 @@ int main(){
 									PostQuitMessage(0);
 									quit = true;
 								}else{
-									int s = luaL_loadstring(gc->lua, inputBuffer);
+									/*int s = luaL_loadstring(gc->lua, inputBuffer);
 									if ( s==0 ) {
 										// execute Lua program
 										s = lua_pcall(gc->lua, 0, LUA_MULTRET, 0);
 									}
-									LuaCheckError(gc->lua, s);
+									LuaCheckError(gc->lua, s);*/
 								}
 							}else{
 								cl("-- RETURN\n", 13);

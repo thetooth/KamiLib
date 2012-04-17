@@ -253,8 +253,12 @@ namespace klib{
 				throw KLGLException("Failed to init squirrel!");
 			}
 			sqstd_seterrorhandlers(squirrel);
-			sq_setprintfunc(squirrel, SQcl, NULL); //sets the print function
+			sq_setprintfunc(squirrel, SQcl, SQcl); //sets the print function
 #endif
+
+			SLB::Manager m;
+			SLB::Script s(&m);
+			s.doFile("common/init.lua");
 
 			// Draw logo and load internal resources
 			InfoBlue = new KLGLTexture(KLGLInfoBluePNG, 205);

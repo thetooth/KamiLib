@@ -25,7 +25,7 @@ namespace NeoPlatformer{
 	extern Environment *envCallbackPtr;
 	extern map<const char*, void*, cmp_cstring> neoVarList;
 
-	static void neo_register_info (lua_State *L) {
+	/*static void neo_register_info (lua_State *L) {
 		lua_pushliteral (L, "_COPYRIGHT");
 		lua_pushliteral (L, "Copyright (C) 2005-2011 Ameoto Systems Inc. All Rights Reserved.");
 		lua_settable (L, -3);
@@ -48,7 +48,7 @@ namespace NeoPlatformer{
 		{ NULL,			NULL	}
 	};
 
-	int luaopen_neo(lua_State *L);
+	int luaopen_neo(lua_State *L);*/
 
 	// The direction of the obstacle that I collided with.  See Character::checkCollision()
 	enum CollisionType {C_NONE, C_UP, C_DOWN, C_LEFT, C_RIGHT, C_SLOPELEFT, C_SLOPERIGHT};
