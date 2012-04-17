@@ -67,20 +67,23 @@ float vignette(float bounds, float offset, vec2 pos)
 vec4 dreamvision(){
 	vec2 uv = gl_TexCoord[0].xy;
   vec4 c = texture2D(sceneTex, uv);
+  float randEx = rand(vec2(time,time))*0.25;
+  
+  uv *= rand(vec2(time,time))/0.95;
+  
+  c += texture2D(sceneTex, uv+0.001+randEx);
+  c += texture2D(sceneTex, uv+0.003+randEx);
+  c += texture2D(sceneTex, uv+0.005+randEx);
+  c += texture2D(sceneTex, uv+0.007+randEx);
+  c += texture2D(sceneTex, uv+0.009+randEx);
+  c += texture2D(sceneTex, uv+0.011+randEx);
 
-  c += texture2D(sceneTex, uv+0.001);
-  c += texture2D(sceneTex, uv+0.003);
-  c += texture2D(sceneTex, uv+0.005);
-  c += texture2D(sceneTex, uv+0.007);
-  c += texture2D(sceneTex, uv+0.009);
-  c += texture2D(sceneTex, uv+0.011);
-
-  c += texture2D(sceneTex, uv-0.001);
-  c += texture2D(sceneTex, uv-0.003);
-  c += texture2D(sceneTex, uv-0.005);
-  c += texture2D(sceneTex, uv-0.007);
-  c += texture2D(sceneTex, uv-0.009);
-  c += texture2D(sceneTex, uv-0.011);
+  c += texture2D(sceneTex, uv-0.001+randEx);
+  c += texture2D(sceneTex, uv-0.003+randEx);
+  c += texture2D(sceneTex, uv-0.005+randEx);
+  c += texture2D(sceneTex, uv-0.007+randEx);
+  c += texture2D(sceneTex, uv-0.009+randEx);
+  c += texture2D(sceneTex, uv-0.011+randEx);
 
   c.rgb = vec3((c.r+c.g+c.b)/3.0);
   c = c / 9.5;
@@ -120,7 +123,7 @@ void main(){
 	case 3: // Full Retard
 		grain = (rand(gl_FragCoord.xy*time)/20.0)+1.0;
 		//precolor = vec4(colormerge(), 1.0);
-		precolor = texcolor;
+		precolor = texcolor*dreamvision();
 		stage0 = (gradient(precolor).rgb)*grain+gaussianblur(true).rgb;
 		gl_FragColor = vec4(stage0*vignette(1.8, 0.0, vec2(0.5, 0.5)), 1.0);
 		break;

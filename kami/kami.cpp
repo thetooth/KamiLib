@@ -88,6 +88,7 @@ namespace klib{
 			fill_n(clBuffer, APP_CONSOLE_BUFFER, '\0');
 
 			//MOTD
+			//cl("KamiLib v0.0.1 R%d, %s %s,\n", APP_BUILD_VERSION, POSH_OS_STRING, POSH_COMPILER_STRING);
 			cl(APP_MOTD);
 
 			// Initialize the window geometry
@@ -234,7 +235,8 @@ namespace klib{
 			cl("Initialized GL %s @%dx%d 32bits\n", glGetString(GL_VERSION), buffer.width, buffer.height);
 
 			// Initialize the Lua API
-			lua = lua_open();
+#ifdef APP_ENABLE_LUA
+			lua = luaL_newstate();
 			if (lua != NULL){
 				cl("Initialized %s\n", LUA_VERSION);
 			}else{
@@ -242,6 +244,17 @@ namespace klib{
 			}
 			luaL_openlibs(lua);
 			luaL_openkami(lua);
+#endif
+#ifdef APP_ENABLE_SQUIRREL
+			squirrel = sq_open(1024); // creates a VM with initial stack size 1024
+			if (squirrel != NULL){
+				cl("Initialized %s\n", SQUIRREL_VERSION);
+			}else{
+				throw KLGLException("Failed to init squirrel!");
+			}
+			sqstd_seterrorhandlers(squirrel);
+			sq_setprintfunc(squirrel, SQcl, NULL); //sets the print function
+#endif
 
 			// Draw logo and load internal resources
 			InfoBlue = new KLGLTexture(KLGLInfoBluePNG, 205);
@@ -252,14 +265,14 @@ namespace klib{
 			framebuffer->width = window.width;
 			framebuffer->height = window.height;
 
-//#if defined(_DEBUG)
+#if defined(_DEBUG)
 			OrthogonalStart();
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 			Blit2D(klibLogo, 18, window.height-32);
 			OrthogonalEnd();
 			SwapBuffers(hDC);
 			glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-//#endif
+#endif
 
 			// Setup audio API
 			//audio = new KLGLSound();
@@ -292,7 +305,12 @@ namespace klib{
 		// destroy the window explicitly
 		DestroyWindow(hWnd);
 
+#ifdef APP_ENABLE_LUA
 		lua_close(lua);
+#endif
+#ifdef APP_ENABLE_SQUIRREL
+		sq_close(squirrel);
+#endif
 
 		cl("\n0x%x :3\n", internalStatus);
 		cl(NULL);
@@ -354,11 +372,20 @@ namespace klib{
 
 	void KLGL::GenFrameBuffer(GLuint& fbo, GLuint &fbo_texture, GLuint &fbo_depth) {
 		// Depth Buffer
-		glGenRenderbuffersEXT(1, &fbo_depth); // Generate one render buffer and store the ID in fbo_depth  
+		/*glGenRenderbuffersEXT(1, &fbo_depth); // Generate one render buffer and store the ID in fbo_depth  
 		glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, fbo_depth); // Bind the fbo_depth render buffer  
 		glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT, buffer.width, buffer.height); // Set the render buffer storage to be a depth component, with a width and height of the window  
 		glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fbo_depth); // Set the render buffer of this buffer to the depth buffer 
-		glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0); // Unbind the render buffer
+		glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0); // Unbind the render buffer*/
+		glGenTextures(1, &fbo_depth);
+		glBindTexture(GL_TEXTURE_2D, fbo_depth);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, buffer.width, buffer.height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glBindTexture(GL_TEXTURE_2D, 0);
 
 		// Texture Buffer
 		glGenTextures(1, &fbo_texture);
@@ -373,9 +400,10 @@ namespace klib{
 
 		glGenFramebuffersEXT(1, &fbo);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo);
+		
+		glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, fbo_depth);
 		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, fbo_texture, 0);
 		glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
-		glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fbo_depth);
 
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 
@@ -508,39 +536,50 @@ namespace klib{
 	}
 
 	int KLGL::InitShaders(int shaderProgId, int isString, const char *vsFile, const char *fsFile, const char *gsFile, const char *tsFile){
-		cl("Loading Shader[%d] ", shaderProgId);
+		cl("Initializing Shader ID %d\n", shaderProgId);
 
+		const char* sData;
 		shader_id[shaderProgId] = glCreateProgram();
 
 		#define sLoad(x) (isString ? x : file_contents(const_cast<char*>(x)))
-		if (vsFile != NULL){
-			shader_vp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_VERTEX_SHADER,	 sLoad(vsFile));
-			cl("[%s] ", DEFASSTR(GL_VERTEX_SHADER));
+
+		sData = sLoad(vsFile);
+		if (vsFile != NULL && sData != NULL){
+			cl("Compiling %s\n", vsFile);
+			shader_vp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_VERTEX_SHADER,	 sData);
 		}
-		if (fsFile != NULL){
-			shader_fp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_FRAGMENT_SHADER, sLoad(fsFile));
-			cl("[%s] ", DEFASSTR(GL_FRAGMENT_SHADER));
+		sData = sLoad(fsFile);
+		if (fsFile != NULL && sData != NULL){
+			cl("Compiling %s\n", fsFile);
+			shader_fp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_FRAGMENT_SHADER, sData);
 		}
-		if (gsFile != NULL){
-			shader_gp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_GEOMETRY_SHADER, sLoad(gsFile));
-			cl("[%s] ", DEFASSTR(GL_GEOMETRY_SHADER));
+		sData = sLoad(gsFile);
+		if (gsFile != NULL && sData != NULL){
+			cl("Compiling %s\n", gsFile);
+			shader_gp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_GEOMETRY_SHADER, sData);
 		}
-		if (tsFile != NULL){
-			shader_tp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_ARB_tessellation_shader, sLoad(tsFile));
-			cl("[%s] ", DEFASSTR(GL_ARB_tessellation_shader));
+		sData = sLoad(tsFile);
+		if (tsFile != NULL && sData != NULL){
+			cl("Compiling %s\n", tsFile);
+			shader_tp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_ARB_tessellation_shader, sData);
 		}
 		#undef sLoad
 
+		cl("Linking...", vsFile);
 		glLinkProgram(shader_id[shaderProgId]);
 		if(KLGLDebug){
 			PrintShaderInfoLog(shader_id[shaderProgId], 0);
 		}
 
-		cl("[OK]\n");
+		cl(" [OK]\n");
 		return 0;
 	}
 
 	unsigned int KLGL::ComputeShader(unsigned int &shaderProgram, unsigned int shaderType, const char* shaderString){
+		if (shaderString == NULL){
+			throw KLGLException("NULL ptr given instead of shader string.");
+			return NULL;
+		}
 		unsigned int tmpLinker = glCreateShader(shaderType);
 		glShaderSource(tmpLinker, 1, &shaderString, 0);
 		glCompileShader(tmpLinker);
@@ -576,21 +615,27 @@ namespace klib{
 
 	void KLGL::PrintShaderInfoLog(GLuint obj, int isShader){
 		int status;
-		int infologLength = 0;
+		int infoLogLength = 0;
+		int infoLogRemainLength = 0;
 		int charsWritten = 0;
 		char *infoLog;
 
-		glGetShaderiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
+		glGetShaderiv(obj, GL_INFO_LOG_LENGTH, &infoLogLength);
 		glGetShaderiv(obj, GL_COMPILE_STATUS, &status);
 
-		if (status != 1 && infologLength > 0){
-			infoLog = (char *)malloc(infologLength);
+		if ((status != 1 || KLGLDebug) && infoLogLength > 0){
+			//cl("[ERROR]\n");
+			infoLog = (char *)malloc(infoLogLength);
 			if(isShader){
-				glGetShaderInfoLog(obj, infologLength, &charsWritten, infoLog);
+				glGetShaderInfoLog(obj, infoLogLength, &charsWritten, infoLog);
 			}else{
-				glGetProgramInfoLog(obj, infologLength, &charsWritten, infoLog);
+				glGetProgramInfoLog(obj, infoLogLength, &charsWritten, infoLog);
 			}
-			cl("[ERROR] 0x%X\n%s\n", status, infoLog);
+			infoLogRemainLength = infoLogLength;
+			while(infoLogRemainLength > 0){
+				cl("%s", substr(infoLog, infoLogLength-infoLogRemainLength, min(512, infoLogLength)));
+				infoLogRemainLength -= 512;
+			}
 			free(infoLog);
 		}
 	}
@@ -690,13 +735,19 @@ namespace klib{
 		int twidth = 4;
 		int dropshadow = 0;
 		size_t stringLen = wcslen(text);
+		static size_t lastStringLen;
 
 		//calculate how wide each character is in term of texture coords
 		GLfloat dtx = (float)c_width/(float)m_width;
 		GLfloat dty = (float)c_height/(float)m_height;
 
-		static char* sbtext = (char*)malloc(stringLen+1);
+		static char* sbtext;
+		if (sbtext == NULL || lastStringLen < stringLen){
+			sbtext = (char*)malloc(stringLen+1);
+			lastStringLen = stringLen;
+		}
 		sbtext[stringLen] = '\0';
+		
 		wcstombs(sbtext, text, stringLen);
 		for (char* c = sbtext; *c != 0; c++,cp++) {
 			// Per-character logic
@@ -746,7 +797,7 @@ namespace klib{
 			// char in the character map to get the index in our map
 			int index = text[cp];
 			if(extended == 0){
-				index -= ' ';
+				index -= L' ';
 			}else if(extended > 0){
 				index -= extended;
 			}
@@ -781,7 +832,7 @@ namespace klib{
 	}
 
 	KLGLFont::~KLGLFont(){
-		//delete color;
+		delete color;
 	}
 
 	KLGLSprite::KLGLSprite(const char *fname, int sWidth, int sHeight){

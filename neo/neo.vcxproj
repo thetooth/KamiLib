@@ -29,6 +29,7 @@
     </SccLocalPath>
     <SccProvider>
     </SccProvider>
+    <VCTargetsPath Condition="'$(VCTargetsPath11)' != '' and '$(VSVersion)' == '' and $(VisualStudioVersion) == ''">$(VCTargetsPath11)</VCTargetsPath>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -165,6 +166,7 @@
     <None Include="common\clouds.png">
       <DeploymentContent>true</DeploymentContent>
     </None>
+    <None Include="common\dither.frag" />
     <None Include="common\gameover.png">
       <DeploymentContent>true</DeploymentContent>
     </None>
@@ -189,7 +191,7 @@
     <None Include="common\postDefaultV.glsl">
       <DeploymentContent>true</DeploymentContent>
     </None>
-    <None Include="common\productionfrag.glsl">
+    <None Include="common\production.frag">
       <DeploymentContent>true</DeploymentContent>
     </None>
     <None Include="common\tile.frag">

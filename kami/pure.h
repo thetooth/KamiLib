@@ -10,6 +10,7 @@
 #include <stdarg.h>
 #include <assert.h>
 
+#include "kami.h"
 #include "threads.h"
 
 namespace klib {
@@ -41,7 +42,7 @@ namespace klib {
 		}
 		
 		// Temporary buffer
-		char *tBuffer = new char[1024];
+		char *tBuffer = new char[4096];
 		
 		int ret = 0, numLn = 0, numLnP = 0;
 		size_t bufferLen = strlen(clBuffer);
@@ -51,7 +52,7 @@ namespace klib {
 
 		// Append the new string to the buffer
 		vsprintf(tBuffer, format, arg);
-		strcpy_s(clBuffer+bufferLen, 1024, tBuffer);
+		strcpy_s(clBuffer+bufferLen, 4096, tBuffer);
 
 		// Do normal output
 		ret = vprintf(format, arg);
@@ -73,8 +74,8 @@ namespace klib {
 
 		// Remove first line if we have to many lines.
 		if (numLn > 16){
-			strcpy_s(tBuffer, 1024, clBuffer+numLnP+1);
-			strcpy_s(clBuffer, 1024, tBuffer);
+			strcpy_s(tBuffer, 4096, clBuffer+numLnP+1);
+			strcpy_s(clBuffer, 4096, tBuffer);
 		}
 
 		delete tBuffer;
@@ -85,7 +86,7 @@ namespace klib {
 	inline char *substr(const char *pstr, int start, int len)
 	{
 		if (pstr == 0 || strlen(pstr) == 0 || strlen(pstr) < start || strlen(pstr) < (start+len)){
-			return 0;
+			return const_cast<char*>(pstr);
 		}
 
 		static size_t prev_allocsize;
@@ -106,27 +107,7 @@ namespace klib {
 		return (float)color/255.0f;
 	}
 
-	inline char *file_contents(char *filename)
-	{
-		FILE *f = fopen(filename, "rb");
-		char *buffer;
-
-		if (!f) {
-			cl("Unable to open %s for reading\n", filename);
-			return NULL;
-		}
-
-		fseek(f, 0, SEEK_END);
-		int length = ftell(f);
-		fseek(f, 0, SEEK_SET);
-
-		buffer = (char*)malloc(length+1);
-		fread(buffer, 1, length, f);
-		fclose(f);
-		buffer[length] = '\0';
-
-		return buffer;
-	}
+	
 
 #pragma endregion
 

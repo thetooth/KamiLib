@@ -14,6 +14,22 @@ using namespace NeoPlatformer;
 
 void Loading(KLGL *gc, KLGLTexture *loading, KLGLTexture *splash);
 
+/*
+void call_foo(HSQUIRRELVM v, int n,float f,const SQChar *s)
+{
+	int top = sq_gettop(v); //saves the stack size before the call
+	sq_pushroottable(v); //pushes the global table
+	sq_pushstring(v,_SC("foo"),-1);
+	if(SQ_SUCCEEDED(sq_get(v,-2))) { //gets the field 'foo' from the global table
+		sq_pushroottable(v); //push the 'this' (in this case is the global table)
+		sq_pushinteger(v,n); 
+		sq_pushfloat(v,f);
+		sq_pushstring(v,s,-1);
+		sq_call(v,4,0,0); //calls the function 
+	}
+	sq_settop(v,top); //restores the original stack size
+}*/
+
 int main(){
 	int consoleInput = 1;
 	char inputBuffer[256] = {};
@@ -33,10 +49,11 @@ int main(){
 	/*
 	* Init
 	*/
-	KLGL* gc;
-	KLGLTexture* charmapTexture, *titleTexture, *loadingTexture, *backdropTexture, *gameoverTexture;
-	KLGLFont* font;
-	KLGLSound* soundTest;
+	KLGL *gc;
+	KLGLTexture *charmapTexture, *titleTexture, *loadingTexture, *backdropTexture, *gameoverTexture, *userInterfaceTexture;
+	KLGLSprite *userInterface;
+	KLGLFont *font;
+	KLGLSound *soundTest;
 
 	try {
 
@@ -55,11 +72,12 @@ int main(){
 
 		// Textures
 		charmapTexture  = new KLGLTexture("common/internalfont.png");
-		backdropTexture = new KLGLTexture("common/clouds.png");
-		gameoverTexture = new KLGLTexture("common/gameover.png");
+		userInterfaceTexture = new KLGLTexture("common/ui.png");
+
+		userInterface = new KLGLSprite(userInterfaceTexture, 32, 32);
 
 		// Audio
-		//soundTest = new KLGLSound;
+		soundTest = new KLGLSound;
 		//soundTest->open(NeoSoundServer);
 
 		// Fonts
@@ -71,22 +89,26 @@ int main(){
 			"common/passthrough.frag"
 		);
 
-	} catch(KLGLException e){
+	}catch(KLGLException e){
 		quit = 1;
 		MessageBox(NULL, e.getMessage(), "KLGLException", MB_OK | MB_ICONERROR);
 	}
 
-	cl("\nNeo %s R%d", APP_VERSION, APP_BUILD_VERSION);
+	cl("\nNeo %s R%d", APP_VERSION, APP_BUILD_VERSION); 
 	luaopen_neo(gc->lua);
 	int luaStat = luaL_loadfile(gc->lua, "common/init.lua");
 	if ( luaStat==0 ) {
 		// execute Lua program
 		luaStat = lua_pcall(gc->lua, 0, LUA_MULTRET, 0);
 	}
-	gc->LuaCheckError(gc->lua, luaStat);
+	LuaCheckError(gc->lua, luaStat);
+	/*sq_pushroottable(gc->squirrel); //push the root table(were the globals of the script will be stored)
+	if (SQ_SUCCEEDED(sqstd_dofile(gc->squirrel, _SC("test.nut"), 0, 1))){
+		call_foo(gc->squirrel, 1, 2.5, _SC("teststring"));
+	}
+	sq_pop(gc->squirrel, 1); //pops the root table*/
 
-	if (quit)
-	{
+	if (quit){
 		MessageBox(NULL, "An important resource is missing or failed to load, check the console window _now_ for more details.", "Error", MB_OK | MB_ICONERROR);
 	}
 
@@ -153,10 +175,10 @@ int main(){
 										// execute Lua program
 										s = lua_pcall(gc->lua, 0, LUA_MULTRET, 0);
 									}
-									gc->LuaCheckError(gc->lua, s);
+									LuaCheckError(gc->lua, s);
 								}
 							}else{
-								cl("-- %c\n", 13);
+								cl("-- RETURN\n", 13);
 								mode = GameMode::_MAPLOAD;
 							}
 							fill_n(inputBuffer, 256, '\0');
@@ -237,9 +259,24 @@ int main(){
 					// Reset pallet
 					KLGLColor(255, 255, 255, 255).Set();
 					// Draw BG
-					gc->Blit2D(titleTexture, 0, 0);
-					// Draw console
 					gc->OrthogonalStart(gc->overSampleFactor);
+					static int scrollOffset;
+					if (scrollOffset == NULL || scrollOffset > 32){
+						scrollOffset = 0;
+					}
+					for (int y = 0; y-1 <= gc->buffer.height/32; y++)
+					{
+						for (int x = 0; x-1 <= gc->buffer.width/32; x++)
+						{
+							gc->BlitSprite2D(userInterface, (x*32)-scrollOffset, (y*32)-scrollOffset, 0);
+						}
+					}
+					scrollOffset++;
+					gc->OrthogonalStart();
+					gc->Blit2D(titleTexture, 0, 0);
+					gc->OrthogonalStart(gc->overSampleFactor);
+
+					// Draw console
 					font->Draw(8, 8, textBuffer);
 				}
 				gc->OrthogonalEnd();
@@ -279,13 +316,15 @@ int main(){
 					// Map sprites
 					gameEnv->mapSpriteSheet = new KLGLSprite("common/tilemap.png", 16, 16);
 					gameEnv->hudSpriteSheet = new KLGLSprite("common/hud.png", 8, 8);
+					backdropTexture = new KLGLTexture("common/clouds.png");
+					gameoverTexture = new KLGLTexture("common/gameover.png");
 
 					delete mapLoader;
 
 					// Load shader programs
 					gc->InitShaders(1, 0, 
 						"common/postDefaultV.glsl",
-						"common/productionfrag.glsl"
+						"common/production.frag"
 						);
 					gc->InitShaders(2, 0, 
 						"common/postDefaultV.glsl",
@@ -342,7 +381,7 @@ int main(){
 				}
 
 				mode = GameMode::_MENU;
-				cl("[OK]\n");
+				cl(" [OK]\n");
 
 				break;
 			case GameMode::_INGAME:											// ! Main game test environment
@@ -398,11 +437,13 @@ int main(){
 				gc->OrthogonalStart();
 				{
 					// Background
+					int horizon = max(gc->window.width, gc->window.height+(-gameEnv->scroll.y));
+					int stratosphere = min(0, -gameEnv->scroll.y);
 					glBegin(GL_QUADS);
 					glColor3ub(71,84,93);
-					glVertex2i(0, 0); glVertex2i(APP_SCREEN_W, 0);
+					glVertex2i(0, stratosphere); glVertex2i(gc->window.width, stratosphere);
 					glColor3ub(214,220,214);
-					glVertex2i(APP_SCREEN_W, APP_SCREEN_H); glVertex2i(0, APP_SCREEN_H);
+					glVertex2i(gc->window.width, horizon); glVertex2i(0, horizon);
 					glEnd();
 
 					// Barell rotation
@@ -445,7 +486,8 @@ int main(){
 					gc->BindShaders(1);
 					glUniform1f(glGetUniformLocation(gc->GetShaderID(1), "time"), gc->shaderClock);
 					glUniform2f(glGetUniformLocation(gc->GetShaderID(1), "BUFFER_EXTENSITY"), gc->window.width*gc->scaleFactor, gc->window.height*gc->scaleFactor);
-					gc->BindMultiPassShader(1);
+					gc->BindMultiPassShader(1, 1, false);
+					gc->UnbindShaders();
 
 					// HUD, Score, Health, etc
 					gameEnv->drawHUD(gc, gameoverTexture);

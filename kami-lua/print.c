@@ -109,10 +109,10 @@ static void PrintCode(const Proto* f)
     break;
    case OP_GETUPVAL:
    case OP_SETUPVAL:
-    printf("\t; %s", (f->sizeupvalues>0) ? getstr(f->upvalues[b]) : "-");
+    //printf("\t; %s", (f->sizeupvalues>0) ? getstr(f->upvalues[b]) : "-");
     break;
-   case OP_GETGLOBAL:
-   case OP_SETGLOBAL:
+   //case OP_GETGLOBAL:
+   //case OP_SETGLOBAL:
     printf("\t; %s",svalue(&f->k[bx]));
     break;
    case OP_GETTABLE:
@@ -171,9 +171,9 @@ static void PrintHeader(const Proto* f)
  	(f->linedefined==0)?"main":"function",s,
 	f->linedefined,f->lastlinedefined,
 	S(f->sizecode),f->sizecode*Sizeof(Instruction),VOID(f));
- printf("%d%s param%s, %d slot%s, %d upvalue%s, ",
+ /*printf("%d%s param%s, %d slot%s, %d upvalue%s, ",
 	f->numparams,f->is_vararg?"+":"",SS(f->numparams),
-	S(f->maxstacksize),S(f->nups));
+	S(f->maxstacksize),S(f->nups));*/
  printf("%d local%s, %d constant%s, %d function%s\n",
 	S(f->sizelocvars),S(f->sizek),S(f->sizep));
 }
@@ -208,7 +208,7 @@ static void PrintUpvalues(const Proto* f)
  if (f->upvalues==NULL) return;
  for (i=0; i<n; i++)
  {
-  printf("\t%d\t%s\n",i,getstr(f->upvalues[i]));
+  //printf("\t%d\t%s\n",i,getstr(f->upvalues[i]));
  }
 }
 

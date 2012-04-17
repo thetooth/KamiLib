@@ -8,12 +8,28 @@
 #define GLEW_STATIC
 #endif
 
+#pragma region Constants
+
+#ifndef APP_MOTD
+#define APP_MOTD "(c) 2005-2012 Ameoto Systems Inc. All Rights Reserved.\n\n"
+#endif
+#define APP_CONSOLE_BUFFER 8192
+#define APP_ENABLE_MIPMAP 0
+#define APP_ANISOTROPY 4.0
+#define APP_ENABLE_LUA 1
+
+#pragma endregion
+
 #pragma comment(lib,"glu32.lib")
 #pragma comment(lib,"opengl32.lib")
-//#pragma comment(lib,"opencl.lib")
 #pragma comment(lib,"Winmm.lib")
-#pragma comment(lib,"kami-lua.lib")
-//#pragma comment(lib,"kami-openal.lib")
+#ifdef APP_ENABLE_LUA
+#pragma comment(lib,"lua-5.2.0.lib")
+#endif
+#ifdef APP_ENABLE_SQUIRREL
+#pragma comment(lib,"squirrel.lib")
+#pragma comment(lib,"sqstdlib.lib")
+#endif
 
 #include <Windows.h>
 #include <stdio.h>
@@ -26,10 +42,23 @@
 #endif
 
 #include "pure.h"
+#include "version.h"
 #ifdef _WIN32
 #include "win32.h"
 #endif
+#ifdef APP_ENABLE_LUA
 #include "lualoader.h"
+#endif
+#ifdef APP_ENABLE_SQUIRREL
+#include "SQUIRREL/squirrel.h"
+#include "SQUIRREL/sqstdio.h"
+#include "SQUIRREL/sqstdaux.h"
+#ifdef SQUNICODE
+#define scvprintf vswprintf
+#else
+#define scvprintf vsprintf
+#endif
+#endif
 #include "GL/glew.h"
 #include "GL/wglew.h"
 #include "inireader.h"
@@ -37,21 +66,11 @@
 #include "logicalObjects.h"
 #include "sound.h"
 
-#pragma region Constants
-
-#ifndef APP_MOTD
-#define APP_MOTD "KamiLib, (c) 2005-2012 Ameoto Systems Inc. All Rights Reserved.\n\n"
-#endif
-#define APP_CONSOLE_BUFFER 8192
-#define APP_ENABLE_MIPMAP 0
-#define APP_ANISOTROPY 4.0
-
-#pragma endregion
-
 namespace klib{
 
 #pragma region KLGL_Interop
 
+#ifdef APP_ENABLE_LUA
 	// Lua interop
 	static void kami_register_info(lua_State *L) {
 		lua_pushliteral (L, "_COPYRIGHT");
@@ -77,10 +96,24 @@ namespace klib{
 	};
 
 	inline int luaL_openkami(lua_State *L) {
-		luaL_register(L, "kami", kamiL);
+		luaL_setfuncs(L, kamiL, NULL);
 		kami_register_info(L);
 		return 1;
 	}
+#endif
+#ifdef APP_ENABLE_SQUIRREL
+	inline void SQcl(HSQUIRRELVM v, const SQChar *s, ...){
+		static SQChar *tmpBuffer;
+		if (tmpBuffer == NULL){
+			tmpBuffer = new SQChar[strlen(s)+4096];
+		}
+		va_list arglist;
+		va_start(arglist, s);
+		scvprintf(tmpBuffer, s, arglist);
+		cl(tmpBuffer);
+		va_end(arglist);
+	}
+#endif
 
 #pragma endregion
 
@@ -96,6 +129,30 @@ namespace klib{
 		KLGLException(const char* m, ...);
 		char* getMessage();
 	};
+
+	inline char *file_contents(char *filename)
+	{
+		if (filename == NULL) {
+			return NULL;
+		}
+		FILE *f = fopen(filename, "rb");
+
+		if (!f) {
+			throw KLGLException("Unable to open %s for reading\n", filename);
+			return NULL;
+		}
+
+		fseek(f, 0, SEEK_END);
+		int length = ftell(f);
+		fseek(f, 0, SEEK_SET);
+
+		char *buffer = (char*)malloc(length+1);
+		fread(buffer, 1, length, f);
+		fclose(f);
+		buffer[length] = '\0';
+
+		return buffer;
+	}
 
 	// Storage Type for loading textures in a format opengl can use(unsigned RGBA8)
 	class KLGLTexture {
@@ -133,8 +190,7 @@ namespace klib{
 		}
 
 		int r,g,b,a;
-	private:
-		void Assign(int tred, int tgreen, int tblue, int talpha){
+		void Assign(int tred, int tgreen, int tblue, int talpha = 255){
 			r = tred;
 			b = tblue;
 			g = tgreen;
@@ -175,7 +231,12 @@ namespace klib{
 		MSG msg;
 
 		// Lua
+#ifdef APP_ENABLE_LUA
 		lua_State *lua;
+#endif
+#ifdef APP_ENABLE_SQUIRREL
+		HSQUIRRELVM squirrel;
+#endif
 
 		// Window regions
 		Rect<int> window;
@@ -236,7 +297,7 @@ namespace klib{
 		void BindMultiPassShader(int shaderProgId = 0, int alliterations = 1, bool flipOddBuffer = true, float x = 0.0f, float y = 0.0f, float width = -1.0f, float height = -1.0f);
 
 		// Automatically load and setup a shader program for given vertex and frag shader scripts
-		int InitShaders(int shaderProgId, int isString, const char *vsFile, const char *fsFile, const char *gpFile = NULL, const char *tsFile = NULL);
+		int InitShaders(int shaderProgId, int isString, const char *vsFile = NULL, const char *fsFile = NULL, const char *gpFile = NULL, const char *tsFile = NULL);
 		unsigned int ComputeShader(unsigned int &shaderProgram, unsigned int shaderType, const char* shaderString);
 		unsigned int GetShaderID(int shaderProgId = 0){
 			return shader_id[shaderProgId];
@@ -259,12 +320,6 @@ namespace klib{
 			glDeleteShader(shader_fp[id]);
 
 			glDeleteProgram(shader_id[id]);
-		}
-		void LuaCheckError(lua_State *L, int status){
-			if ( status!=0 ) {
-				cl("-- %s\n", lua_tostring(L, -1));
-				lua_pop(L, 1); // remove error message
-			}
 		}
 		void ProcessEvent(int *status);
 

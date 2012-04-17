@@ -21,6 +21,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{9EDF7F65-D4FE-4AF3-B1FB-AE6C5D1D0343}</ProjectGuid>
     <RootNamespace>test02</RootNamespace>
+    <VCTargetsPath Condition="'$(VCTargetsPath11)' != '' and '$(VSVersion)' == '' and $(VisualStudioVersion) == ''">$(VCTargetsPath11)</VCTargetsPath>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -112,6 +113,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <IgnoreSpecificDefaultLibraries>libcmt.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <AdditionalDependencies>MSVCRT.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -137,9 +139,15 @@
     <None Include="common\demo.frag" />
     <None Include="common\diffuse.frag" />
     <None Include="common\diffuse.vert" />
+    <None Include="common\fxaa.frag" />
+    <None Include="common\hipstervision.frag" />
     <None Include="common\model.frag" />
     <None Include="common\model.vert" />
     <None Include="common\ray.frag" />
+    <None Include="common\ssao.frag" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="common\Fxaa3_11.frag" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

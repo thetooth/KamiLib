@@ -2,9 +2,6 @@
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "kami", "kami\kami.vcxproj", "{B6E34BA6-2376-4D5E-B2E9-15E6DA338BE7}"
-	ProjectSection(ProjectDependencies) = postProject
-		{69A32DDD-60B3-4E77-9F4A-B7354327A68D} = {69A32DDD-60B3-4E77-9F4A-B7354327A68D}
-	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test01", "test01\test01.vcxproj", "{8809DA3A-DF09-4B47-9F41-E193695EFD74}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -30,8 +27,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "calculator", "calculator\ca
 		{B6E34BA6-2376-4D5E-B2E9-15E6DA338BE7} = {B6E34BA6-2376-4D5E-B2E9-15E6DA338BE7}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "kami-lua", "kami-lua\kami-lua.vcxproj", "{69A32DDD-60B3-4E77-9F4A-B7354327A68D}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "buildnumber", "buildnumber\buildnumber.vcxproj", "{8EA5F007-6413-4A94-840E-C1EF4333C2EF}"
 EndProject
 Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "neoInstaller", "neoInstaller\neoInstaller.vdproj", "{D56C8573-B9DF-4A96-BCA3-A30007DCFBDE}"
@@ -41,7 +36,6 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test02", "test02\test02.vcxproj", "{9EDF7F65-D4FE-4AF3-B1FB-AE6C5D1D0343}"
 	ProjectSection(ProjectDependencies) = postProject
 		{B6E34BA6-2376-4D5E-B2E9-15E6DA338BE7} = {B6E34BA6-2376-4D5E-B2E9-15E6DA338BE7}
-		{69A32DDD-60B3-4E77-9F4A-B7354327A68D} = {69A32DDD-60B3-4E77-9F4A-B7354327A68D}
 	EndProjectSection
 EndProject
 Global
@@ -65,6 +59,7 @@ Global
 		{8809DA3A-DF09-4B47-9F41-E193695EFD74}.Release|Win32.ActiveCfg = Release|Win32
 		{8809DA3A-DF09-4B47-9F41-E193695EFD74}.Release|x64.ActiveCfg = Release|x64
 		{A622F9F6-0742-474C-BD53-DD56C448B586}.Debug|Win32.ActiveCfg = Debug|Win32
+		{A622F9F6-0742-474C-BD53-DD56C448B586}.Debug|Win32.Build.0 = Debug|Win32
 		{A622F9F6-0742-474C-BD53-DD56C448B586}.Debug|x64.ActiveCfg = Debug|x64
 		{A622F9F6-0742-474C-BD53-DD56C448B586}.Debug|x64.Build.0 = Debug|x64
 		{A622F9F6-0742-474C-BD53-DD56C448B586}.Release|Win32.ActiveCfg = Release|Win32
@@ -72,6 +67,7 @@ Global
 		{A622F9F6-0742-474C-BD53-DD56C448B586}.Release|x64.ActiveCfg = Release|x64
 		{A622F9F6-0742-474C-BD53-DD56C448B586}.Release|x64.Build.0 = Release|x64
 		{61E199FD-F4ED-448A-9E29-BC13920914E8}.Debug|Win32.ActiveCfg = Debug|Win32
+		{61E199FD-F4ED-448A-9E29-BC13920914E8}.Debug|Win32.Build.0 = Debug|Win32
 		{61E199FD-F4ED-448A-9E29-BC13920914E8}.Debug|x64.ActiveCfg = Debug|x64
 		{61E199FD-F4ED-448A-9E29-BC13920914E8}.Release|Win32.ActiveCfg = Release|Win32
 		{61E199FD-F4ED-448A-9E29-BC13920914E8}.Release|Win32.Build.0 = Release|Win32
@@ -91,15 +87,8 @@ Global
 		{2A20D0E3-BA22-41A5-8830-FC65DB4C68FF}.Debug|x64.ActiveCfg = Debug|x64
 		{2A20D0E3-BA22-41A5-8830-FC65DB4C68FF}.Release|Win32.ActiveCfg = Release|Win32
 		{2A20D0E3-BA22-41A5-8830-FC65DB4C68FF}.Release|x64.ActiveCfg = Release|x64
-		{69A32DDD-60B3-4E77-9F4A-B7354327A68D}.Debug|Win32.ActiveCfg = Debug|Win32
-		{69A32DDD-60B3-4E77-9F4A-B7354327A68D}.Debug|Win32.Build.0 = Debug|Win32
-		{69A32DDD-60B3-4E77-9F4A-B7354327A68D}.Debug|x64.ActiveCfg = Debug|x64
-		{69A32DDD-60B3-4E77-9F4A-B7354327A68D}.Debug|x64.Build.0 = Debug|x64
-		{69A32DDD-60B3-4E77-9F4A-B7354327A68D}.Release|Win32.ActiveCfg = Release|Win32
-		{69A32DDD-60B3-4E77-9F4A-B7354327A68D}.Release|Win32.Build.0 = Release|Win32
-		{69A32DDD-60B3-4E77-9F4A-B7354327A68D}.Release|x64.ActiveCfg = Release|x64
-		{69A32DDD-60B3-4E77-9F4A-B7354327A68D}.Release|x64.Build.0 = Release|x64
 		{8EA5F007-6413-4A94-840E-C1EF4333C2EF}.Debug|Win32.ActiveCfg = Debug|Win32
+		{8EA5F007-6413-4A94-840E-C1EF4333C2EF}.Debug|Win32.Build.0 = Debug|Win32
 		{8EA5F007-6413-4A94-840E-C1EF4333C2EF}.Debug|x64.ActiveCfg = Debug|x64
 		{8EA5F007-6413-4A94-840E-C1EF4333C2EF}.Release|Win32.ActiveCfg = Release|Win32
 		{8EA5F007-6413-4A94-840E-C1EF4333C2EF}.Release|Win32.Build.0 = Release|Win32

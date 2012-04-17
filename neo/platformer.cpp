@@ -47,7 +47,7 @@ namespace NeoPlatformer{
 	int luaopen_neo(lua_State *L) {
 		lua_newuserdata(L, 1);
 		luaL_newmetatable(L, "neolib");
-		luaL_register(L, "neo", neolib);
+		luaL_setfuncs(L, neolib, NULL);
 		neo_register_info(L);
 		lua_setmetatable(L, -2);
 		lua_setglobal(L, "neo");
@@ -133,15 +133,13 @@ namespace NeoPlatformer{
 		{
 			// Blur shader data
 			float relHealth = min(-character->health, 1000);
-			gc->BindShaders(3);
+			/*gc->BindShaders(3);
 			glUniform1f(glGetUniformLocation(gc->GetShaderID(3), "time"), gc->shaderClock);
 			glUniform2f(glGetUniformLocation(gc->GetShaderID(3), "BUFFER_EXTENSITY"), gc->window.width*gc->overSampleFactor, gc->window.height*gc->overSampleFactor);
 			glUniform1f(glGetUniformLocation(gc->GetShaderID(3), "BLUR_BIAS"), relHealth/500000.0f);
-			gc->BindMultiPassShader(3, 4);
+			gc->BindMultiPassShader(3, 4);*/
 			gc->Rectangle2D(0, 0, gc->window.width, gc->window.height, KLGLColor(200, 0, 0, (relHealth/1000.0f)*255));
 			gc->Blit2D(tex, 0, 0);
-			gc->UnbindShaders();
-
 		}
 		gc->OrthogonalStart(gc->overSampleFactor);
 		if (character->health <= 0 && gc->shaderClock >= 500 && gc->shaderClock <= 1000){
@@ -239,16 +237,15 @@ namespace NeoPlatformer{
 		tileWidth = 0;
 		tileHeight = 0;
 
+		fill_n(tBuffer, 8, '\0');
 		fread(&tBuffer, 1, 7, mapFile);
-		if (strcmp(tBuffer, "STME1.0"))
-		{
-			cl("[BADHEADER]");
+		if (strcmp(substr(tBuffer, 0, 7), "STME1.0")){
+			cl("[BADHEADER=\"%s\"]", tBuffer);
 		}
 
 		fill_n(tBuffer, 8, '\0');
 		fread(&tBuffer, 1, 1, mapFile);
-		if (!strcmp(tBuffer, "B"))
-		{
+		if (!strcmp(substr(tBuffer, 0, 1), "B")){
 			wordSize = sizeof(char);
 		}else{
 			wordSize = sizeof(unsigned short);
@@ -265,8 +262,8 @@ namespace NeoPlatformer{
 		mapData = (char*)malloc((map.width*map.height)+1);
 		mapMask = (char*)malloc((map.width*map.height)+1);
 
-		//fill_n(mapData, (map.width*map.height)+1, '\0');
-		//fill_n(mapMask, (map.width*map.height)+1, '\0');
+		fill_n(mapData, (map.width*map.height)+1, '\0');
+		fill_n(mapMask, (map.width*map.height)+1, '\0');
 
 		if(KLGLDebug){
 			cl("\n- %dx%d %dbyte(s)\n", map.width, map.height, (map.width*map.height)+8);

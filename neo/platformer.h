@@ -1,5 +1,6 @@
 #pragma once
 
+#define APP_ENABLE_LUA 1
 #include "kami.h"
 #include "logicalObjects.h"
 #include <list>

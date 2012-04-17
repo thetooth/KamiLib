@@ -29,6 +29,7 @@
     </SccLocalPath>
     <SccProvider>
     </SccProvider>
+    <VCTargetsPath Condition="'$(VCTargetsPath11)' != '' and '$(VSVersion)' == '' and $(VisualStudioVersion) == ''">$(VCTargetsPath11)</VCTargetsPath>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -82,11 +83,11 @@
     <IncludePath>$(SolutionDir)kami-lua;$(SolutionDir)kami\3rd_party;$(SolutionDir)$(IntDir);$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>$(SolutionDir)kami-openal;$(SolutionDir)kami-lua;$(SolutionDir)kami\3rd_party;$(SolutionDir)$(IntDir);$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)kami\3rd_party;$(SolutionDir)$(IntDir);D:\Development\Application\lua-5.2.0\lua-5.2.0;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)$(IntDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>$(SolutionDir)kami-lua;$(SolutionDir)kami\3rd_party;$(SolutionDir)$(IntDir);$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)kami\3rd_party;$(SolutionDir)$(IntDir);D:\Development\Application\lua-5.2.0\lua-5.2.0;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)$(IntDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -105,6 +106,9 @@
     <Lib>
       <TargetMachine>MachineX86</TargetMachine>
     </Lib>
+    <PreBuildEvent>
+      <Command>$(SolutionDir)$(Configuration)\buildnumber.exe</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -120,6 +124,9 @@
     <Lib>
       <AdditionalDependencies>freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Lib>
+    <PreBuildEvent>
+      <Command>$(SolutionDir)$(Configuration)\buildnumber.exe</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -139,6 +146,9 @@
       <IgnoreSpecificDefaultLibraries>MSVCRT.lib</IgnoreSpecificDefaultLibraries>
       <TargetMachine>MachineX86</TargetMachine>
     </Lib>
+    <PreBuildEvent>
+      <Command>$(SolutionDir)$(Configuration)\buildnumber.exe</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -157,6 +167,9 @@
     <Lib>
       <AdditionalDependencies>freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Lib>
+    <PreBuildEvent>
+      <Command>$(SolutionDir)$(Configuration)\buildnumber.exe</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="cl.h" />
@@ -168,6 +181,7 @@
     <ClInclude Include="lualoader.h" />
     <ClInclude Include="md5.h" />
     <ClInclude Include="objload.h" />
+    <ClInclude Include="posh.h" />
     <ClInclude Include="pure.h" />
     <ClInclude Include="sound.h" />
     <ClInclude Include="threads.h" />
@@ -183,6 +197,7 @@
     <ClCompile Include="inireader.cpp" />
     <ClCompile Include="md5.cpp" />
     <ClCompile Include="objload.cpp" />
+    <ClCompile Include="posh.c" />
     <ClCompile Include="sound.cpp" />
     <ClCompile Include="threads.cpp" />
     <ClCompile Include="kami.cpp" />

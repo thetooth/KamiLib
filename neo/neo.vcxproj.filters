@@ -58,9 +58,6 @@
     <None Include="common\map01.bmd">
       <Filter>common</Filter>
     </None>
-    <None Include="common\productionfrag.glsl">
-      <Filter>common</Filter>
-    </None>
     <None Include="configuration.ini" />
     <None Include="common\tile.frag">
       <Filter>common</Filter>
@@ -93,6 +90,12 @@
       <Filter>common</Filter>
     </None>
     <None Include="common\passthrough.frag">
+      <Filter>common</Filter>
+    </None>
+    <None Include="common\production.frag">
+      <Filter>common</Filter>
+    </None>
+    <None Include="common\dither.frag">
       <Filter>common</Filter>
     </None>
   </ItemGroup>
