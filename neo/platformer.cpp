@@ -128,7 +128,7 @@ namespace NeoPlatformer{
 		debugflags.y = gc->shaderClock;
 	}
 
-	void Environment::drawHUD(KLGL* gc, KLGLTexture* tex){
+	void Environment::drawHUD(KLGL* gc){
 		if (character->health <= 0)
 		{
 			// Blur shader data
@@ -139,7 +139,7 @@ namespace NeoPlatformer{
 			glUniform1f(glGetUniformLocation(gc->GetShaderID(3), "BLUR_BIAS"), relHealth/500000.0f);
 			gc->BindMultiPassShader(3, 4);*/
 			gc->Rectangle2D(0, 0, gc->window.width, gc->window.height, KLGLColor(200, 0, 0, (relHealth/1000.0f)*255));
-			gc->Blit2D(tex, 0, 0);
+			gc->Blit2D(gameoverTexture, 0, 0);
 		}
 		gc->OrthogonalStart(gc->overSampleFactor);
 		if (character->health <= 0 && gc->shaderClock >= 500 && gc->shaderClock <= 1000){
@@ -164,10 +164,6 @@ namespace NeoPlatformer{
 	}
 
 	void Environment::drawMap(KLGL* gc){
-		// Per-tile shader
-		gc->BindShaders(2);
-		glUniform1f(glGetUniformLocation(gc->GetShaderID(2), "time"), gc->shaderClock);
-
 		glTranslatef(-scroll.x, -scroll.y, 0);
 		if (mapDispListState == 1){
 			glCallList(mapDispList);
@@ -181,7 +177,6 @@ namespace NeoPlatformer{
 			mapDispListState = 1;
 		}
 		glTranslatef(scroll.x, scroll.y, 0);
-		gc->UnbindShaders();
 	}
 
 	void Environment::map_span(int type, int x0, int y0, int x1, int y1)
@@ -189,7 +184,7 @@ namespace NeoPlatformer{
 		if (!(x0 == x1 && y0 == y1)){
 
 			if(KLGLDebug){
-				cl("- [%d, %d -> %d, %d]\n", x0, y0, x1, y1);
+				//cl("[%d,%d->%d,%d]\n", x0, y0, x1, y1);
 			}
 
 			int flags = 0;
@@ -223,13 +218,13 @@ namespace NeoPlatformer{
 		FILE* mapFile = fopen(mapPath, "rb");
 		FILE* mapInfoFile = fopen(strcat(substr(mapPath, 0, strlen(mapPath)-3), "bmd"), "rb");
 
-		if (mapFile == NULL || mapInfoFile == NULL)
-		{
+		if (mapFile == NULL || mapInfoFile == NULL){
 			cl("[ERROR]\n");
 			throw KLGLException("Error opening map file!");
 			return;
 		}
 
+		platforms = new list<Platform>;
 		size_t wordSize;
 		char tBuffer[8];
 		map.width = 0;
@@ -306,34 +301,24 @@ namespace NeoPlatformer{
 			}
 		}
 
-		/*int startx = 0;
-		char last = mapData[0];
-		for (int x = 0; x < map.width; x++) {
-			int starty = 0;
-			for (int y = 0; y < map.height; y++) {
-				char c = mapData[x+y*map.width];
-				if (c != last) {
-					if (starty == 0) {
-						// finish last run of complete vertical blocks
-						if(startx != x) { 
-							// it ran more than one column, output those first
-							map_span(last, startx, 0, x-1, map.height-1);
-							startx = x;
-						}
-						// and a run from the start of this column
-						map_span(last, x, 0, x, y);
-					} else {
-						// a run within a column
-						map_span(last, x, starty, x, y);
-					}
-					last = c;
-					starty = y;
+		/*Rect<int> boundingBox = Rect<int>();
+		int primaryTile = -1, primaryMask = -1;
+		for(int x = 0; x < map.width; x++){
+			for(int y = 0; y < map.height; y++){
+				char tile = mapData[lvLookup];
+				char mask = mapMask[lvLookup];
+				if (tile > 0 && tile == primaryTile && mask == primaryMask){
+					boundingBox.width = 1;
+					boundingBox.height += 1;
+				}else{
+					map_span(lvLookup, boundingBox.x, boundingBox.y+1, boundingBox.width+1, boundingBox.height);
+					primaryTile = tile;
+					primaryMask = mask;
+					boundingBox.x = x;
+					boundingBox.y = y;
+					boundingBox.width = 0;
+					boundingBox.height = 0;
 				}
-			}
-			// had a run withing this column or processing last column, finish it up
-			if (starty || x == map.width-1) {
-				map_span(last, x, starty, x, map.height-1);
-				startx= x + 1;
 			}
 		}*/
 
@@ -362,21 +347,42 @@ namespace NeoPlatformer{
 	void EnvLoaderThread::run(){
 		// Cast it cunt
 		Environment *gameEnv = (Environment*)loaderPtr;
+		// Switch to auxiliary context to access texture data
+		wglMakeCurrent(gameEnv->gcProxy->hDC, gameEnv->gcProxy->hRCAUX);
 
 		try{
 			// Load the map
-			gameEnv->platforms = new list<Platform>;
 			gameEnv->load_map("common/map01.smp");
 			// Create our character
 			gameEnv->character = new Character(128, 0, 8, 16);
-#ifndef _DEBUG
-			sleep(1000);
-#endif
+			// Map sprites
+			gameEnv->mapSpriteSheet = new KLGLSprite("common/tilemap.png", 16, 16);
+			gameEnv->hudSpriteSheet = new KLGLSprite("common/hud.png", 8, 8);
+			// Textures
+			gameEnv->backdropTexture = new KLGLTexture("common/clouds.png");
+			gameEnv->gameoverTexture = new KLGLTexture("common/gameover.png");
+			// Load shader programs
+			gameEnv->gcProxy->InitShaders(1, 0, 
+				"common/postDefaultV.glsl",
+				"common/production.frag"
+				);
+			gameEnv->gcProxy->InitShaders(2, 0, 
+				"common/postDefaultV.glsl",
+				"common/tile.frag"
+				);
+			gameEnv->gcProxy->InitShaders(3, 0, 
+				"common/postDefaultV.glsl",
+				"common/gaussianBlur.frag"
+				);
 		}catch(KLGLException e){
 			MessageBox(NULL, e.getMessage(), "KLGLException", MB_OK | MB_ICONERROR);
 			status = false;
 			stop();
 		}
+
+		// Rebind the primary context(we have to do it in this thread since exiting with 
+		// the auxiliary bound causes both contexts to be reset.
+		wglMakeCurrent(gameEnv->gcProxy->hDC, gameEnv->gcProxy->hRC);
 		status = false;
 	}
 
@@ -496,19 +502,15 @@ namespace NeoPlatformer{
 	}
 
 	void Character::slopeLeft(int charX, int wallY){
-		if(!falling){
 			collisionDetect = -1;
 			pos.y = wallY + charX;
-			vel.y = 0;
-		}
+			vel.y = vel.y*0.5;
 	}
 
 	void Character::slopeRight(int charX, int wallY){
-		if(!falling){
 			collisionDetect = 1;
 			pos.y = wallY + charX;
-			vel.y = 0;
-		}
+			vel.y = vel.y*0.5;
 	}
 
 	void Character::left()
@@ -654,7 +656,7 @@ namespace NeoPlatformer{
 		// This disables the falling air jump:
 		// We are falling all the time, but if we collide with a surface,
 		// then we can jump during that frame.
-		//falling = 1;
+		falling = 1;
 	};
 
 	// Platform management
@@ -692,10 +694,11 @@ namespace NeoPlatformer{
 			for(int iX = 0; iX < w; iX++){
 				int scrX = floorMpl(pos.x, 16)+(iX*sprite->swidth);
 				int scrY = floorMpl(pos.y, 16)+(iY*sprite->sheight);
-				if(scrX < 0-sprite->swidth || scrX > APP_SCREEN_W || scrY < 0-sprite->sheight || scrY > APP_SCREEN_H){
-					//continue;
-				}
 				gc->BlitSprite2D(sprite, scrX, scrY, mapDataPtr[tileId+(iY*env->map.width+iX)]);
+				glBegin(GL_LINE);
+				glVertex2i(scrX, scrY);
+				glVertex2i(scrX+16, scrY+16);
+				glEnd();
 			}
 		}
 	}
@@ -756,7 +759,7 @@ namespace NeoPlatformer{
 			// Here's the collision test.
 			// The 10pt here are to prevent slipping through a platform and
 			// making sure that 'falling' is set to 0 each frame we're on a platform.
-			float padding = 5.0f;
+			float padding = 1.0f;
 			if(env.character->vel.y >= 0 && (cBottom - env.character->vel.y*env.dt - padding <= pTop && cBottom + padding >= pTop)  // Crossed top Y and...
 				&& (((pLeft <= cLeft && cLeft <= pRight)  // Corner within platform X or...
 				|| (pLeft <= cRight && cRight <= pRight))  // Other corner within platform X

@@ -13,7 +13,7 @@
 #ifndef APP_MOTD
 #define APP_MOTD "(c) 2005-2012 Ameoto Systems Inc. All Rights Reserved.\n\n"
 #endif
-#define APP_CONSOLE_BUFFER 8192
+#define APP_BUFFER_SIZE 4096
 #define APP_ENABLE_MIPMAP 0
 #define APP_ANISOTROPY 4.0
 //#define APP_ENABLE_LUA 1
@@ -23,7 +23,6 @@
 #pragma comment(lib,"glu32.lib")
 #pragma comment(lib,"opengl32.lib")
 #pragma comment(lib,"Winmm.lib")
-#pragma comment(lib,"SLB.lib")
 #ifdef APP_ENABLE_LUA
 #pragma comment(lib,"SLB.lib")
 #endif
@@ -232,7 +231,7 @@ namespace klib{
 		WNDCLASS wc;
 		HWND hWnd;
 		HDC hDC;
-		HGLRC hRC;
+		HGLRC hRC,hRCAUX;
 		MSG msg;
 
 		// Lua

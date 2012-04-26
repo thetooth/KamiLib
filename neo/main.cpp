@@ -34,7 +34,7 @@ int main(){
 	* Init
 	*/
 	KLGL *gc;
-	KLGLTexture *charmapTexture, *titleTexture, *loadingTexture, *backdropTexture, *gameoverTexture, *userInterfaceTexture;
+	KLGLTexture *charmapTexture, *titleTexture, *loadingTexture, *userInterfaceTexture;
 	KLGLSprite *userInterface;
 	KLGLFont *font;
 	KLGLSound *soundTest;
@@ -89,6 +89,9 @@ int main(){
 
 	if (quit){
 		MessageBox(NULL, "An important resource is missing or failed to load, check the console window _now_ for more details.", "Error", MB_OK | MB_ICONERROR);
+#ifdef KLGLDebug
+		quit = 0;
+#endif
 	}
 
 	while (!quit)
@@ -270,8 +273,12 @@ int main(){
 					//soundTest->open(NeoSoundServer);
 					// Initialize the game engine
 					gameEnv = new Environment();
+					gameEnv->gcProxy = gc;
+					// Pass-through our font
+					gameEnv->hudFont = font;
 					// Setup a thread to load and parse our map(if the map is large we want to be able to check its progress).
 					mapLoader = new EnvLoaderThread(gameEnv);
+					cl("Loading thread %d started.\n", GetThreadId(mapLoader->getHandle()));
 					//soundTest->close();
 
 					// Enter a tight loop of no return :D
@@ -290,33 +297,12 @@ int main(){
 						SwapBuffers(gc->hDC);
 					}
 					
-					// Pass-through our font
-					gameEnv->hudFont = font;
-					// Map sprites
-					gameEnv->mapSpriteSheet = new KLGLSprite("common/tilemap.png", 16, 16);
-					gameEnv->hudSpriteSheet = new KLGLSprite("common/hud.png", 8, 8);
-					backdropTexture = new KLGLTexture("common/clouds.png");
-					gameoverTexture = new KLGLTexture("common/gameover.png");
-
-					delete mapLoader;
-
-					// Load shader programs
-					gc->InitShaders(1, 0, 
-						"common/postDefaultV.glsl",
-						"common/production.frag"
-						);
-					gc->InitShaders(2, 0, 
-						"common/postDefaultV.glsl",
-						"common/tile.frag"
-						);
-					gc->InitShaders(3, 0, 
-						"common/postDefaultV.glsl",
-						"common/gaussianBlur.frag"
-						);
 					// Setup initial post quality
 					gc->BindShaders(1);
 					glUniform1i(glGetUniformLocation(gc->GetShaderID(1), "preset"), qualityPreset);
 					gc->UnbindShaders();
+
+					delete mapLoader;
 
 					// Misc
 					for (int i = 0; i < 100; i++)
@@ -445,7 +431,7 @@ int main(){
 					KLGLColor(255, 255, 255, 255).Set();
 
 					// Cloud
-					gc->Blit2D(backdropTexture, (APP_SCREEN_W/2)-(gameEnv->scroll.x/4), (APP_SCREEN_H/3)-(gameEnv->scroll.y/4));
+					gc->Blit2D(gameEnv->backdropTexture, (APP_SCREEN_W/2)-(gameEnv->scroll.x/4), (APP_SCREEN_H/3)-(gameEnv->scroll.y/4));
 
 					/*glTranslatef(gc->window.width/2.0f, gc->window.height/2.0f, 0.0f);
 					glScalef(mouseXY.y/100.0f, mouseXY.y/100.0f, 1.0f);
@@ -469,7 +455,7 @@ int main(){
 					gc->UnbindShaders();
 
 					// HUD, Score, Health, etc
-					gameEnv->drawHUD(gc, gameoverTexture);
+					gameEnv->drawHUD(gc);
 
 					if (KLGLDebug)
 					{

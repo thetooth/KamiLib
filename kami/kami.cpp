@@ -84,11 +84,11 @@ namespace klib{
 #endif
 
 			// Clear the console buffer(VERY IMPORTANT)
-			clBuffer = new char[APP_CONSOLE_BUFFER];
-			fill_n(clBuffer, APP_CONSOLE_BUFFER, '\0');
+			clBuffer = new char[APP_BUFFER_SIZE*2];
+			fill_n(clBuffer, APP_BUFFER_SIZE*2, '\0');
 
 			//MOTD
-			//cl("KamiLib v0.0.1 R%d, %s %s,\n", APP_BUILD_VERSION, POSH_OS_STRING, POSH_COMPILER_STRING);
+			cl("KamiLib v0.0.1 R%d, %s %s,\n", APP_BUILD_VERSION, "Unknown", APP_COMPILER_STRING);
 			cl(APP_MOTD);
 
 			// Initialize the window geometry
@@ -180,8 +180,19 @@ namespace klib{
 			SetPixelFormat( hDC, format, &pfd );
 
 			// create and enable the render context (RC)
-			hRC = wglCreateContext( hDC );
-			wglMakeCurrent( hDC, hRC );
+			hRC = wglCreateContext(hDC);
+			hRCAUX = wglCreateContext(hDC);
+			if(wglShareLists(hRC, hRCAUX) == FALSE){
+				DWORD errorCode=GetLastError();
+				LPVOID lpMsgBuf;
+				FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+					NULL, errorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),(LPTSTR) &lpMsgBuf, 0, NULL);
+				MessageBox( NULL, (LPCTSTR)lpMsgBuf, "Error", MB_OK | MB_ICONINFORMATION );
+				LocalFree(lpMsgBuf);
+				//Destroy the GL context and just use 1 GL context
+				wglDeleteContext(hRCAUX);
+			}
+			wglMakeCurrent(hDC, hRC);
 
 			ShowWindow(hWnd,SW_SHOW);
 			SetForegroundWindow(hWnd);
@@ -255,10 +266,6 @@ namespace klib{
 			sqstd_seterrorhandlers(squirrel);
 			sq_setprintfunc(squirrel, SQcl, SQcl); //sets the print function
 #endif
-
-			SLB::Manager m;
-			SLB::Script s(&m);
-			s.doFile("common/init.lua");
 
 			// Draw logo and load internal resources
 			InfoBlue = new KLGLTexture(KLGLInfoBluePNG, 205);

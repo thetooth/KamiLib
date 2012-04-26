@@ -60,6 +60,10 @@ namespace klib{
 		return m_strName;
 	}
 
+	unsigned long *KLGLThread::getHandle() {
+		return m_hThread;
+	}
+
 	/** run()
 	* called by the thread callback _ou_thread_proc()
 	* to be overridden by child classes of Thread

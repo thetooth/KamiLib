@@ -2,106 +2,40 @@
 
 #include "kami.h"
 #include "objload.h"
+#include "UI.h"
 #include <wchar.h>
 #include <fstream>
 //#include <vld.h>
 
 using namespace klib;
 
-GLuint LoadProgram(const char * vertex_file_path, const char * Fragment_file_path)
-{
-	GLuint VertexShaderID = glCreateShader(GL_VERTEX_SHADER);
-	cout << "Vertex Shader Creation" << endl;
-	GLuint FragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
-	cout << "Fragment Shader Creation" << endl;
-	//READ THE VERTEX SHADER CODE
-	string VertexShaderCode;
-	ifstream VertexShaderStream(vertex_file_path, std::ios::in);
-	cout << "Reading Vertex Shader" << endl;
-	if(VertexShaderStream.is_open())
-	{
-		string Line = "";
-		while(getline(VertexShaderStream, Line))
-			VertexShaderCode += "\n" + Line;
-		VertexShaderStream.close();
-	}
-	//READ THE FRAGMENT SHADER CODE
-	string FragmentShaderCode;
-	ifstream FragmentShaderStream(Fragment_file_path, std::ios::in);
-	if(FragmentShaderStream.is_open())
-	{
-		string Line = "";
-		while(getline(FragmentShaderStream, Line))
-			FragmentShaderCode += "\n" + Line;
-		FragmentShaderStream.close();
-	}
-	GLint Result = GL_FALSE;
-	int InfoLogLength;
-	//Compile Vertex Shader
-	printf("Compiling Shader : %s\n", vertex_file_path);
-	char const * VertexSourcePointer = VertexShaderCode.c_str();
-	glShaderSource(VertexShaderID,  1,  &VertexSourcePointer,  NULL);
-	glCompileShader(VertexShaderID);
-	//Check Vertex Shader
-	glGetShaderiv(VertexShaderID, GL_COMPILE_STATUS,  &Result);
-	glGetShaderiv(VertexShaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
-	vector<char> VertexShaderErrorMessage(InfoLogLength);
-	glGetShaderInfoLog(VertexShaderID, InfoLogLength, NULL, &VertexShaderErrorMessage[0]);
-	fprintf(stdout, "%s\n",  &VertexShaderErrorMessage[0]);
-	//Compile Fragment Shader
-	printf("Compiling Shader : %s\n",  Fragment_file_path);
-	char const * FragmentSourcePointer = FragmentShaderCode.c_str();
-	glShaderSource(FragmentShaderID, 1, &FragmentSourcePointer, NULL);
-	glCompileShader(FragmentShaderID);
-	//Check Fragment Shader
-	glGetShaderiv(FragmentShaderID, GL_COMPILE_STATUS, &Result);
-	glGetShaderiv(FragmentShaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
-	vector<char> FragmentShaderErrorMessage(InfoLogLength);
-	glGetShaderInfoLog(FragmentShaderID, InfoLogLength, NULL, &FragmentShaderErrorMessage[0]);
-	fprintf(stdout,  "%s\n",  &FragmentShaderErrorMessage[0]);
-	fprintf(stdout,  "Linking Program\n");
-	GLuint ProgramID = glCreateProgram();
-	//Bind Attribute
-	glBindAttribLocation(ProgramID, 0, "position");
-	glBindAttribLocation(ProgramID, 1, "Texcoord0");
-	//Link The Program
-	glAttachShader(ProgramID, VertexShaderID);
-	glAttachShader(ProgramID, FragmentShaderID);
-	glLinkProgram(ProgramID);
-	GLuint texture = glGetUniformLocation(ProgramID, "myTextureSampler");
-	GLuint matrixuniform =  glGetUniformLocation(ProgramID, "myMatrix");
-
-	//Check The Program
-	glGetProgramiv(ProgramID,  GL_LINK_STATUS, &Result);
-	glGetProgramiv(ProgramID, GL_INFO_LOG_LENGTH, &InfoLogLength);
-	vector<char> ProgramErrorMessage( max(InfoLogLength, int(1)) );
-	fprintf(stdout,  "%s\n", &ProgramErrorMessage[0]);
-	//Delete Shader
-	glDeleteShader(VertexShaderID);
-	glDeleteShader(FragmentShaderID);
-	glUseProgram(ProgramID);
-	//Return ProgramID
-	return ProgramID;
-}
-
 int main(){
 	KLGL *gc;
 	KLGLTexture *testTexture, *bgTexture;
 	KLGLFont *print;
 	Obj::File* obj;
+	UIButton *button[10];
 	try{
-		gc = new KLGL("Test02", 800, 640, 60, false, 2, 1);
+		gc = new KLGL("Test02", 800, 640, 60, false, 1, 1);
 		print = new KLGLFont();
+		for (int i = 0; i < 10; i++)
+		{
+			button[i] = new UIButton(gc);
+			button[i]->pos = Rect<int>(16,256+(i*34),256,32);
+			button[i]->text = L"Test Bitch ";
+			std::wstringstream oss; oss << i;
+			button[i]->text += oss.str();
+		}
 
-		//gc->InitShaders(0, 0, "common/default.vert", "common/hipstervision.frag");
-		gc->shader_id[0] = LoadProgram("common/default.vert", "common/hipstervision.frag");
-		gc->InitShaders(1, 0, "common/default.vert", "common/cloud.frag");
-		gc->InitShaders(2, 0, "common/default.vert", "common/ssao.frag");
-		gc->InitShaders(3, 0, "common/diffuse.vert", "common/diffuse.frag");
-		gc->InitShaders(4, 0, "common/default.vert", "common/blur.frag");
+
+		//gc->InitShaders(0, 0, "common/default.vert", "common/default.frag");
+		//gc->InitShaders(1, 0, "common/default.vert", "common/shapes.frag");
+		//gc->InitShaders(2, 0, "common/default.vert", "common/ssao.frag");
+		//gc->InitShaders(3, 0, "common/diffuse.vert", "common/diffuse.frag");
+		//gc->InitShaders(4, 0, "common/default.vert", "common/blur.frag");
 		
-		bgTexture = new KLGLTexture("common/wallpaper-1370530.png");
-		//testTexture = new KLGLTexture("common/logo.png");
+		//bgTexture = new KLGLTexture("common/wallpaper-1370530.png");
+		//bgTexture = new KLGLTexture("common/logo.png");
 		//obj = new Obj::File();
 		//obj->Load("common/sea.obj");
 	}catch(KLGLException e){
@@ -116,6 +50,7 @@ int main(){
 	wchar_t* consoleBuffer = new wchar_t[4096];
 	wchar_t* tmpclBuffer = new wchar_t[4096];
 	POINT mouseXY;
+	short mouseState;
 
 	while(status){
 		if(PeekMessage(&gc->msg, NULL, NULL, NULL, PM_REMOVE)){
@@ -157,6 +92,7 @@ int main(){
 
 		GetCursorPos(&mouseXY);
 		ScreenToClient(gc->hWnd, &mouseXY);
+		mouseState = GetAsyncKeyState(VK_LBUTTON);
 		gc->OpenFBO(50, 0.0, 0.0, 80.0f);
 
 		// Values
@@ -200,17 +136,17 @@ int main(){
 		{
 
 			/*gc->BindShaders(1);
-			glUniform1f(glGetUniformLocation(gc->GetShaderID(1), "time"), rotation/100.0f);
+			glUniform1f(glGetUniformLocation(gc->GetShaderID(1), "time"), rotation/1.0f);
 			glUniform2f(glGetUniformLocation(gc->GetShaderID(1), "resolution"), gc->window.width*gc->overSampleFactor, gc->window.height*gc->overSampleFactor);
-			glUniform2f(glGetUniformLocation(gc->GetShaderID(1), "mouse"), -mouseXY.x/1000.0f, -mouseXY.y/1000.0f);
+			glUniform2f(glGetUniformLocation(gc->GetShaderID(1), "mouse"), -mouseXY.x/1.0f, -mouseXY.y/1.0f);
 			gc->BindMultiPassShader(1, 1, false);
-			gc->UnbindShaders();*/
+			gc->UnbindShaders();
 
 			// Sprite
-			gc->Blit2D(bgTexture, (gc->window.width/2)-(bgTexture->width/2), (gc->window.height/2)-(bgTexture->height/2), rotation, 0.65f);
+			gc->Blit2D(bgTexture, (gc->window.width/2)-(bgTexture->width/2), (gc->window.height/2)-(bgTexture->height/2), rotation, 0.65f);*/
 
 			// Aero
-			int x = 8;
+			/*int x = 8;
 			int y = gc->window.height-(256+8);
 			gc->BindShaders(4);
 			glUniform1f(glGetUniformLocation(gc->GetShaderID(4), "time"), rotation/100.0f);
@@ -238,12 +174,20 @@ int main(){
 					print->color->Assign(255, 255, 255);
 				}
 				print->Draw(x+6, y+7+((i-1)*16), consoleBuffer);
-			}
+			}*/
 
 			mbstowcs(tmpclBuffer, clBuffer, 4096);
-			swprintf(consoleBuffer, L"@D@CFFFFFF%ls\n\nx: %d y: %d r: %f s: %f b: %f\n%lc", tmpclBuffer, mouseXY.x, mouseXY.y, rotation, scale, blurBias, gc->shaderClock);
+			swprintf(consoleBuffer, L"@D@CFFFFFF%ls\n\nx: %d y: %d C: %d r: %f s: %f b: %f", tmpclBuffer, mouseXY.x, mouseXY.y, mouseState, rotation, scale, blurBias);
 			print->Draw(0, 8, consoleBuffer);
 			
+			for (int i = 0; i < 10; i++)
+			{
+				button[i]->state = button[i]->comp(NULL, mouseXY, (mouseState != 0 ? 1 : 0));
+				if (button[i]->state == UIButtonState::UP){
+					cl("Button %d Pressed.\n", i);
+				}
+				button[i]->draw();
+			}
 		}
 		gc->OrthogonalEnd();
 		gc->Swap();

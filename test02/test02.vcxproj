@@ -131,6 +131,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="test02.cpp" />
+    <ClCompile Include="UI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="common\blur.frag" />
@@ -144,10 +145,12 @@
     <None Include="common\model.frag" />
     <None Include="common\model.vert" />
     <None Include="common\ray.frag" />
+    <None Include="common\shapes.frag" />
     <None Include="common\ssao.frag" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common\Fxaa3_11.frag" />
+    <ClInclude Include="UI.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

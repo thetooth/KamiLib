@@ -2,6 +2,9 @@
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "kami", "kami\kami.vcxproj", "{B6E34BA6-2376-4D5E-B2E9-15E6DA338BE7}"
+	ProjectSection(ProjectDependencies) = postProject
+		{8EA5F007-6413-4A94-840E-C1EF4333C2EF} = {8EA5F007-6413-4A94-840E-C1EF4333C2EF}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test01", "test01\test01.vcxproj", "{8809DA3A-DF09-4B47-9F41-E193695EFD74}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -97,6 +100,7 @@ Global
 		{D56C8573-B9DF-4A96-BCA3-A30007DCFBDE}.Release|Win32.ActiveCfg = Release
 		{D56C8573-B9DF-4A96-BCA3-A30007DCFBDE}.Release|x64.ActiveCfg = Release
 		{9EDF7F65-D4FE-4AF3-B1FB-AE6C5D1D0343}.Debug|Win32.ActiveCfg = Debug|Win32
+		{9EDF7F65-D4FE-4AF3-B1FB-AE6C5D1D0343}.Debug|Win32.Build.0 = Debug|Win32
 		{9EDF7F65-D4FE-4AF3-B1FB-AE6C5D1D0343}.Debug|x64.ActiveCfg = Debug|x64
 		{9EDF7F65-D4FE-4AF3-B1FB-AE6C5D1D0343}.Debug|x64.Build.0 = Debug|x64
 		{9EDF7F65-D4FE-4AF3-B1FB-AE6C5D1D0343}.Release|Win32.ActiveCfg = Release|Win32

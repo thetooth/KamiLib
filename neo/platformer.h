@@ -67,6 +67,9 @@ namespace NeoPlatformer{
 	{
 	public:
 
+		//
+		KLGL *gcProxy;
+
 		// Lets keep our main() clean by declearing all state logic here :D
 		int mode;
 		Point<int> debugflags;
@@ -90,9 +93,11 @@ namespace NeoPlatformer{
 		char *mapProg;
 
 		// Textures
-		KLGLFont* hudFont;
-		KLGLSprite* mapSpriteSheet;
-		KLGLSprite* hudSpriteSheet;
+		KLGLFont *hudFont;
+		KLGLSprite *mapSpriteSheet;
+		KLGLSprite *hudSpriteSheet;
+		KLGLTexture *backdropTexture;
+		KLGLTexture *gameoverTexture;
 
 		// Display list
 		int mapDispListState;
@@ -101,14 +106,14 @@ namespace NeoPlatformer{
 		Environment();
 		~Environment();
 		void comp(KLGL* gc, int offsetX = 0, int offsetY = 0);
-		void drawHUD(KLGL* gc, KLGLTexture* tex);
+		void drawHUD(KLGL* gc);
 		void drawMap(KLGL* gc);
 		void drawLoader(KLGL* gc, int y, int height, int length, int speed);
 		void load_map(char* mapfile);
 		void map_span(int type, int x0, int y0, int x1, int y1);
 	};
 
-	class EnvLoaderThread : KLGLThread {
+	class EnvLoaderThread : public KLGLThread {
 	public:
 		int status;
 		void *loaderPtr;

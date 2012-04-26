@@ -26,6 +26,7 @@ namespace klib {
 		virtual ~KLGLThread();
 		void setName(const char* nm);
 		string getName() const;
+		unsigned long *getHandle();
 		void start();
 		virtual void run();
 		void sleep(long ms);
@@ -38,7 +39,6 @@ namespace klib {
 		bool wait(const char* m,long ms=5000);
 		void release(const char* m);
 
-	public:
 		// unsigned long* to the low-level thread object
 		unsigned long* m_hThread;
 		// a name to identify the thread
@@ -50,8 +50,7 @@ namespace klib {
 		static const int P_IDLE;
 		static const int P_LOWEST;
 		static const int P_NORMAL;
-		static const int P_CRITICAL;
-	private:				
+		static const int P_CRITICAL;			
 	};// class Thread	
 
 	/** class Mutex
@@ -59,12 +58,11 @@ namespace klib {
 	* access to shaed resources.
 	**/
 	class KLGLMutex {
-	private:
+	public:
 		// unsigned long* to the low-level mutex object
 		unsigned long* m_hMutex;
 		// name to identify the mutex
 		string m_strName;
-	public:
 		KLGLMutex();
 		KLGLMutex(const char* nm);
 		void create(const char* nm);
