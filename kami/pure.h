@@ -9,6 +9,9 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <assert.h>
+#include <sstream>
+#include <string>
+#include <wchar.h>
 
 #include "kami.h"
 #include "threads.h"
@@ -149,6 +152,20 @@ namespace klib {
 			return std::strcmp(str1, str2) < 0;
 		}
 	};
+
+	template<typename T> inline std::string stringify(T const& x)
+	{
+		std::ostringstream out;
+		out << x;
+		return out.str();
+	}
+
+	template<typename T> inline std::wstring wstringify(T const& x)
+	{
+		std::wstringstream out;
+		out << x;
+		return out.str();
+	}
 
 #pragma endregion
 

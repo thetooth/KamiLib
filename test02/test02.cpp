@@ -18,22 +18,20 @@ int main(){
 	try{
 		gc = new KLGL("Test02", 800, 640, 60, false, 1, 1);
 		print = new KLGLFont();
+		Rect<int> buttonSize = Rect<int>(16, 200, 256, 48);
 		for (int i = 0; i < 10; i++)
 		{
 			button[i] = new UIButton(gc);
-			button[i]->pos = Rect<int>(16,256+(i*34),256,32);
-			button[i]->text = L"Test Bitch ";
-			std::wstringstream oss; oss << i;
-			button[i]->text += oss.str();
+			button[i]->pos = Rect<int>(buttonSize.x+(i >= 5 ? buttonSize.width+2 : 0), buttonSize.y+((i >= 5 ? i-5 : i)*(buttonSize.height+2)), buttonSize.width, buttonSize.height);
+			button[i]->text = L"Test Bitch " + wstringify(i);
 		}
-
 
 		//gc->InitShaders(0, 0, "common/default.vert", "common/default.frag");
 		//gc->InitShaders(1, 0, "common/default.vert", "common/shapes.frag");
 		//gc->InitShaders(2, 0, "common/default.vert", "common/ssao.frag");
 		//gc->InitShaders(3, 0, "common/diffuse.vert", "common/diffuse.frag");
 		//gc->InitShaders(4, 0, "common/default.vert", "common/blur.frag");
-		
+
 		//bgTexture = new KLGLTexture("common/wallpaper-1370530.png");
 		//bgTexture = new KLGLTexture("common/logo.png");
 		//obj = new Obj::File();
@@ -92,7 +90,7 @@ int main(){
 
 		GetCursorPos(&mouseXY);
 		ScreenToClient(gc->hWnd, &mouseXY);
-		mouseState = GetAsyncKeyState(VK_LBUTTON);
+		mouseState = (GetAsyncKeyState(VK_LBUTTON) != 0 ? 1 : 0);
 		gc->OpenFBO(50, 0.0, 0.0, 80.0f);
 
 		// Values
@@ -119,16 +117,16 @@ int main(){
 		/*glEnable(GL_LIGHTING);
 		gc->light_position.z = mouseXY.x/100.0f;
 		glLightfv(GL_LIGHT0, GL_POSITION, gc->light_position.Data());
-		
+
 		glPushMatrix();
 		{
-			glScaled(3.0, 3.0, 3.0);
-			glRotatef( rotation, 1.0f, 1.0f, 1.0f );
-			glBindTexture(GL_TEXTURE_2D, bgTexture->gltexture);
-			gc->BindShaders(3);
-			obj->Draw();
-			gc->UnbindShaders();
-			glBindTexture(GL_TEXTURE_2D, 0);
+		glScaled(3.0, 3.0, 3.0);
+		glRotatef( rotation, 1.0f, 1.0f, 1.0f );
+		glBindTexture(GL_TEXTURE_2D, bgTexture->gltexture);
+		gc->BindShaders(3);
+		obj->Draw();
+		gc->UnbindShaders();
+		glBindTexture(GL_TEXTURE_2D, 0);
 		}
 		glPopMatrix();*/
 
@@ -159,30 +157,32 @@ int main(){
 			gc->Rectangle2D(x, y, 256, 256, KLGLColor(255, 255, 255, 50));
 			for (int i = 1; i <= 16; i++)
 			{
-				int rectX = x+4;
-				int rectY = y+4+((i-1)*16);
-				int rectW = 248;
-				int rectH = 14;
-				if (mouseXY.x > rectX && mouseXY.y > rectY && mouseXY.x < rectX+rectW && mouseXY.y < rectY+rectH){
-					selected = i;
-				}
-				swprintf(consoleBuffer, L"%d POTATO", i);
-				if (i == selected){
-					gc->Rectangle2D(rectX, rectY, rectW, rectH, KLGLColor(255, 255, 255));
-					print->color->Assign(0, 0, 0);
-				}else{
-					print->color->Assign(255, 255, 255);
-				}
-				print->Draw(x+6, y+7+((i-1)*16), consoleBuffer);
+			int rectX = x+4;
+			int rectY = y+4+((i-1)*16);
+			int rectW = 248;
+			int rectH = 14;
+			if (mouseXY.x > rectX && mouseXY.y > rectY && mouseXY.x < rectX+rectW && mouseXY.y < rectY+rectH){
+			selected = i;
+			}
+			swprintf(consoleBuffer, L"%d POTATO", i);
+			if (i == selected){
+			gc->Rectangle2D(rectX, rectY, rectW, rectH, KLGLColor(255, 255, 255));
+			print->color->Assign(0, 0, 0);
+			}else{
+			print->color->Assign(255, 255, 255);
+			}
+			print->Draw(x+6, y+7+((i-1)*16), consoleBuffer);
 			}*/
 
 			mbstowcs(tmpclBuffer, clBuffer, 4096);
 			swprintf(consoleBuffer, L"@D@CFFFFFF%ls\n\nx: %d y: %d C: %d r: %f s: %f b: %f", tmpclBuffer, mouseXY.x, mouseXY.y, mouseState, rotation, scale, blurBias);
 			print->Draw(0, 8, consoleBuffer);
-			
+
 			for (int i = 0; i < 10; i++)
 			{
-				button[i]->state = button[i]->comp(NULL, mouseXY, (mouseState != 0 ? 1 : 0));
+				button[i]->mousePosition = mouseXY;
+				button[i]->mouseState = mouseState;
+				button[i]->comp();
 				if (button[i]->state == UIButtonState::UP){
 					cl("Button %d Pressed.\n", i);
 				}

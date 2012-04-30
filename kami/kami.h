@@ -16,7 +16,6 @@
 #define APP_BUFFER_SIZE 4096
 #define APP_ENABLE_MIPMAP 0
 #define APP_ANISOTROPY 4.0
-//#define APP_ENABLE_LUA 1
 
 #pragma endregion
 
@@ -37,17 +36,12 @@
 #include <iostream>
 #include <string.h>
 #include <time.h>
-#ifdef _DEBUG
-//#include <vld.h>
-#endif
 
 #include "pure.h"
 #include "version.h"
 #ifdef _WIN32
 #include "win32.h"
 #endif
-#define SLB_STATIC_LIBRARY
-#include "../../SLB/SLB/SLB.hpp"
 #ifdef APP_ENABLE_LUA
 #include "lualoader.h"
 #endif
