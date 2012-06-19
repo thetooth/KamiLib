@@ -4,59 +4,27 @@
 #define KLGLENV64
 #endif
 
-#ifndef GLEW_STATIC
-#define GLEW_STATIC
-#endif
-
-#pragma region Constants
-
-#ifndef APP_MOTD
-#define APP_MOTD "(c) 2005-2012 Ameoto Systems Inc. All Rights Reserved.\n\n"
-#endif
-#define APP_BUFFER_SIZE 4096
-#define APP_ENABLE_MIPMAP 0
-#define APP_ANISOTROPY 4.0
-
-#pragma endregion
-
-#pragma comment(lib,"glu32.lib")
-#pragma comment(lib,"opengl32.lib")
-#pragma comment(lib,"Winmm.lib")
-#ifdef APP_ENABLE_LUA
-#pragma comment(lib,"SLB.lib")
-#endif
-#ifdef APP_ENABLE_SQUIRREL
-#pragma comment(lib,"squirrel.lib")
-#pragma comment(lib,"sqstdlib.lib")
-#endif
-
-#include <Windows.h>
 #include <stdio.h>
-#include <conio.h>
 #include <iostream>
 #include <string.h>
 #include <time.h>
 
 #include "pure.h"
 #include "version.h"
-#ifdef _WIN32
+
+#if defined(_WIN32)
+#pragma comment(lib,"glu32.lib")
+#pragma comment(lib,"opengl32.lib")
+#pragma comment(lib,"Winmm.lib")
 #include "win32.h"
 #endif
+
 #ifdef APP_ENABLE_LUA
+#pragma comment(lib,"SLB.lib")
 #include "lualoader.h"
 #endif
-#ifdef APP_ENABLE_SQUIRREL
-#include "SQUIRREL/squirrel.h"
-#include "SQUIRREL/sqstdio.h"
-#include "SQUIRREL/sqstdaux.h"
-#ifdef SQUNICODE
-#define scvprintf vswprintf
-#else
-#define scvprintf vsprintf
-#endif
-#endif
-#include "GL/glew.h"
-#include "GL/wglew.h"
+
+// Internal modules
 #include "inireader.h"
 #include "threads.h"
 #include "logicalObjects.h"
@@ -99,19 +67,6 @@ namespace klib{
 		return 1;
 	}
 #endif
-#ifdef APP_ENABLE_SQUIRREL
-	inline void SQcl(HSQUIRRELVM v, const SQChar *s, ...){
-		static SQChar *tmpBuffer;
-		if (tmpBuffer == NULL){
-			tmpBuffer = new SQChar[strlen(s)+4096];
-		}
-		va_list arglist;
-		va_start(arglist, s);
-		scvprintf(tmpBuffer, s, arglist);
-		cl(tmpBuffer);
-		va_end(arglist);
-	}
-#endif
 
 #pragma endregion
 
@@ -119,6 +74,7 @@ namespace klib{
 
 	// Pre define
 	class KLGL;
+	class KLGLWindowManager;
 
 	class KLGLException {
 	private:
@@ -144,7 +100,11 @@ namespace klib{
 		int length = ftell(f);
 		fseek(f, 0, SEEK_SET);
 
-		char *buffer = (char*)malloc(length+1);
+		static char *buffer;
+		if (buffer == NULL || (buffer != NULL && strlen(buffer) < length+1)){
+			buffer = (char*)malloc(length+1);
+		}
+		
 		fread(buffer, 1, length, f);
 		fclose(f);
 		buffer[length] = '\0';
@@ -221,22 +181,13 @@ namespace klib{
 	public:
 		int internalStatus;
 
-		// Win32 access
-		WNDCLASS wc;
-		HWND hWnd;
-		HDC hDC;
-		HGLRC hRC,hRCAUX;
-		MSG msg;
-
 		// Lua
 #ifdef APP_ENABLE_LUA
 		lua_State *lua;
 #endif
-#ifdef APP_ENABLE_SQUIRREL
-		HSQUIRRELVM squirrel;
-#endif
 
 		// Window regions
+		KLGLWindowManager *windowManager;
 		Rect<int> window;
 		Rect<int> buffer;
 		int overSampleFactor, scaleFactor;
@@ -329,6 +280,17 @@ namespace klib{
 		static void PrintShaderInfoLog(GLuint obj, int isShader = 1);
 		KLGLTexture nullTexture;
 
+	};
+	
+	class KLGLWindowManager {
+	public:
+		APP_WINDOWMANAGER_CLASS* wm;
+		KLGLWindowManager(const char* title, Rect<int> window, int scaleFactor, bool fullscreen){
+			wm = new APP_WINDOWMANAGER_CLASS(title, window, scaleFactor, fullscreen);
+		}
+		void Swap(){
+			wm->_swap();
+		}
 	};
 
 	// Simple text drawing

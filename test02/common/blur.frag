@@ -41,7 +41,7 @@ void main()
 {
     vec2 blur = vec2(clamp( BLUR_BIAS, -BLUR_CLAMP, BLUR_CLAMP ));
     vec4 blurTex = texture2D(sceneTex, texcoord);
-    if(region.z+region.w == 0.0f || (gl_FragCoord.x >= region.x && gl_FragCoord.y >= region.y && gl_FragCoord.x <= region.x+region.z && gl_FragCoord.y <= region.y+region.w)){
+    if(region.z+region.w == 0.0f || (gl_FragCoord.x >= region.x && gl_FragCoord.y >= resolution.y-region.y && gl_FragCoord.x <= region.x+region.z && gl_FragCoord.y <= (resolution.y-region.y)+region.w)){
         for (float x = -KERNEL_SIZE + 1.0; x < KERNEL_SIZE; x += 1.0 ){
             for (float y = -KERNEL_SIZE + 1.0; y < KERNEL_SIZE; y += 1.0 ){
                 blurTex += bright(texcoord + vec2( blur.x * x * (rand(texcoord*time)/1.0+1.0), blur.y * y * (rand(texcoord*time)/1.0+1.0)), false);

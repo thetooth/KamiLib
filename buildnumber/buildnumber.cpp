@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 int main(int argc, char *argv[]){
 	char tBuffer[1024] = {};
@@ -26,7 +27,7 @@ int main(int argc, char *argv[]){
 	fclose(fp);
 
 	fp = fopen("version.h", "w+");
-	sprintf(tBuffer, "#define APP_BUILD_VERSION %d", version);
+	sprintf(tBuffer, "#define APP_BUILD_VERSION %d\n#define APP_BUILD_TIME 0x%08x", version, time(NULL));
 	fwrite(tBuffer, 1, strlen(tBuffer), fp);
 	fclose(fp);
 

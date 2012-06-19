@@ -101,17 +101,18 @@ namespace NeoPlatformer{
 		dt = max(dt*dtMulti, 0.00005);
 
 		// Update the character based on velocity, gravity and FPU errors.
-		character->comp(*this);
+		character->comp(&*this);
 
 		// Check for collisions and set character state.
 		for(list<Platform>::iterator e = platforms->begin(); e != platforms->end(); e++){
-			CollisionType state = e->checkCollision(*this);
+			CollisionType state = e->checkCollision(*this, e);
 			if (state != C_NONE)
 			{
 				if (e->mapMaskPtr[e->tileId] == TileType::T_LAVA)
 				{
 					character->vel.y = character->jumpAccel/2.0f;
 					character->health -= 10;
+					audioProxy->system->playSound(FMOD_CHANNEL_FREE, audioProxy->sound[3], 0, &audioProxy->channel[2]);
 				}
 			}
 		}
@@ -348,13 +349,14 @@ namespace NeoPlatformer{
 		// Cast it cunt
 		Environment *gameEnv = (Environment*)loaderPtr;
 		// Switch to auxiliary context to access texture data
-		wglMakeCurrent(gameEnv->gcProxy->hDC, gameEnv->gcProxy->hRCAUX);
+		wglMakeCurrent(gameEnv->gcProxy->windowManager->wm->hDC, gameEnv->gcProxy->windowManager->wm->hRCAUX);
 
 		try{
 			// Load the map
 			gameEnv->load_map("common/map01.smp");
 			// Create our character
 			gameEnv->character = new Character(128, 0, 8, 16);
+			//gameEnv->enemys
 			// Map sprites
 			gameEnv->mapSpriteSheet = new KLGLSprite("common/tilemap.png", 16, 16);
 			gameEnv->hudSpriteSheet = new KLGLSprite("common/hud.png", 8, 8);
@@ -377,12 +379,11 @@ namespace NeoPlatformer{
 		}catch(KLGLException e){
 			MessageBox(NULL, e.getMessage(), "KLGLException", MB_OK | MB_ICONERROR);
 			status = false;
-			stop();
 		}
 
 		// Rebind the primary context(we have to do it in this thread since exiting with 
 		// the auxiliary bound causes both contexts to be reset.
-		wglMakeCurrent(gameEnv->gcProxy->hDC, gameEnv->gcProxy->hRC);
+		wglMakeCurrent(gameEnv->gcProxy->windowManager->wm->hDC, gameEnv->gcProxy->windowManager->wm->hRC);
 		status = false;
 	}
 
@@ -449,6 +450,7 @@ namespace NeoPlatformer{
 			vel.y += (fabs((float)vel.x)/maxWalkSpeed)*0.1f*jumpAccel + 1.0f*jumpAccel;
 			falling = 1;
 			fallLock = 1;
+			envPtr->audioProxy->system->playSound(FMOD_CHANNEL_FREE, envPtr->audioProxy->sound[2], 0, &envPtr->audioProxy->channel[1]);
 		}
 		wallJump();
 	}
@@ -502,15 +504,27 @@ namespace NeoPlatformer{
 	}
 
 	void Character::slopeLeft(int charX, int wallY){
-			collisionDetect = -1;
-			pos.y = wallY + charX;
-			vel.y = vel.y*0.5;
+		collisionDetect = -1;
+		pos.y = wallY + (charX % 16);
+		vel.y = 0;
+		if(!landedLastFrame && (rightPressed || leftPressed))
+		{
+			walking = 1;
+		}
+		falling = 0;
+		landedLastFrame = 1;  // !falling
 	}
 
 	void Character::slopeRight(int charX, int wallY){
-			collisionDetect = 1;
-			pos.y = wallY + charX;
-			vel.y = vel.y*0.5;
+		collisionDetect = 1;
+		pos.y = wallY + (charX % 16);
+		vel.y = 0;
+		if(!landedLastFrame && (rightPressed || leftPressed))
+		{
+			walking = 1;
+		}
+		falling = 0;
+		landedLastFrame = 1;  // !falling
 	}
 
 	void Character::left()
@@ -579,27 +593,30 @@ namespace NeoPlatformer{
 	}
 
 	// Update the character based on movement and gravity and such.
-	void Character::comp(Environment &env)
+	void Character::comp(Environment *env)
 	{
+		if (env != envPtr){
+			envPtr = env;
+		}
 		if(walking && facingRight)  // Speed up or turn around
 		{
 			if(vel.x >= 0)
 			{
 				if(!falling)  // Walking speed up
 				{
-					vel.x += walkAccel*env.dt;
+					vel.x += walkAccel*envPtr->dt;
 				}
 				else  // Mid-air speed up
-					vel.x += airAccel*env.dt;
+					vel.x += airAccel*envPtr->dt;
 			}
 			else
 			{
 				if(!falling)  // Walking turn around
 				{
-					vel.x += brakeAccel*env.dt;
+					vel.x += brakeAccel*envPtr->dt;
 				}
 				else  // Mid-air slowdown
-					vel.x += airAccel*env.dt;
+					vel.x += airAccel*envPtr->dt;
 			}
 		}
 		else if(walking && !facingRight)  // Speed up or turn around
@@ -608,22 +625,22 @@ namespace NeoPlatformer{
 			{
 				if(!falling)  // Walking speed up
 				{
-					vel.x -= walkAccel*env.dt;
+					vel.x -= walkAccel*envPtr->dt;
 				}
 				else  // Mid-air speed up
-					vel.x -= airAccel*env.dt;
+					vel.x -= airAccel*envPtr->dt;
 			}
 			else
 			{
 				if(!falling)  // Walking turn around
 				{
-					vel.x -= brakeAccel*env.dt;
+					vel.x -= brakeAccel*envPtr->dt;
 				}
 				else  // Mid-air slowdown
-					vel.x -= airAccel*env.dt;
+					vel.x -= airAccel*envPtr->dt;
 			}
 		}else{
-			drag(env);
+			drag(*env);
 		}
 
 		// Speed limit
@@ -640,14 +657,14 @@ namespace NeoPlatformer{
 		}
 
 		// Apply gravitational acceleration
-		vel.y += gravity*env.dt;
+		vel.y += gravity*envPtr->dt;
 
 		// Update positions
-		pos.x += vel.x*env.dt;
-		pos.y += vel.y*env.dt;
+		pos.x += vel.x*envPtr->dt;
+		pos.y += vel.y*envPtr->dt;
 
 		// Check if falling to death
-		if(pos.y > env.map.height*env.tileHeight){
+		if(pos.y > envPtr->map.height*envPtr->tileHeight){
 			health -= 3;
 		}
 
@@ -656,8 +673,57 @@ namespace NeoPlatformer{
 		// This disables the falling air jump:
 		// We are falling all the time, but if we collide with a surface,
 		// then we can jump during that frame.
-		falling = 1;
+		//falling = 1;
 	};
+
+	Enemy::Enemy(float x, float y, int w, int h){
+		pos.x = x;
+		pos.y = y;
+		vel.x = 0.0f;
+		vel.y = 0.0f;
+		collisionDetect = 0;
+	}
+
+	void Enemy::patrol(){
+		// See CollisionType Platform::checkCollision(Environment &) for a better explanation of how this works.
+		float cTop = envPtr->character->pos.y - envPtr->character->collisionRect.height;
+		float cBottom = envPtr->character->pos.y;
+		float cLeft = envPtr->character->pos.x - envPtr->character->collisionRect.width/2;
+		float cRight = envPtr->character->pos.x + envPtr->character->collisionRect.width/2;
+		float pTop = pos.y;
+		float pBottom = pos.y + collisionRect.height;
+		float pLeft = pos.x;
+		float pRight = pos.x + collisionRect.width;
+
+		if (collisionDetect != 1){
+			vel.x = 1;
+			pos.x += vel.x*envPtr->dt;
+			if((cLeft - envPtr->character->vel.x*envPtr->dt + 1 >= pRight && cLeft <= pRight)	// Crossed right X and...
+				&& (((pTop <= cTop && cTop <= pBottom)									// Corner within platform Y or...
+				|| (pTop <= cBottom && cBottom <= pBottom))								// Other corner within platform Y or...
+				|| (cTop <= pTop && pBottom <= cBottom)))								// Wall is short and at the middle of the character
+			{
+				collisionDetect = 1;
+			}
+		}else if (collisionDetect != -1){
+			vel.x = -1;
+			pos.x -= vel.x*envPtr->dt;
+			if((cRight - envPtr->character->vel.x*envPtr->dt - 1 <= pLeft && cRight >= pLeft)	// Crossed left X and...
+				&& (((pTop <= cTop && cTop <= pBottom)									// Corner within platform Y or...
+				|| (pTop <= cBottom && cBottom <= pBottom))								// Other corner within platform Y
+				|| (cTop <= pTop && pBottom <= cBottom)))								// Wall is short and at the middle of the character
+			{
+				collisionDetect = -1;
+			}
+		}
+	}
+
+	void Enemy::comp(Environment *env){
+		if (env != envPtr){
+			envPtr = env;
+		}
+		patrol();
+	}
 
 	// Platform management
 	Platform::Platform(float x, float y, int w, int h, int sprId, int flags, char* mapDataPtrI, char* mapMaskPtrI){
@@ -703,7 +769,13 @@ namespace NeoPlatformer{
 		}
 	}
 
-	CollisionType Platform::checkCollision(Environment &env)
+	int Platform::checkOverheadSlope(list<Platform>::iterator platformData){
+		int offset = ((platformData->pos.y/16)-1)*(256)+(platformData->pos.x/16);
+		//cl("%d\n", offset);
+		return ((platformData->mapMaskPtr[offset] == TileFlag::F_LEFTSLOPE || platformData->mapMaskPtr[offset] == TileFlag::F_RIGHTSLOPE) ? 0 : 1);
+	}
+
+	CollisionType Platform::checkCollision(Environment &env, list<Platform>::iterator platformData)
 	{
 		if(env.character == NULL){
 			throw KLGLException("Character does not exist!");
@@ -734,10 +806,14 @@ namespace NeoPlatformer{
 		float pLeft = pos.x;
 		float pRight = pos.x + collisionRect.width;
 
+		int slopeDetect = checkOverheadSlope(platformData);
+
 		if (slopeLeft)
 		{
 			if((cRight >= pLeft && cLeft <= pRight)										// Crossed X and...
-				&& (pTop <= cBottom && cTop <= pBottom))								// Corner within platform Y
+				&& (((pTop <= cBottom && cTop <= pBottom)								// Corner within platform Y
+				|| (pTop <= cBottom && cBottom <= pBottom))								// Other corner within platform Y
+				|| (cTop <= pTop && pBottom <= cBottom)))								// Wall is short and at the middle of the character
 			{
 				env.character->slopeRight(pRight-cRight, pTop);
 				return C_SLOPERIGHT;
@@ -747,7 +823,9 @@ namespace NeoPlatformer{
 		if (slopeRight)
 		{
 			if((cRight >= pLeft && cLeft <= pRight)										// Crossed right X and...
-				&& (pTop <= cBottom && cTop <= pBottom))								// Corner within platform Y
+				&& (((pTop <= cBottom && cTop <= pBottom)								// Corner within platform Y
+				|| (pTop <= cBottom && cBottom <= pBottom))								// Other corner within platform Y or...
+				|| (cTop <= pTop && pBottom <= cBottom)))								// Wall is short and at the middle of the character
 			{
 				env.character->slopeLeft(cLeft-pLeft, pTop);
 				return C_SLOPELEFT;
@@ -759,8 +837,11 @@ namespace NeoPlatformer{
 			// Here's the collision test.
 			// The 10pt here are to prevent slipping through a platform and
 			// making sure that 'falling' is set to 0 each frame we're on a platform.
-			float padding = 1.0f;
-			if(env.character->vel.y >= 0 && (cBottom - env.character->vel.y*env.dt - padding <= pTop && cBottom + padding >= pTop)  // Crossed top Y and...
+			// y*map.width+x
+			float padding = 10.0f;
+			
+			if(slopeDetect && env.character->vel.y >= 0
+				&& (cBottom - env.character->vel.y*env.dt - padding <= pTop && cBottom + padding >= pTop)  // Crossed top Y and...
 				&& (((pLeft <= cLeft && cLeft <= pRight)  // Corner within platform X or...
 				|| (pLeft <= cRight && cRight <= pRight))  // Other corner within platform X
 				|| (cLeft <= pLeft && pRight <= cRight)))  // Platform is narrow and at the middle of the character
@@ -786,7 +867,7 @@ namespace NeoPlatformer{
 		// Wall?
 		if(wallLeft)
 		{   
-			if((cRight - env.character->vel.x*env.dt - 1 <= pLeft && cRight >= pLeft)	// Crossed left X and...
+			if(slopeDetect && (cRight - env.character->vel.x*env.dt - 1 <= pLeft && cRight >= pLeft)	// Crossed left X and...
 				&& (((pTop <= cTop && cTop <= pBottom)									// Corner within platform Y or...
 				|| (pTop <= cBottom && cBottom <= pBottom))								// Other corner within platform Y
 				|| (cTop <= pTop && pBottom <= cBottom)))								// Wall is short and at the middle of the character
@@ -798,7 +879,7 @@ namespace NeoPlatformer{
 
 		if(wallRight)
 		{   
-			if((cLeft - env.character->vel.x*env.dt + 1 >= pRight && cLeft <= pRight)	// Crossed right X and...
+			if(slopeDetect && (cLeft - env.character->vel.x*env.dt + 1 >= pRight && cLeft <= pRight)	// Crossed right X and...
 				&& (((pTop <= cTop && cTop <= pBottom)									// Corner within platform Y or...
 				|| (pTop <= cBottom && cBottom <= pBottom))								// Other corner within platform Y or...
 				|| (cTop <= pTop && pBottom <= cBottom)))								// Wall is short and at the middle of the character

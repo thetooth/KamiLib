@@ -12,14 +12,20 @@
 #include <sstream>
 #include <string>
 #include <wchar.h>
-
-#include "kami.h"
-#include "threads.h"
+#include <unordered_map>
 
 namespace klib {
 
 #pragma region Global_Defines
 
+#ifndef APP_MOTD
+#define APP_MOTD "(c) 2005-2012 Ameoto Systems Inc. All Rights Reserved.\n\n"
+#endif
+#define APP_BUFFER_SIZE 4096
+#define APP_ENABLE_MIPMAP 0
+#define APP_ANISOTROPY 4.0
+
+	// Determine compiler
 #if		defined __ECC || defined __ICC || defined __INTEL_COMPILER
 #	define APP_COMPILER_STRING "Intel C/C++"
 #elif	defined __GNUC__
@@ -31,6 +37,19 @@ namespace klib {
 #endif
 #	define DEFASSTR(x)	#x
 
+	// Check arch
+#if _WIN64 || __x86_64__ || __ppc64__
+#define APP_ARCH_STRING "x86-64"
+#else
+#define APP_ARCH_STRING "x86"
+#endif
+
+#if defined(_WIN32)
+	#define APP_WINDOWMANAGER_CLASS Win32WM
+#else
+	#define APP_WINDOWMANAGER_CLASS XOrgWM
+#endif
+
 #pragma endregion
 
 #pragma region Global_Data
@@ -39,6 +58,7 @@ namespace klib {
 	static bool cursor_L_down = false;
 	extern bool KLGLDebug;
 	extern char *clBuffer;
+	//extern std::unordered_map<std::string, void*> clHashTable;
 
 #pragma endregion
 
@@ -55,9 +75,9 @@ namespace klib {
 		if (prev_allocsize == NULL){
 			prev_allocsize = 0;
 		}
-		if (pnew == NULL || prev_allocsize < len){
+		if (pnew == NULL || (pnew != NULL && prev_allocsize < len)){
 			prev_allocsize = len;
-			pnew = new char[len];
+			pnew = new char[len+1];
 		}
 		strncpy(pnew, pstr + start, len);
 		pnew[len] = '\0';
@@ -79,7 +99,7 @@ namespace klib {
 		}
 
 		if (strlen(clBuffer)+strlen(format) >= clBufferAllocLen){
-			fill_n(clBuffer, 4, '\0');
+			std::fill_n(clBuffer, 4, '\0');
 			/*clBufferAllocLen = clBufferAllocLen*4;
 			char* tclBuffer = (char*)realloc(clBuffer, clBufferAllocLen);
 			fill_n(tclBuffer+clBufferAllocLen, clBufferAllocLen, '\0');
@@ -92,7 +112,7 @@ namespace klib {
 		
 		// Temporary buffer
 		char *tBuffer = new char[clBufferAllocLen];
-		fill_n(tBuffer, clBufferAllocLen, '\0');
+		std::fill_n(tBuffer, clBufferAllocLen, '\0');
 		
 		int ret = 0, numLn = 0, numLnP = 0;
 
@@ -129,7 +149,7 @@ namespace klib {
 			}
 		}
 
-		delete tBuffer;
+		delete [] tBuffer;
 		return ret;
 	}
 
@@ -149,7 +169,7 @@ namespace klib {
 			if (str1 == NULL || str2 == NULL){
 				return false;
 			}
-			return std::strcmp(str1, str2) < 0;
+			return strcmp(str1, str2) < 0;
 		}
 	};
 

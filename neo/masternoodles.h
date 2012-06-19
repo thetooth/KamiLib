@@ -2,8 +2,13 @@
 
 #include "kami.h"
 #include "version.h"
+#include "tween.h"
+#include <fmod.hpp>
+#include <fmod_errors.h>
 
-#define PI 3.14159265
+#ifndef PI
+#define PI 3.1415926535897932384626433832795
+#endif
 #define round(x) ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
 #define chop(x)  ((x)>=0?(long)((x)+0.9):(long)((x)-0.9))
 #define frand() (float)rand()/(float)RAND_MAX
@@ -13,7 +18,7 @@
 const int APP_SCREEN_W = 640;
 const int APP_SCREEN_H = 360;
 
-_inline int floorMpl(float x,int m){
+inline int floorMpl(float x,int m){
 	x = floor(x);
 	if((int)x%m != 0){
 		return (int)x;

@@ -26,16 +26,117 @@ namespace klib {
 		return 0;
 	}
 
-	void KLGL::ProcessEvent(int *status){
-		if(PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE)){
-			if(msg.message == WM_QUIT){
+	/*void KLGL::ProcessEvent(int *status){
+		if(PeekMessage(&windowManager->wm->msg, NULL, NULL, NULL, PM_REMOVE)){
+			if(windowManager->wm->msg.message == WM_QUIT){
 				PostQuitMessage(0);
 				*status = 0;
 			}else{
-				TranslateMessage(&msg);
-				DispatchMessage(&msg);
+				TranslateMessage(&windowManager->wm->msg);
+				DispatchMessage(&windowManager->wm->msg);
 			}
 		}
+	}*/
+
+	Win32WM::Win32WM(const char* title, Rect<int> window, int scaleFactor, bool fullscreen){
+		// Register win32 class
+		wc.style = CS_OWNDC;
+		wc.lpfnWndProc = WndProc;
+		wc.cbClsExtra = 0;
+		wc.cbWndExtra = 0;
+		wc.hInstance = GetModuleHandle(NULL);
+		wc.hIcon = LoadIcon( NULL, IDI_APPLICATION );
+		wc.hCursor = LoadCursor( NULL, IDC_ARROW );
+		wc.hbrBackground = (HBRUSH)GetStockObject( NULL_BRUSH );
+		wc.lpszMenuName = NULL;
+		wc.lpszClassName = "KamiGLWnd32";
+		RegisterClass(&wc);
+
+		// create main window
+		if(fullscreen){
+			// Device Mode
+			DEVMODE dmScreenSettings;
+			memset(&dmScreenSettings,0,sizeof(dmScreenSettings));
+			dmScreenSettings.dmSize=sizeof(dmScreenSettings);
+			dmScreenSettings.dmPelsWidth	= window.width*scaleFactor;
+			dmScreenSettings.dmPelsHeight	= window.height*scaleFactor;
+			dmScreenSettings.dmBitsPerPel	= 32;
+			dmScreenSettings.dmFields=DM_BITSPERPEL|DM_PELSWIDTH|DM_PELSHEIGHT;
+
+			if(ChangeDisplaySettings(&dmScreenSettings, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL){
+				cl("The Requested Fullscreen Mode Is Not Supported By\nYour Video Card. Will Use Windowed Mode Instead.\n\n");
+				fullscreen = false;
+			}else{
+				hWnd = CreateWindowEx(WS_EX_APPWINDOW, "KamiGLWnd32", title, WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_POPUP, NULL, NULL, window.width*scaleFactor, window.height*scaleFactor, NULL, NULL, wc.hInstance, NULL );
+			}
+		}
+
+		if(!fullscreen){
+			hWnd = CreateWindowEx(WS_EX_APPWINDOW, "KamiGLWnd32", title, WS_CAPTION | WS_POPUPWINDOW, window.x, window.y, window.width*scaleFactor+6, window.height*scaleFactor+GetSystemMetrics(SM_CYCAPTION)+6, NULL, NULL, wc.hInstance, NULL );
+		}
+
+		SetWindowText(hWnd, "Loading...");
+
+		PIXELFORMATDESCRIPTOR pfd;
+		int format;
+
+		// get the device context (DC)
+		hDC = GetDC( hWnd );
+
+		// set the pixel format for the DC
+		ZeroMemory( &pfd, sizeof( pfd ) );
+		pfd.nSize = sizeof( pfd );
+		pfd.nVersion = 1;
+		pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+		pfd.iPixelType = PFD_TYPE_RGBA;
+		pfd.cColorBits = 24;
+		pfd.cDepthBits = 16;
+		pfd.iLayerType = PFD_MAIN_PLANE;
+		format = ChoosePixelFormat( hDC, &pfd );
+		SetPixelFormat( hDC, format, &pfd );
+
+		// create and enable the render context (RC)
+		hRC = wglCreateContext(hDC);
+		hRCAUX = wglCreateContext(hDC);
+		if(wglShareLists(hRC, hRCAUX) == FALSE){
+			DWORD errorCode=GetLastError();
+			LPVOID lpMsgBuf;
+			FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+				NULL, errorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),(LPTSTR) &lpMsgBuf, 0, NULL);
+			MessageBox( NULL, (LPCTSTR)lpMsgBuf, "Error", MB_OK | MB_ICONINFORMATION );
+			//throw KLGLException((LPCTSTR)lpMsgBuf);
+			LocalFree(lpMsgBuf);
+			//Destroy the GL context and just use 1 GL context
+			wglDeleteContext(hRCAUX);
+		}
+		wglMakeCurrent(hDC, hRC);
+
+		ShowWindow(hWnd,SW_SHOW);
+		SetForegroundWindow(hWnd);
+		SetFocus(hWnd);
+
+		glewExperimental = GL_TRUE;
+		GLenum glewIinitHandle = glewInit();
+		if(glewIinitHandle != GLEW_OK)
+		{
+			cl("Error: %s\n", glewGetErrorString(glewIinitHandle));
+			exit(EXIT_FAILURE);
+		}
+		glewIinitHandle = NULL;
+	}
+
+	void Win32WM::_swap(){
+		SwapBuffers(hDC);
+	}
+
+	Win32WM::~Win32WM(){
+		wglMakeCurrent(NULL, NULL);
+		wglDeleteContext(hRC);
+		ReleaseDC(hWnd, hDC);
+		DeleteDC(hDC);
+
+		// destroy the window explicitly
+		DestroyWindow(hWnd);
 	}
 
 	void Win32Resource::ExtractBinResource(char* strCustomResName, int nResourceId){

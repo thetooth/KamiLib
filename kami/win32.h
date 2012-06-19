@@ -1,10 +1,14 @@
 #pragma once
 
-#include "kami.h"
+#ifndef GLEW_STATIC
+#define GLEW_STATIC
+#endif
+
 #include <Windows.h>
 #include "GL/glew.h"
 #include "GL/wglew.h"
 #include "pure.h"
+#include "logicalObjects.h"
 
 namespace klib {
 
@@ -140,6 +144,21 @@ namespace klib {
 
 		return '?';
 	}
+	
+	class Win32WM {
+	public:
+		// Win32 access
+		WNDCLASS wc;
+		HWND hWnd;
+		HDC hDC;
+		HGLRC hRC,hRCAUX;
+		MSG msg;
+		
+		Win32WM(const char* title, Rect<int> window, int scaleFactor, bool fullscreen);
+		~Win32WM();
+
+		void _swap();
+	};
 
 	class Win32Resource {
 	public:

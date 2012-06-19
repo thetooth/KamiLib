@@ -127,17 +127,17 @@ namespace klib{
 			float avgV  = ( avgVX + avgVY ) * 0.5f;
 
 			if( avgVX < .1f ){
-				vX *= Mrnd() * 3;
+				vX *= Mrnd() * 1;
 			}
 			if( avgVY < .1f ){
-				vY *= Mrnd() * 3;
+				vY *= Mrnd() * 1;
 			}
 
 			float sc = avgV * 0.45f;
 			sc = max( min( sc , 2.0f ) , 1.0f );
 
 			// Gravity
-			vY += Mrnd()/2.0f;
+			//vY += Mrnd()/2.0f;
 
 			float nextX = x + vX;
 			float nextY = y + vY;
@@ -177,7 +177,7 @@ namespace klib{
 
 	void LiquidParticles::draw(KLGL *gc){
 		//glColor4f(1.0f, 1.0f, 1.0f, 0.5f);
-		glBegin(GL_LINES);
+		glBegin(GL_POINTS);
 		for(int i = numMovers; i > 0; i--){
 			if (&movers[i] == NULL)
 			{
@@ -186,7 +186,7 @@ namespace klib{
 			//glColor4f(1.0f, 1.0f, 1.0f, max(0.25f, movers[i].size-1.0f));
 			//gc->Blit2D(gc->CheepCheepDebug, movers[i].x, movers[i].y, movers[i].vX*10.0f);
 			glVertex2i(movers[i].pX, movers[i].pY);
-			glVertex2i(movers[i].x, movers[i].y);
+			//glVertex2i(movers[i].x+(1), movers[i].y+(1));
 		}
 		glEnd();
 	}
@@ -210,7 +210,7 @@ namespace klib{
 					particleTestPtr.simulate();
 					t_prev = clock();
 				}else{
-					//Sleep(t - t_prev);
+					Sleep(t - t_prev);
 				}
 			}
 			status = particleTestPtr.threadingState;

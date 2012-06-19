@@ -21,8 +21,8 @@ using namespace klib;
 
 #define APP_NAME "Kami Multi-Threading Demo"
 #define APP_BUCKET_SIZE 65792
-#define APP_SCREEN_W 1280
-#define APP_SCREEN_H 720
+#define APP_SCREEN_W 640
+#define APP_SCREEN_H 480
 #define APP_FRAMERATE 60
 #define APP_OVERSAMPLE_FACTOR 1
 
@@ -35,7 +35,7 @@ int main(){
 	clock_t t0 = clock(), t1 = clock();
 	bool quit = false, pPixelLight = true, vsync = true, internalTimer = false;
 	int th_id, demoMode = 1;
-	int nthreads = sysinfo.dwNumberOfProcessors-1;
+	int nthreads = sysinfo.dwNumberOfProcessors;
 
 	float theta = -360.0f, thetap = -360.0f;
 	int textInput = 0;
@@ -50,7 +50,6 @@ int main(){
 	KLGL* gc;
 	KLGLTexture *charmap, *testTexture;
 	KLGLFont* font;
-	MilkshapeModel *pModel;
 
 	// Partitcle system
 	LiquidParticleThread* particleThread = new LiquidParticleThread[nthreads];
@@ -64,7 +63,7 @@ int main(){
 
 		// Icon
 		const HANDLE hsicon = LoadImage(GetModuleHandle(0), MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), 0);
-		SendMessage(gc->hWnd, WM_SETICON, ICON_SMALL, (LPARAM)const_cast<HANDLE>(hsicon));
+		SendMessage(gc->windowManager->wm->hWnd, WM_SETICON, ICON_SMALL, (LPARAM)const_cast<HANDLE>(hsicon));
 
 		// Load Shaders
 		quit = gc->InitShaders(1, 0, "common/postDefaultV.glsl", "common/postDefaultF.glsl");
@@ -75,10 +74,6 @@ int main(){
 		testTexture = new KLGLTexture("common/glory.png");
 
 		font = new KLGLFont();
-
-		// Load our model
-		pModel = new MilkshapeModel();
-		quit = pModel->loadModelData(*gc, "tree.ms3d");
 
 		// Particles!
 		if (nthreads <= 0)
@@ -115,12 +110,12 @@ int main(){
 	{
 		t0 = clock();
 		// check for messages
-		if(PeekMessage( &gc->msg, NULL, 0, 0, PM_REMOVE)){
+		if(PeekMessage( &gc->windowManager->wm->msg, NULL, 0, 0, PM_REMOVE)){
 			// handle or dispatch messages
-			if(gc->msg.message == WM_QUIT){
+			if(gc->windowManager->wm->msg.message == WM_QUIT){
 				quit = true;
-			}else if (gc->msg.message == WM_KEYDOWN){
-				switch (gc->msg.wParam){
+			}else if (gc->windowManager->wm->msg.message == WM_KEYDOWN){
+				switch (gc->windowManager->wm->msg.wParam){
 				case VK_ESCAPE:
 					PostQuitMessage(0);
 					quit = true;
@@ -146,39 +141,39 @@ int main(){
 						demoMode = -1;
 					}
 					break;
-				case VK_ADD:
+				case VK_0:
 					particleTest.audit(1000);
 					break;
-				case VK_SUBTRACT:
+				case VK_9:
 					particleTest.audit(-1000);
 					break;
 				}
 				if(textInput){
-					if ((gc->msg.wParam>=32) && (gc->msg.wParam<=126) && (gc->msg.wParam != '|')) {
+					if ((gc->windowManager->wm->msg.wParam>=32) && (gc->windowManager->wm->msg.wParam<=126) && (gc->windowManager->wm->msg.wParam != '|')) {
 						if (strlen(textBuffer) < 255) {
 							char buf[3];
-							sprintf(buf, "%c\0", gc->msg.wParam);
+							sprintf(buf, "%c\0", gc->windowManager->wm->msg.wParam);
 							strcat(textBuffer, buf);
 						}
-					} else if (gc->msg.wParam == VK_BACK) {
+					} else if (gc->windowManager->wm->msg.wParam == VK_BACK) {
 						if(strlen(textBuffer) > 0){
 							textBuffer[strlen(textBuffer)-1]='\0';
 						}
-					} else if (gc->msg.wParam == VK_TAB) {
+					} else if (gc->windowManager->wm->msg.wParam == VK_TAB) {
 						textBuffer[strlen(textBuffer)]='\t';
-					} else if (gc->msg.wParam == VK_RETURN) {
+					} else if (gc->windowManager->wm->msg.wParam == VK_RETURN) {
 						if(strlen(textBuffer) > 0){
 							textBuffer[strlen(textBuffer)]	='\n';
 						}
 					}
 				}
 			}else{
-				TranslateMessage(&gc->msg);
-				DispatchMessage(&gc->msg);
+				TranslateMessage(&gc->windowManager->wm->msg);
+				DispatchMessage(&gc->windowManager->wm->msg);
 			}
 		}else if (t0-t1 >= CLOCKS_PER_SEC/60.0f || !internalTimer){
 			t1 = clock();
-			if (gc->hWnd != GetActiveWindow())
+			if (gc->windowManager->wm->hWnd != GetActiveWindow())
 			{
 				Sleep(500);
 				continue;
@@ -186,7 +181,7 @@ int main(){
 			mouseXYp = mouseXY;
 			GetCursorPos(&mouseXY);
 			mouseStat = GetAsyncKeyState(VK_LBUTTON);
-			ScreenToClient(gc->hWnd, &mouseXY);
+			ScreenToClient(gc->windowManager->wm->hWnd, &mouseXY);
 
 			thetap = theta;
 			theta += (cos(thetap-theta)/2.0f)-((theta*10.0f)/360.0f);
@@ -216,7 +211,7 @@ int main(){
 				{
 					glTranslatef(0.0f, -220.0f, -400.0f);
 					glRotatef( theta, 0.0f, 1.0f, 0.0f );
-					pModel->draw();
+					//pModel->draw();
 				}
 				glPopMatrix();
 				gc->UnbindShaders();
@@ -242,12 +237,12 @@ int main(){
 					particleTest.mouseX = mouseXY.x;
 					particleTest.mouseY = mouseXY.y;
 					particleTest.draw(gc);
-					gc->BindShaders(3);
+					/*gc->BindShaders(3);
 					glUniform1f(glGetUniformLocation(gc->GetShaderID(3), "time"), gc->shaderClock);
 					glUniform1f(glGetUniformLocation(gc->GetShaderID(3), "BLUR_BIAS"), 0.00005f);
 					glUniform2f(glGetUniformLocation(gc->GetShaderID(3), "BUFFER_EXTENSITY"), gc->buffer.width, gc->buffer.height);
 					gc->UnbindShaders();
-					gc->BindMultiPassShader(3, 4);
+					gc->BindMultiPassShader(3, 4);*/
 				}
 				gc->OrthogonalEnd();
 				break;

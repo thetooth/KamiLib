@@ -72,6 +72,9 @@
     <ClInclude Include="objload.h">
       <Filter>Header Files\3rd Party</Filter>
     </ClInclude>
+    <ClInclude Include="tween.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="kami.cpp">
@@ -104,11 +107,9 @@
     <ClCompile Include="objload.cpp">
       <Filter>Source Files\3rd Party</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="kami.rc">
-      <Filter>Resource Files</Filter>
-    </ResourceCompile>
+    <ClCompile Include="tween.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="info_blue.png">

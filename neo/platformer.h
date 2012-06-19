@@ -63,12 +63,71 @@ namespace NeoPlatformer{
 		F_RIGHTSLOPE	= 0x20,
 	};
 
+	class Audio {
+	public:
+		FMOD::System     *system;
+		FMOD::Sound      *sound[128];
+		FMOD::Channel    *channel[128];
+		FMOD_RESULT       result;
+		int               soundKey;
+		int               channelKey;
+		unsigned int      version;
+
+		Audio(){
+			result = FMOD::System_Create(&system);
+			FMODCHECK(result);
+
+			result = system->getVersion(&version);
+			FMODCHECK(result);
+
+			if (version < FMOD_VERSION){
+				throw KLGLException("You are using an old version of FMOD %08x.  This program requires %08x\n", version, FMOD_VERSION);
+				return;
+			}
+
+			result = system->setSoftwareChannels(100);		// Allow 100 software mixed voices to be audible at once.
+			FMODCHECK(result);
+
+			result = system->setHardwareChannels(32);	// Require the soundcard to have at least 32 2D and 3D hardware voices, and clamp it to using 64 if it has more than this.
+			FMODCHECK(result);
+
+			result = system->init(200, FMOD_INIT_NORMAL, 0);
+			FMODCHECK(result);
+
+			soundKey = 0;
+			channelKey = 0;
+
+			cl("Initialized FMOD %08x\n", FMOD_VERSION);
+		};
+
+		inline int loadSound(char* file, int key = -1, unsigned int flags = FMOD_DEFAULT){
+			cl("Loading Audio: %s ", file);
+			if (file == NULL || strlen(file) < 1 || system == NULL){
+				throw KLGLException("");
+			}
+			system->createSound(file, flags, 0, &sound[(key = -1 ? soundKey : key)]);
+			soundKey++;
+			cl("[OK]\n");
+			return soundKey-1;
+		}
+
+	private:
+		inline void FMODCHECK(FMOD_RESULT result)
+		{
+			if (result != FMOD_OK){
+				printf("FMOD error! (%d) %s\n", result, FMOD_ErrorString(result));
+				exit(-1);
+			}
+		}
+	};
+
 	class Environment
 	{
 	public:
 
 		//
 		KLGL *gcProxy;
+		Audio *audioProxy;
 
 		// Lets keep our main() clean by declearing all state logic here :D
 		int mode;
@@ -87,6 +146,7 @@ namespace NeoPlatformer{
 
 		// Map data
 		Character* character;
+		//Enemy* enemys[64];
 		list<Platform>* platforms;
 		char *mapData;
 		char *mapMask;
@@ -146,7 +206,7 @@ namespace NeoPlatformer{
 	{
 	public:
 		// Enviroment pointer
-		Environment envPtr;
+		Environment *envPtr;
 
 		// Players profile(score, lvl, ammo, etc)
 		int score;
@@ -195,7 +255,21 @@ namespace NeoPlatformer{
 		void right();
 		void rightUp();
 		void drag(Environment &env);
-		void comp(Environment &env);
+		void comp(Environment *env);
+	};
+
+	class Enemy : public ObjectInterface {
+	public:
+		// Enviroment pointer
+		Environment *envPtr;
+
+		int  collisionDetect; // -1 Left 0 None +1 Right
+
+		Enemy(float x, float y, int w, int h);
+		~Enemy();
+
+		void comp(Environment *env);
+		void patrol();
 	};
 
 	class Platform
@@ -218,7 +292,8 @@ namespace NeoPlatformer{
 		~Platform(){};
 		void scroll_normal();
 		void draw(KLGL* gc, Environment* env, KLGLSprite* sprite);
-		CollisionType checkCollision(Environment &env);
+		CollisionType checkCollision(Environment &env, list<Platform>::iterator platformData);
+		int checkOverheadSlope(list<Platform>::iterator platformData);
 	private:
 	};
 

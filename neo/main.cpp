@@ -5,8 +5,10 @@
 
 #ifdef KLGLENV64
 #pragma comment(lib,"kami64.lib")
+#pragma comment(lib,"fmodex64_vc.lib")
 #else
 #pragma comment(lib,"kami.lib")
+#pragma comment(lib,"fmodex_vc.lib")
 #endif
 
 using namespace klib;
@@ -20,6 +22,7 @@ int main(){
 	char textBuffer[4096] = {};
 	bool quit = false, internalTimer = false, mapScroll = false;
 	int frame = 0,fps = 0,cycle = 0, th_id = 0, nthreads = 0, qualityPreset = 0, shaderAlliterations = 0;
+	float tweenX = 0, tweenY = 0;
 	POINT mouseXY;
 	clock_t t0 = 0,t1 = 0,t2 = 0;
 	char wTitle[256] = {};
@@ -30,19 +33,31 @@ int main(){
 	EnvLoaderThread* mapLoader;
 	Point<int> *stars[1000] = {};
 
+	tween::Tweener tweener;
+	tween::TweenerParam tween1(2000, tween::EXPO, tween::EASE_IN_OUT);
+	tween1.addProperty(&tweenX, 350);
+	tween1.addProperty(&tweenY, 100);
+	tween1.setRepeatWithReverse(100, true);
+	tweener.addTween(&tween1);
+
+	// Audio
+	Audio *audio = NULL;
+
 	/*
 	* Init
 	*/
 	KLGL *gc;
-	KLGLTexture *charmapTexture, *titleTexture, *loadingTexture, *userInterfaceTexture;
+	KLGLTexture *charmapTexture, *titleTexture, *loadingTexture, *userInterfaceTexture, *testTexture, *fmodLogoTexture;
 	KLGLSprite *userInterface;
 	KLGLFont *font;
-	KLGLSound *soundTest;
 
 	try {
 
 		// Init display
 		gc = new KLGL("Neo", APP_SCREEN_W, APP_SCREEN_H, 60, false, 2, 2);
+
+		// Init sound
+		audio = new Audio();
 
 		// Loading screen and menu buffer
 		loadingTexture = new KLGLTexture("common/loading.png");
@@ -50,42 +65,39 @@ int main(){
 		Loading(gc, loadingTexture, titleTexture);
 
 		// Configuration values
-		internalTimer		= gc->config->GetBoolean("neo", "useInternalTimer", false);
+		internalTimer		= gc->config->GetBoolean("neo", "useInternalTimer", true);
 		qualityPreset		= gc->config->GetInteger("neo", "qualityPreset", 1);
 		shaderAlliterations	= gc->config->GetInteger("neo", "blurAlliterations", 4);
 
 		// Textures
 		charmapTexture  = new KLGLTexture("common/internalfont.png");
 		userInterfaceTexture = new KLGLTexture("common/ui.png");
+		testTexture = new KLGLTexture("common/tmp.png");
+		fmodLogoTexture = new KLGLTexture("common/fmod-logo-new.png");
 
 		userInterface = new KLGLSprite(userInterfaceTexture, 32, 32);
 
-		// Audio
-		soundTest = new KLGLSound;
-		//soundTest->open(NeoSoundServer);
-
 		// Fonts
 		font = new KLGLFont(charmapTexture->gltexture, charmapTexture->width, charmapTexture->height, 8, 8, -1);
+
+		// Audio
+		audio->loadSound("common/theme.ogg", 0, FMOD_LOOP_NORMAL);
+		audio->loadSound("common/music.ogg", 1, FMOD_LOOP_NORMAL);
+		audio->loadSound("common/jump.wav", 2, FMOD_LOOP_OFF);
+		audio->loadSound("common/hurt.wav", 3, FMOD_LOOP_OFF);
 
 		// Default shaders
 		gc->InitShaders(0, 0, 
 			"common/passthrough.vert",
 			"common/passthrough.frag"
-		);
+			);
 
 	}catch(KLGLException e){
 		quit = 1;
 		MessageBox(NULL, e.getMessage(), "KLGLException", MB_OK | MB_ICONERROR);
 	}
 
-	cl("\nNeo %s R%d", APP_VERSION, APP_BUILD_VERSION); 
-	/*luaopen_neo(gc->lua);
-	int luaStat = luaL_loadfile(gc->lua, "common/init.lua");
-	if ( luaStat==0 ) {
-		// execute Lua program
-		luaStat = lua_pcall(gc->lua, 0, LUA_MULTRET, 0);
-	}
-	LuaCheckError(gc->lua, luaStat);*/
+	cl("\nNeo %s R%d", APP_VERSION, APP_BUILD_VERSION);
 
 	if (quit){
 		MessageBox(NULL, "An important resource is missing or failed to load, check the console window _now_ for more details.", "Error", MB_OK | MB_ICONERROR);
@@ -94,17 +106,20 @@ int main(){
 #endif
 	}
 
+	audio->system->playSound(FMOD_CHANNEL_FREE, audio->sound[0], false, &audio->channel[0]);
+	audio->channel[0]->setVolume(0.5f);
+
 	while (!quit)
 	{
 		t0 = clock();
-		
-		if(PeekMessage( &gc->msg, NULL, 0, 0, PM_REMOVE)){
-			if(gc->msg.message == WM_QUIT){
+
+		if(PeekMessage( &gc->windowManager->wm->msg, NULL, 0, 0, PM_REMOVE)){
+			if(gc->windowManager->wm->msg.message == WM_QUIT){
 				quit = true;
-			}else if (gc->msg.message == WM_KEYUP){
+			}else if (gc->windowManager->wm->msg.message == WM_KEYUP){
 				switch(mode){
 				case GameMode::_INGAME:
-					switch (gc->msg.wParam){
+					switch (gc->windowManager->wm->msg.wParam){
 					case VK_LEFT:
 						gameEnv->character->leftUp();
 						break;
@@ -117,9 +132,9 @@ int main(){
 					}
 					break;
 				}
-			}else if (gc->msg.message == WM_KEYDOWN){
+			}else if (gc->windowManager->wm->msg.message == WM_KEYDOWN){
 				// Application wide events
-				switch (gc->msg.wParam){
+				switch (gc->windowManager->wm->msg.wParam){
 				case VK_ESCAPE:
 					PostQuitMessage(0);
 					break;
@@ -132,21 +147,21 @@ int main(){
 				switch(mode){
 				case GameMode::_MENU:
 					if(consoleInput){
-						if ((gc->msg.wParam>=32) && (gc->msg.wParam<=255) && (gc->msg.wParam != '|')) {
+						if ((gc->windowManager->wm->msg.wParam>=32) && (gc->windowManager->wm->msg.wParam<=255) && (gc->windowManager->wm->msg.wParam != '|')) {
 							if (strlen(inputBuffer) < 255) {
 								//cl("key: 0x%x\n", graphicsContext->msg.wParam);
 								char buf[3];
-								sprintf(buf, "%c\0", vktochar(gc->msg.wParam));
+								sprintf(buf, "%c\0", vktochar(gc->windowManager->wm->msg.wParam));
 								strcat(inputBuffer, buf);
 
 							}
-						} else if (gc->msg.wParam == VK_BACK) {
+						} else if (gc->windowManager->wm->msg.wParam == VK_BACK) {
 							if(strlen(inputBuffer) > 0){
 								inputBuffer[strlen(inputBuffer)-1]='\0';
 							}
-						} else if (gc->msg.wParam == VK_TAB) {
+						} else if (gc->windowManager->wm->msg.wParam == VK_TAB) {
 							inputBuffer[strlen(inputBuffer)]='\t';
-						} else if (gc->msg.wParam == VK_RETURN) {
+						} else if (gc->windowManager->wm->msg.wParam == VK_RETURN) {
 							if(strlen(inputBuffer) > 0){
 								if (strcmp(inputBuffer, "exit") == 0){
 									PostQuitMessage(0);
@@ -154,8 +169,8 @@ int main(){
 								}else{
 									/*int s = luaL_loadstring(gc->lua, inputBuffer);
 									if ( s==0 ) {
-										// execute Lua program
-										s = lua_pcall(gc->lua, 0, LUA_MULTRET, 0);
+									// execute Lua program
+									s = lua_pcall(gc->lua, 0, LUA_MULTRET, 0);
 									}
 									LuaCheckError(gc->lua, s);*/
 								}
@@ -168,7 +183,7 @@ int main(){
 					}
 					break;
 				case GameMode::_INGAME:
-					switch (gc->msg.wParam){
+					switch (gc->windowManager->wm->msg.wParam){
 					case VK_RETURN:
 						mode = GameMode::_MAPDESTROY;
 						break;
@@ -206,8 +221,8 @@ int main(){
 					break;
 				}
 			}else{
-				TranslateMessage(&gc->msg);
-				DispatchMessage(&gc->msg);
+				TranslateMessage(&gc->windowManager->wm->msg);
+				DispatchMessage(&gc->windowManager->wm->msg);
 			}
 		}else if (t0-t2 >= CLOCKS_PER_SEC){
 			fps = frame;
@@ -216,7 +231,7 @@ int main(){
 
 			// Title
 			sprintf(wTitle, "Neo - FPS: %d", fps);
-			SetWindowText(gc->hWnd, wTitle);
+			SetWindowText(gc->windowManager->wm->hWnd, wTitle);
 
 			// Update graphics quality
 			gc->BindShaders(1);
@@ -225,15 +240,19 @@ int main(){
 		}else if (t0-t1 >= CLOCKS_PER_SEC/gc->fps || !internalTimer){
 
 			GetCursorPos(&mouseXY);
-			ScreenToClient(gc->hWnd, &mouseXY);
+			ScreenToClient(gc->windowManager->wm->hWnd, &mouseXY);
+
+			audio->system->update();
 
 			switch(mode){
 			case GameMode::_MENU:											// ! Start menu
 
-				sprintf(textBuffer, "@CFFFFFF@D%s\n> %s%c", clBuffer, inputBuffer, (frame%16 <= 4 ? '_' : '\0'));
+				sprintf(textBuffer, "@CFFFFFF@DStats: %d\n\n%s\n> %s%c", tween1.repeat, clBuffer, inputBuffer, (frame%16 <= 4 ? '_' : '\0'));
 
 				// Update clock
 				t1 = clock();
+				//tween1.repeat = 1;
+				tweener.step(t0);
 
 				gc->OpenFBO(50, 0.0, 0.0, 80.0);
 				gc->OrthogonalStart();
@@ -255,11 +274,13 @@ int main(){
 					}
 					scrollOffset++;
 					gc->OrthogonalStart();
-					gc->Blit2D(titleTexture, 0, 0);
+					gc->Blit2D(testTexture, 40+tweenX, 120+int(cos((tweenY-50.0f)/25.0f)*120), tweenX, 1+(tweenY/100.0f));
 					gc->OrthogonalStart(gc->overSampleFactor);
 
 					// Draw console
-					font->Draw(8, 8, textBuffer);
+					font->Draw(0, 8, textBuffer);
+
+					gc->Blit2D(fmodLogoTexture, 8, gc->buffer.height-(8+fmodLogoTexture->height));
 				}
 				gc->OrthogonalEnd();
 				gc->Swap();
@@ -269,17 +290,17 @@ int main(){
 				cl("\nNew game...\n");
 				try{
 					// Shutdown any sound the menu mite be playing
-					//soundTest->close();
-					//soundTest->open(NeoSoundServer);
+					audio->channel[0]->stop();
 					// Initialize the game engine
 					gameEnv = new Environment();
 					gameEnv->gcProxy = gc;
+					gameEnv->audioProxy = audio;
 					// Pass-through our font
 					gameEnv->hudFont = font;
 					// Setup a thread to load and parse our map(if the map is large we want to be able to check its progress).
 					mapLoader = new EnvLoaderThread(gameEnv);
+
 					cl("Loading thread %d started.\n", GetThreadId(mapLoader->getHandle()));
-					//soundTest->close();
 
 					// Enter a tight loop of no return :D
 					while(mapLoader->status){
@@ -294,9 +315,9 @@ int main(){
 							font->Draw(8, 14, textBuffer);
 						}
 						gc->OrthogonalEnd();
-						SwapBuffers(gc->hDC);
+						SwapBuffers(gc->windowManager->wm->hDC);
 					}
-					
+
 					// Setup initial post quality
 					gc->BindShaders(1);
 					glUniform1i(glGetUniformLocation(gc->GetShaderID(1), "preset"), qualityPreset);
@@ -312,22 +333,13 @@ int main(){
 						stars[i]->y = rand()%(gameEnv->map.height*16+1);
 					}
 
+					audio->system->playSound(FMOD_CHANNEL_FREE, audio->sound[1], false, &audio->channel[0]);
+
 					mode = GameMode::_INGAME;
 				}catch(KLGLException e){
 					MessageBox(NULL, e.getMessage(), "KLGLException", MB_OK | MB_ICONERROR);
 					mode = GameMode::_MENU;
 				}
-
-				//envCallbackPtr = gameEnv;
-
-				//cl("Running user script common/map01.lua...\n");
-				//gameEnv->mapProg = file_contents("common/map01.lua");
-				/*luaStat = luaL_loadstring(gc->lua, gameEnv->mapProg);
-				if (luaStat == 0)
-				{
-					luaStat = lua_pcall(gc->lua, 0, LUA_MULTRET, 0);
-				}
-				gc->LuaCheckError(gc->lua, luaStat);*/
 
 				cl("\nGame created successfully.\n");
 
@@ -336,10 +348,16 @@ int main(){
 
 				cl("Unloading game...");
 				try{
+					// Audio
+					audio->channel[0]->stop();
+					// Destroy the game
 					delete gameEnv;
 					gc->UnloadShaders(1);
 					gc->UnloadShaders(2);
 					gc->UnloadShaders(3);
+
+					audio->system->playSound(FMOD_CHANNEL_FREE, audio->sound[0], false, &audio->channel[0]);
+					audio->channel[0]->setVolume(0.5f);
 				}catch(KLGLException e){
 					MessageBox(NULL, e.getMessage(), "KLGLException", MB_OK | MB_ICONERROR);
 					mode = GameMode::_MENU;
@@ -359,7 +377,8 @@ int main(){
 				// Debug info
 				if (KLGLDebug)
 				{
-					sprintf(textBuffer, "@CF8F8F8@D%s \n\nNeo\n-------------------------\n"\
+					sprintf(textBuffer, 
+						"@CF8F8F8@D%s \n\nNeo\n-------------------------\n"\
 						"Render FPS: %d\n"\
 						"       Syn: V%dT%d\n"\
 						"       Buf: %dx%d\n"\

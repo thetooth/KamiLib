@@ -9,10 +9,6 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
     <Filter Include="common">
       <UniqueIdentifier>{7c71bb79-5122-4954-b65c-2d1b12f4148b}</UniqueIdentifier>
     </Filter>
@@ -48,9 +44,6 @@
     </None>
     <None Include="common\tilemap.png">
       <Filter>common</Filter>
-    </None>
-    <None Include="icon1.ico">
-      <Filter>Resource Files</Filter>
     </None>
     <None Include="common\map01.smp">
       <Filter>common</Filter>
@@ -98,10 +91,6 @@
     <None Include="common\dither.frag">
       <Filter>common</Filter>
     </None>
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="neo.rc">
-      <Filter>Resource Files</Filter>
-    </ResourceCompile>
+    <None Include="Common\ReadMe.txt" />
   </ItemGroup>
 </Project>
