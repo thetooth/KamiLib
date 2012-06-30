@@ -211,7 +211,7 @@ namespace klib{
 			glDeleteFramebuffersEXT(1, &fbo[0]);
 		}
 
-		
+
 #ifdef APP_ENABLE_LUA
 		lua_close(lua);
 #endif
@@ -274,16 +274,16 @@ namespace klib{
 		windowManager->Swap();
 	}
 
-	void KLGL::GenFrameBuffer(GLuint& fbo, GLuint &fbo_texture, GLuint &fbo_depth) {
+	void KLGL::GenFrameBuffer(GLuint &fbo, GLuint &fbo_texture, GLuint &fbo_depth, int bufferWidth, int bufferHeight) {
+
+		if (bufferWidth == 0 || bufferHeight == 0){
+			bufferWidth = buffer.width;
+			bufferHeight = buffer.height;
+		}
 		// Depth Buffer
-		/*glGenRenderbuffersEXT(1, &fbo_depth); // Generate one render buffer and store the ID in fbo_depth  
-		glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, fbo_depth); // Bind the fbo_depth render buffer  
-		glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT, buffer.width, buffer.height); // Set the render buffer storage to be a depth component, with a width and height of the window  
-		glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fbo_depth); // Set the render buffer of this buffer to the depth buffer 
-		glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0); // Unbind the render buffer*/
 		glGenTextures(1, &fbo_depth);
 		glBindTexture(GL_TEXTURE_2D, fbo_depth);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, buffer.width, buffer.height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, bufferWidth, bufferHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -294,7 +294,7 @@ namespace klib{
 		// Texture Buffer
 		glGenTextures(1, &fbo_texture);
 		glBindTexture(GL_TEXTURE_2D, fbo_texture);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, buffer.width, buffer.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bufferWidth, bufferHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -304,7 +304,7 @@ namespace klib{
 
 		glGenFramebuffersEXT(1, &fbo);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo);
-		
+
 		glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, fbo_depth);
 		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, fbo_texture, 0);
 		glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
@@ -324,7 +324,7 @@ namespace klib{
 		}
 	}
 
-	void KLGL::Blit2D(KLGLTexture* texture, int x, int y, float rotation, float scale, KLGLColor vcolor){
+	void KLGL::Blit2D(KLGLTexture* texture, int x, int y, float rotation, float scale, KLGLColor vcolor, Rect<float> mask){
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, texture->gltexture);
 
@@ -353,10 +353,10 @@ namespace klib{
 			glBegin(GL_QUADS);
 			{
 				vcolor.Set();
-				glTexCoord2d(0.0,0.0); glVertex2i(x,				y);
-				glTexCoord2d(1.0,0.0); glVertex2i(x+texture->width,	y);
-				glTexCoord2d(1.0,1.0); glVertex2i(x+texture->width,	y+texture->height);
-				glTexCoord2d(0.0,1.0); glVertex2i(x,				y+texture->height);
+				glTexCoord2d(0.0+mask.x,	0.0+mask.y);		glVertex2i(x+mask.x,						y+mask.y);
+				glTexCoord2d(1.0+mask.width,0.0+mask.y);		glVertex2i(x+(texture->width+mask.width),	y+mask.y);
+				glTexCoord2d(1.0+mask.width,1.0+mask.height);	glVertex2i(x+(texture->width+mask.width),	y+(texture->height+mask.height));
+				glTexCoord2d(0.0+mask.x,	1.0+mask.height);	glVertex2i(x+mask.x,						y+(texture->height+mask.height));
 			}
 			glEnd();
 		}
@@ -365,29 +365,28 @@ namespace klib{
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
-	void KLGL::BlitSprite2D(KLGLSprite* sprite, int x, int y, int row, int col, bool managed){
-		if (managed)
-		{
+	void KLGL::BlitSprite2D(KLGLSprite* sprite, int x, int y, int row, int col, bool managed, Rect<int> mask){
+		if (managed){
 			glEnable(GL_TEXTURE_2D);
 			glBindTexture(GL_TEXTURE_2D, sprite->texturePtr->gltexture);
 			glBegin(GL_QUADS);
 		}
 		{
 			//calculate how wide each character is in term of texture coords
-			GLfloat dtx = (float)sprite->swidth/(float)sprite->texturePtr->width;
-			GLfloat dty = (float)sprite->sheight/(float)sprite->texturePtr->height;
+			GLfloat dtx = float(sprite->swidth+mask.width)/float(sprite->texturePtr->width);
+			GLfloat dty = float(sprite->sheight+mask.height)/float(sprite->texturePtr->height);
 
 			// find the texture coords
-			GLfloat tx = (float)(col * sprite->swidth)/(float)sprite->width;
-			GLfloat ty = (float)(row * sprite->sheight)/(float)sprite->height;
+			GLfloat tx = float((col * sprite->swidth)+mask.width)/float(sprite->width);
+			GLfloat ty = float((row * sprite->sheight)+mask.height)/float(sprite->height);
 
-			glTexCoord2f(tx,		ty+dty);	glVertex2i(x,				y+sprite->sheight);
-			glTexCoord2f(tx+dtx,	ty+dty);	glVertex2i(x+sprite->swidth,	y+sprite->sheight);
-			glTexCoord2f(tx+dtx,	ty);		glVertex2i(x+sprite->swidth,	y);
-			glTexCoord2f(tx,		ty);		glVertex2i(x,				y);
+			glTexCoord2f(tx,		ty);		glVertex2i(x+mask.x,					y+mask.y);
+			glTexCoord2f(tx+dtx,	ty);		glVertex2i(x+sprite->swidth+mask.width,	y+mask.y);
+			glTexCoord2f(tx+dtx,	ty+dty);	glVertex2i(x+sprite->swidth+mask.width,	y+sprite->sheight+mask.height);
+			glTexCoord2f(tx,		ty+dty);	glVertex2i(x+mask.x,					y+sprite->sheight+mask.height);
+
 		}
-		if (managed)
-		{
+		if (managed){
 			glEnd();
 			glBindTexture(GL_TEXTURE_2D, 0);
 		}
@@ -445,7 +444,7 @@ namespace klib{
 		const char* sData;
 		shader_id[shaderProgId] = glCreateProgram();
 
-		#define sLoad(x) (isString ? x : file_contents(const_cast<char*>(x)))
+#define sLoad(x) (isString ? x : file_contents(const_cast<char*>(x)))
 
 		sData = sLoad(vsFile);
 		if (vsFile != NULL && sData != NULL){
@@ -467,7 +466,7 @@ namespace klib{
 			cl("Compiling %s\n", tsFile);
 			shader_tp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_ARB_tessellation_shader, sData);
 		}
-		#undef sLoad
+#undef sLoad
 
 		cl("Linking...", vsFile);
 		glLinkProgram(shader_id[shaderProgId]);
@@ -607,7 +606,7 @@ namespace klib{
 	}
 
 	KLGLFont::KLGLFont(GLuint init_texture, GLuint init_m_width, GLuint init_m_height, GLuint init_c_width, GLuint init_c_height, int init_extended) : 
-	c_texture(init_texture), m_width(init_m_width), m_height(init_m_height), c_width(init_c_width), c_height(init_c_height), extended(init_extended)
+		c_texture(init_texture), m_width(init_m_width), m_height(init_m_height), c_width(init_c_width), c_height(init_c_height), extended(init_extended)
 	{
 		//set the color to render the font
 		color = new KLGLColor(255, 255, 255);
@@ -654,7 +653,7 @@ namespace klib{
 			lastStringLen = stringLen;
 		}
 		sbtext[stringLen] = '\0';
-		
+
 		wcstombs(sbtext, text, stringLen);
 		for (char* c = sbtext; *c != 0; c++,cp++) {
 			// Per-character logic
@@ -672,7 +671,7 @@ namespace klib{
 					if (token == NULL){
 						token = (char*)malloc(6);
 					}
-					
+
 					memset(token, 0, 6);
 					strcpy(token, substr(sbtext, cp+2, 6));
 					c += 7;
@@ -731,7 +730,7 @@ namespace klib{
 				glTexCoord2f(tx+dtx,	ty+dty);	glVertex2i(x+cx+cw,		y+cy+ch);
 				glTexCoord2f(tx+dtx,	ty);		glVertex2i(x+cx+cw,		y+cy);
 				glTexCoord2f(tx,		ty);		glVertex2i(x+cx,		y+cy);
-				
+
 			}
 		}
 		glEnd();

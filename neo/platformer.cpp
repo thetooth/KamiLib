@@ -95,13 +95,13 @@ namespace NeoPlatformer{
 		scroll.y = scroll_real.y >> FPM;
 
 		// Sanitize timer, if were delayed any more then 500ms theres something wrong!
-		dt = min(dt, 0.5);
+		dt = min(dt, 0.5f);
 
 		// Multiply the timer by the dtMulti modifier, this should produce a slow motion effect for numbers < 1.0
-		dt = max(dt*dtMulti, 0.00005);
+		dt = max(dt*dtMulti, 0.00005f);
 
 		// Update the character based on velocity, gravity and FPU errors.
-		character->comp(&*this);
+		character->comp(this);
 
 		// Check for collisions and set character state.
 		for(list<Platform>::iterator e = platforms->begin(); e != platforms->end(); e++){
@@ -134,14 +134,10 @@ namespace NeoPlatformer{
 		{
 			// Blur shader data
 			float relHealth = min(-character->health, 1000);
-			/*gc->BindShaders(3);
-			glUniform1f(glGetUniformLocation(gc->GetShaderID(3), "time"), gc->shaderClock);
-			glUniform2f(glGetUniformLocation(gc->GetShaderID(3), "BUFFER_EXTENSITY"), gc->window.width*gc->overSampleFactor, gc->window.height*gc->overSampleFactor);
-			glUniform1f(glGetUniformLocation(gc->GetShaderID(3), "BLUR_BIAS"), relHealth/500000.0f);
-			gc->BindMultiPassShader(3, 4);*/
 			gc->Rectangle2D(0, 0, gc->window.width, gc->window.height, KLGLColor(200, 0, 0, (relHealth/1000.0f)*255));
 			gc->Blit2D(gameoverTexture, 0, 0);
 		}
+
 		gc->OrthogonalStart(gc->overSampleFactor);
 		if (character->health <= 0 && gc->shaderClock >= 500 && gc->shaderClock <= 1000){
 
@@ -161,7 +157,6 @@ namespace NeoPlatformer{
 			}
 			hudFont->Draw(offset-(16*8), 16, "@DSCORE: 00000");
 		}
-		gc->OrthogonalEnd();
 	}
 
 	void Environment::drawMap(KLGL* gc){
@@ -780,7 +775,7 @@ namespace NeoPlatformer{
 		if(env.character == NULL){
 			throw KLGLException("Character does not exist!");
 			return C_NONE;
-		}else if (env.character->health < 0){
+		}else if (env.character->health <= 0){
 			return C_NONE;
 		}
 

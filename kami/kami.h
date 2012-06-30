@@ -225,19 +225,19 @@ namespace klib{
 		void OpenFBO(float fov = 0.0f, float eyex = 0.0f, float eyey = 0.0f, float eyez = 0.0f);
 		// Render FBO to the display and reset
 		void Swap();
-		void GenFrameBuffer(GLuint& fbo, GLuint &fbtex, GLuint &fbo_depth);
+		void GenFrameBuffer(GLuint& fbo, GLuint &fbtex, GLuint &fbo_depth, int bufferWidth = 0, int bufferHeight = 0);
 		void Resize(){
 			//windowResize(hWnd);
 		}
 		// Blit
-		void Blit2D(KLGLTexture* texture, int x, int y, float rotation = 0.0f, float scale = 1.0f, KLGLColor vcolor = KLGLColor(255, 255, 255, 255));
-		void BlitSprite2D(KLGLSprite* sprite, int x, int y, int row, int col, bool managed = 1);
-		void BlitSprite2D(KLGLSprite* sprite, int x, int y, int index = 0, bool managed = 1){
+		void Blit2D(KLGLTexture* texture, int x, int y, float rotation = 0.0f, float scale = 1.0f, KLGLColor vcolor = KLGLColor(255, 255, 255, 255), Rect<float> mask = Rect<float>(0,0,0,0));
+		void BlitSprite2D(KLGLSprite* sprite, int x, int y, int row, int col, bool managed = 1, Rect<int> mask = Rect<int>(0,0,0,0));
+		void BlitSprite2D(KLGLSprite* sprite, int x, int y, int index = 0, bool managed = 1, Rect<int> mask = Rect<int>(0,0,0,0)){
 			int length = sprite->width/sprite->swidth;
 			int col = index%length;
 			int row = (index-col)/length;
 
-			BlitSprite2D(sprite, x, y, row, col, managed);
+			BlitSprite2D(sprite, x, y, row, col, managed, mask);
 		};
 		void Tile2D(KLGLTexture* texture, int x, int y, int w, int h);
 		void Rectangle2D(int x, int y, int width, int height, KLGLColor vcolor = KLGLColor(255, 0, 0, 255));

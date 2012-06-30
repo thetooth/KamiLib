@@ -2,13 +2,16 @@
 
 #include "masternoodles.h"
 #include "platformer.h"
+#include "console.h"
 
 #ifdef KLGLENV64
 #pragma comment(lib,"kami64.lib")
 #pragma comment(lib,"fmodex64_vc.lib")
+#pragma comment(lib,"UI64.lib")
 #else
 #pragma comment(lib,"kami.lib")
 #pragma comment(lib,"fmodex_vc.lib")
+#pragma comment(lib,"UI.lib")
 #endif
 
 using namespace klib;
@@ -22,18 +25,25 @@ int main(){
 	char textBuffer[4096] = {};
 	bool quit = false, internalTimer = false, mapScroll = false;
 	int frame = 0,fps = 0,cycle = 0, th_id = 0, nthreads = 0, qualityPreset = 0, shaderAlliterations = 0;
-	float tweenX = 0, tweenY = 0;
+	float tweenX = 0, tweenY = 0, titleFade = 0;
 	POINT mouseXY;
-	clock_t t0 = 0,t1 = 0,t2 = 0;
+	clock_t t0 = clock(),t1 = 0,t2 = 0;
 	char wTitle[256] = {};
 
 	enum GameMode {_MENU, _MAPLOAD, _MAPDESTROY, _INGAME};
-	int mode = 0;
+	int mode = 0, paused = 0;
 	Environment *gameEnv;
 	EnvLoaderThread* mapLoader;
 	Point<int> *stars[1000] = {};
 
+	Console *console;
+	UIDialog *dialog;
+
 	tween::Tweener tweener;
+	tween::TweenerParam titleFaderTween(2000, tween::EXPO, tween::EASE_OUT);
+	titleFaderTween.addProperty(&titleFade, 255);
+	tweener.addTween(&titleFaderTween);
+
 	tween::TweenerParam tween1(2000, tween::EXPO, tween::EASE_IN_OUT);
 	tween1.addProperty(&tweenX, 350);
 	tween1.addProperty(&tweenY, 100);
@@ -47,8 +57,8 @@ int main(){
 	* Init
 	*/
 	KLGL *gc;
-	KLGLTexture *charmapTexture, *titleTexture, *loadingTexture, *userInterfaceTexture, *testTexture, *fmodLogoTexture;
-	KLGLSprite *userInterface;
+	KLGLTexture *charmapTexture, *titleTexture, *loadingTexture, *userInterfaceTexture, *testTexture, *startupSplash;
+	KLGLSprite *uiSprites;
 	KLGLFont *font;
 
 	try {
@@ -60,9 +70,9 @@ int main(){
 		audio = new Audio();
 
 		// Loading screen and menu buffer
-		loadingTexture = new KLGLTexture("common/loading.png");
+		startupSplash = new KLGLTexture("common/startup.png");
 		titleTexture = new KLGLTexture("common/title.png");
-		Loading(gc, loadingTexture, titleTexture);
+		Loading(gc, startupSplash, titleTexture);
 
 		// Configuration values
 		internalTimer		= gc->config->GetBoolean("neo", "useInternalTimer", true);
@@ -73,9 +83,14 @@ int main(){
 		charmapTexture  = new KLGLTexture("common/internalfont.png");
 		userInterfaceTexture = new KLGLTexture("common/ui.png");
 		testTexture = new KLGLTexture("common/tmp.png");
-		fmodLogoTexture = new KLGLTexture("common/fmod-logo-new.png");
+		loadingTexture = new KLGLTexture("common/loading.png");
 
-		userInterface = new KLGLSprite(userInterfaceTexture, 32, 32);
+		// UI
+		uiSprites = new KLGLSprite(userInterfaceTexture, 32, 32);
+		dialog = new UIDialog(gc, "common/UI_Interface.png");
+		dialog->bgColor = new KLGLColor(53, 56, 70, 255);
+		dialog->pos.width = 512;
+		dialog->pos.height = 256;
 
 		// Fonts
 		font = new KLGLFont(charmapTexture->gltexture, charmapTexture->width, charmapTexture->height, 8, 8, -1);
@@ -85,6 +100,9 @@ int main(){
 		audio->loadSound("common/music.ogg", 1, FMOD_LOOP_NORMAL);
 		audio->loadSound("common/jump.wav", 2, FMOD_LOOP_OFF);
 		audio->loadSound("common/hurt.wav", 3, FMOD_LOOP_OFF);
+
+		// Game Console
+		console = new Console(4046);
 
 		// Default shaders
 		gc->InitShaders(0, 0, 
@@ -97,7 +115,7 @@ int main(){
 		MessageBox(NULL, e.getMessage(), "KLGLException", MB_OK | MB_ICONERROR);
 	}
 
-	cl("\nNeo %s R%d", APP_VERSION, APP_BUILD_VERSION);
+	cl("\nNeo %s R%d", NEO_VERSION, APP_BUILD_VERSION);
 
 	if (quit){
 		MessageBox(NULL, "An important resource is missing or failed to load, check the console window _now_ for more details.", "Error", MB_OK | MB_ICONERROR);
@@ -108,6 +126,10 @@ int main(){
 
 	audio->system->playSound(FMOD_CHANNEL_FREE, audio->sound[0], false, &audio->channel[0]);
 	audio->channel[0]->setVolume(0.5f);
+
+	while (clock()-t0 < 5000 && !KLGLDebug){
+		// Ain't no thing
+	}
 
 	while (!quit)
 	{
@@ -167,12 +189,7 @@ int main(){
 									PostQuitMessage(0);
 									quit = true;
 								}else{
-									/*int s = luaL_loadstring(gc->lua, inputBuffer);
-									if ( s==0 ) {
-									// execute Lua program
-									s = lua_pcall(gc->lua, 0, LUA_MULTRET, 0);
-									}
-									LuaCheckError(gc->lua, s);*/
+									console->input(inputBuffer);
 								}
 							}else{
 								cl("-- RETURN\n", 13);
@@ -207,6 +224,9 @@ int main(){
 						break;
 					case VK_M:
 						mapScroll = !mapScroll;
+						break;
+					case VK_P:
+						paused = !paused;
 						break;
 					case VK_LEFT:
 						gameEnv->character->left();
@@ -247,11 +267,10 @@ int main(){
 			switch(mode){
 			case GameMode::_MENU:											// ! Start menu
 
-				sprintf(textBuffer, "@CFFFFFF@DStats: %d\n\n%s\n> %s%c", tween1.repeat, clBuffer, inputBuffer, (frame%16 <= 4 ? '_' : '\0'));
+				sprintf(textBuffer, "@CFFFFFF@D%s\n\n%s\n> %s%c", clBuffer, console->buffer, inputBuffer, (frame%16 <= 4 ? '_' : '\0'));
 
 				// Update clock
 				t1 = clock();
-				//tween1.repeat = 1;
 				tweener.step(t0);
 
 				gc->OpenFBO(50, 0.0, 0.0, 80.0);
@@ -269,18 +288,14 @@ int main(){
 					{
 						for (int x = 0; x-1 <= gc->buffer.width/32; x++)
 						{
-							gc->BlitSprite2D(userInterface, (x*32)-scrollOffset, (y*32)-scrollOffset, 0);
+							gc->BlitSprite2D(uiSprites, (x*32)-scrollOffset, (y*32)-scrollOffset, 0);
 						}
 					}
 					scrollOffset++;
-					gc->OrthogonalStart();
-					gc->Blit2D(testTexture, 40+tweenX, 120+int(cos((tweenY-50.0f)/25.0f)*120), tweenX, 1+(tweenY/100.0f));
-					gc->OrthogonalStart(gc->overSampleFactor);
 
 					// Draw console
 					font->Draw(0, 8, textBuffer);
-
-					gc->Blit2D(fmodLogoTexture, 8, gc->buffer.height-(8+fmodLogoTexture->height));
+					gc->Rectangle2D(0, 0, gc->buffer.width, gc->buffer.height, KLGLColor(0, 0, 0, 255-titleFade));
 				}
 				gc->OrthogonalEnd();
 				gc->Swap();
@@ -369,119 +384,128 @@ int main(){
 				break;
 			case GameMode::_INGAME:											// ! Main game test environment
 
-				// Compute game physics and update events
-				gameEnv->dt = (t0 - t1)/double(CLOCKS_PER_SEC);
-				//gameEnv->dtMulti = mouseXY.x/1000.0;
-				gameEnv->comp(gc, (mapScroll ? mouseXY.x - gc->buffer.width / 2 : 0), (mapScroll ? mouseXY.y - gc->buffer.height / 2 : 0));
-
-				// Debug info
-				if (KLGLDebug)
-				{
-					sprintf(textBuffer, 
-						"@CF8F8F8@D%s \n\nNeo\n-------------------------\n"\
-						"Render FPS: %d\n"\
-						"       Syn: V%dT%d\n"\
-						"       Buf: %dx%d\n"\
-						"       Acu: %Lf (less is more)\n\n"\
-						"Player Pos: %f,%f\n"\
-						"       Vel: %f,%f\n\n"\
-						"Map    Pos: %d,%d\n"\
-						"       Rel: %d,%d >> %d\n"\
-						"       Tar: %d,%d >> %d\n\n"\
-						"Debug  Act: %d\n"\
-						"       DB0: %d\n"\
-						"       DB1: %d\n", 
-						clBuffer,
-						fps,
-						gc->vsync,
-						internalTimer,
-						APP_SCREEN_W,
-						APP_SCREEN_H,
-						gameEnv->dt,
-						gameEnv->character->pos.x, 
-						gameEnv->character->pos.y, 
-						gameEnv->character->vel.x,
-						gameEnv->character->vel.y,
-						gameEnv->scroll.x, 
-						gameEnv->scroll.y,
-						gameEnv->target.x,
-						gameEnv->target.y, FPM,
-						gameEnv->scroll_real.x,
-						gameEnv->scroll_real.y, FPM,
-						KLGLDebug,
-						gameEnv->debugflags.x,
-						gameEnv->debugflags.y
-						);
-				}
 				// Update clock
+				gameEnv->dt = (t0 - t1)/float(CLOCKS_PER_SEC);
 				t1 = clock();
 
 				// BEGIN DRAWING!
 				gc->OpenFBO(50, 0.0, 0.0, 80.0);
 				gc->OrthogonalStart();
 				{
-					// Background
-					int horizon = max(gc->window.width, gc->window.height+(-gameEnv->scroll.y));
-					int stratosphere = min(0, -gameEnv->scroll.y);
-					glBegin(GL_QUADS);
-					glColor3ub(71,84,93);
-					glVertex2i(0, stratosphere); glVertex2i(gc->window.width, stratosphere);
-					glColor3ub(214,220,214);
-					glVertex2i(gc->window.width, horizon); glVertex2i(0, horizon);
-					glEnd();
+					if (paused){
+						glBindTexture(GL_TEXTURE_2D, gc->fbo_texture[1]);
+						glBegin(GL_QUADS);
+						glTexCoord2d(0.0,0.0); glVertex2i(0,				0);
+						glTexCoord2d(1.0,0.0); glVertex2i(gc->window.width,	0);
+						glTexCoord2d(1.0,1.0); glVertex2i(gc->window.width,	gc->window.height);
+						glTexCoord2d(0.0,1.0); glVertex2i(0,				gc->window.height);
+						glEnd();
+						glBindTexture(GL_TEXTURE_2D, 0);
+						// Pause menu
+						dialog->comp();
+						dialog->pos.x = (gc->window.width/2)-(dialog->pos.width/2);
+						dialog->pos.y = (gc->window.height/2)-(dialog->pos.height/2);
+						dialog->draw();
 
-					// Barell rotation
-					//glTranslatef(gc->window.width/gc->scaleFactor, gc->window.height/gc->scaleFactor, 0.0f);
-					//glRotatef(mouseXY.x/10.0f, 0.0f, 0.0f, 1.0f );
-					//glTranslatef(-gc->window.width/gc->scaleFactor, -gc->window.height/gc->scaleFactor, 0.0f);
 
-					// Stars
-					for (int i = 0; i < 100; i++)
-					{
-						int x = (stars[i]->x-240)-(gameEnv->scroll.x/6);
-						int y = (stars[i]->y-240)-(gameEnv->scroll.y/6);
-						if(x < 0 || x > APP_SCREEN_W || y < 0 || y > APP_SCREEN_H){
-							continue;
+					}else{
+						// Compute game physics and update events
+						gameEnv->comp(gc, (mapScroll ? mouseXY.x - gc->buffer.width / 2 : 0), (mapScroll ? mouseXY.y - gc->buffer.height / 2 : 0));
+
+						// Debug info
+						if (KLGLDebug)
+						{
+							sprintf(textBuffer, 
+								"@CF8F8F8@DNeo\n-------------------------\n"\
+								"Render FPS: %d\n"\
+								"       Syn: V%dT%d\n"\
+								"       Buf: %dx%d\n"\
+								"       Acu: %f (less is more)\n\n"\
+								"Player Pos: %f,%f\n"\
+								"       Vel: %f,%f\n\n"\
+								"Map    Pos: %d,%d\n"\
+								"       Rel: %d,%d >> %d\n"\
+								"       Tar: %d,%d >> %d\n\n"\
+								"Debug  Act: %d\n"\
+								"       DB0: %d\n"\
+								"       DB1: %d\n", 
+								fps,
+								gc->vsync,
+								internalTimer,
+								APP_SCREEN_W,
+								APP_SCREEN_H,
+								gameEnv->dt,
+								gameEnv->character->pos.x, 
+								gameEnv->character->pos.y, 
+								gameEnv->character->vel.x,
+								gameEnv->character->vel.y,
+								gameEnv->scroll.x, 
+								gameEnv->scroll.y,
+								gameEnv->target.x,
+								gameEnv->target.y, FPM,
+								gameEnv->scroll_real.x,
+								gameEnv->scroll_real.y, FPM,
+								KLGLDebug,
+								gameEnv->debugflags.x,
+								gameEnv->debugflags.y
+								);
 						}
-						gc->Rectangle2D(x, y, 1, 1, KLGLColor(255, 255, 255, 127));
-					}
 
-					// Reset pallet
-					KLGLColor(255, 255, 255, 255).Set();
+						// Background
+						int horizon = max(gc->window.width, gc->window.height+(-gameEnv->scroll.y));
+						int stratosphere = min(0, -gameEnv->scroll.y);
+						glBegin(GL_QUADS);
+						glColor3ub(71,84,93);
+						glVertex2i(0, stratosphere); glVertex2i(gc->window.width, stratosphere);
+						glColor3ub(214,220,214);
+						glVertex2i(gc->window.width, horizon); glVertex2i(0, horizon);
+						glEnd();
 
-					// Cloud
-					gc->Blit2D(gameEnv->backdropTexture, (APP_SCREEN_W/2)-(gameEnv->scroll.x/4), (APP_SCREEN_H/3)-(gameEnv->scroll.y/4));
+						// Barell rotation
+						//glTranslatef(gc->window.width/gc->scaleFactor, gc->window.height/gc->scaleFactor, 0.0f);
+						//glRotatef(mouseXY.x/10.0f, 0.0f, 0.0f, 1.0f );
+						//glTranslatef(-gc->window.width/gc->scaleFactor, -gc->window.height/gc->scaleFactor, 0.0f);
 
-					/*glTranslatef(gc->window.width/2.0f, gc->window.height/2.0f, 0.0f);
-					glScalef(mouseXY.y/100.0f, mouseXY.y/100.0f, 1.0f);
-					glTranslatef(-gc->window.width/2.0f, -gc->window.height/2.0f, 0.0f);*/
+						// Stars
+						for (int i = 0; i < 100; i++)
+						{
+							int x = (stars[i]->x-240)-(gameEnv->scroll.x/6);
+							int y = (stars[i]->y-240)-(gameEnv->scroll.y/6);
+							if(x < 0 || x > APP_SCREEN_W || y < 0 || y > APP_SCREEN_H){
+								continue;
+							}
+							gc->Rectangle2D(x, y, 1, 1, KLGLColor(255, 255, 255, 127));
+						}
 
-					// Draw Map
-					gameEnv->drawMap(gc);
+						// Reset pallet
+						KLGLColor(255, 255, 255, 255).Set();
 
-					// Draw Player
-					gameEnv->character->draw(gameEnv, gc, gameEnv->mapSpriteSheet, frame);
+						// Cloud
+						gc->Blit2D(gameEnv->backdropTexture, (APP_SCREEN_W/2)-(gameEnv->scroll.x/4), (APP_SCREEN_H/3)-(gameEnv->scroll.y/4));
 
-					/*glTranslatef(gc->window.width/2.0f, gc->window.height/2.0f, 0.0f);
-					glScalef(-mouseXY.y/100.0f, -mouseXY.y/100.0f, 1.0f);
-					glTranslatef(-gc->window.width/2.0f, -gc->window.height/2.0f, 0.0f);*/
+						// Draw Map
+						gameEnv->drawMap(gc);
 
-					// Master post shader data
-					gc->BindShaders(1);
-					glUniform1f(glGetUniformLocation(gc->GetShaderID(1), "time"), gc->shaderClock);
-					glUniform2f(glGetUniformLocation(gc->GetShaderID(1), "BUFFER_EXTENSITY"), gc->window.width*gc->scaleFactor, gc->window.height*gc->scaleFactor);
-					gc->BindMultiPassShader(1, 1, false);
-					gc->UnbindShaders();
+						// Draw Player
+						gameEnv->character->draw(gameEnv, gc, gameEnv->mapSpriteSheet, frame);
 
-					// HUD, Score, Health, etc
-					gameEnv->drawHUD(gc);
+						// Master post shader data
+						gc->BindShaders(1);
+						glUniform1f(glGetUniformLocation(gc->GetShaderID(1), "time"), gc->shaderClock);
+						glUniform2f(glGetUniformLocation(gc->GetShaderID(1), "BUFFER_EXTENSITY"), gc->window.width*gc->scaleFactor, gc->window.height*gc->scaleFactor);
+						gc->BindMultiPassShader(1, 1, false);
+						gc->UnbindShaders();
 
-					if (KLGLDebug)
-					{
-						gc->OrthogonalStart(gc->overSampleFactor);
-						font->Draw(8, 14, textBuffer);
-						sprintf(textBuffer, "@CFFFFFF@D%c", 16);
-						font->Draw(mouseXY.x, mouseXY.y, textBuffer);
+						// HUD, Score, Health, etc
+						gameEnv->drawHUD(gc);
+
+						if (KLGLDebug)
+						{
+							gc->OrthogonalStart(gc->overSampleFactor);
+							font->Draw(8, 14, textBuffer);
+							sprintf(textBuffer, "@CFFFFFF@D%c", 16);
+							font->Draw(mouseXY.x, mouseXY.y, textBuffer);
+						}
 					}
 				}
 				gc->OrthogonalEnd();

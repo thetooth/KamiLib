@@ -158,6 +158,7 @@ namespace klib {
 		~Win32WM();
 
 		void _swap();
+		void clientResize(int nWidth, int nHeight);
 	};
 
 	class Win32Resource {

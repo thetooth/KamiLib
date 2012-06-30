@@ -3,11 +3,27 @@
 namespace klib {
 	LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
+		HKEY hKey;
+		WINDOWPLACEMENT pos;
+		LONG res;
 		switch (message){
 		case WM_CREATE:
+			res = RegOpenKey(HKEY_CURRENT_USER, TEXT("Software\\Ameoto\\Neo"), &hKey);
+
+			if(res == ERROR_SUCCESS){
+				pos.length = sizeof(WINDOWPLACEMENT);
+				res = RegQueryValueEx(hKey, TEXT("windowPlacement"), NULL, NULL, (LPBYTE)&pos, NULL);
+				//SetWindowPlacement(hWnd, &pos);
+				RegCloseKey(hKey);
+			}
 			break;
 		case WM_CLOSE:
 		case WM_DESTROY:
+			pos.length = sizeof(WINDOWPLACEMENT);
+			GetWindowPlacement(hWnd, &pos);
+			RegCreateKey(HKEY_CURRENT_USER, TEXT("Software\\Ameoto\\Neo"), &hKey);
+			RegSetValueEx(hKey, TEXT("windowPlacement"), NULL, REG_BINARY, (BYTE*)&pos, sizeof(WINDOWPLACEMENT));
+			RegCloseKey(hKey);
 			PostQuitMessage( 0 );
 			break;
 		case WM_KEYDOWN:
@@ -72,7 +88,8 @@ namespace klib {
 		}
 
 		if(!fullscreen){
-			hWnd = CreateWindowEx(WS_EX_APPWINDOW, "KamiGLWnd32", title, WS_CAPTION | WS_POPUPWINDOW, window.x, window.y, window.width*scaleFactor+6, window.height*scaleFactor+GetSystemMetrics(SM_CYCAPTION)+6, NULL, NULL, wc.hInstance, NULL );
+			hWnd = CreateWindowEx(WS_EX_APPWINDOW, "KamiGLWnd32", title, WS_CAPTION | WS_POPUPWINDOW, window.x, window.y, window.width*scaleFactor, window.height*scaleFactor, NULL, NULL, wc.hInstance, NULL );
+			clientResize(window.width*scaleFactor, window.height*scaleFactor);
 		}
 
 		SetWindowText(hWnd, "Loading...");
@@ -127,6 +144,16 @@ namespace klib {
 
 	void Win32WM::_swap(){
 		SwapBuffers(hDC);
+	}
+
+	void Win32WM::clientResize(int nWidth, int nHeight){
+		RECT rcClient, rcWind;
+		POINT ptDiff;
+		GetClientRect(hWnd, &rcClient);
+		GetWindowRect(hWnd, &rcWind);
+		ptDiff.x = (rcWind.right - rcWind.left) - rcClient.right;
+		ptDiff.y = (rcWind.bottom - rcWind.top) - rcClient.bottom;
+		MoveWindow(hWnd,rcWind.left, rcWind.top, nWidth + ptDiff.x, nHeight + ptDiff.y, TRUE);
 	}
 
 	Win32WM::~Win32WM(){

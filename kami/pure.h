@@ -24,6 +24,7 @@ namespace klib {
 #define APP_BUFFER_SIZE 4096
 #define APP_ENABLE_MIPMAP 0
 #define APP_ANISOTROPY 4.0
+#define APP_CONSOLE_LINES 32
 
 	// Determine compiler
 #if		defined __ECC || defined __ICC || defined __INTEL_COMPILER
@@ -134,8 +135,8 @@ namespace klib {
 		}
 
 		// Tail buffer
-		numLn = 17;
-		while (numLn > 16)
+		numLn = APP_CONSOLE_LINES+1;
+		while (numLn > APP_CONSOLE_LINES)
 		{
 			numLn = 0;
 			for (char* c = clBuffer; *c != '\0'; c++)
@@ -143,7 +144,7 @@ namespace klib {
 				if (*c == '\n'){ numLn++;	}
 				if (numLn == 0){ numLnP++;	}
 			}
-			if (numLn > 16){
+			if (numLn > APP_CONSOLE_LINES){
 				memcpy(tBuffer, clBuffer+numLnP+1, clBufferAllocLen);
 				memcpy(clBuffer, tBuffer, clBufferAllocLen);
 			}

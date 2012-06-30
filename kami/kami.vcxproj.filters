@@ -75,6 +75,9 @@
     <ClInclude Include="tween.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="json.h">
+      <Filter>Header Files\3rd Party</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="kami.cpp">
@@ -109,6 +112,9 @@
     </ClCompile>
     <ClCompile Include="tween.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="json.c">
+      <Filter>Source Files\3rd Party</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -1,23 +1,26 @@
 #include "kami.h"
 #include "objload.h"
-#include "UI.h"
+#include "json.h"
+#include "../UI/UI.h"
 #include "tween.h"
 #include <wchar.h>
 #include <fstream>
 //#include <vld.h>
 
-#ifdef KLGLENV64
-#pragma comment(lib,"kami64.lib")
-#else
-#pragma comment(lib,"kami.lib")
-#endif
-
-using namespace klib;
-
 #include <fmod.hpp>
 #include <fmod_errors.h>
 
+#ifdef KLGLENV64
+#pragma comment(lib,"kami64.lib")
 #pragma comment(lib,"fmodex64_vc.lib")
+#pragma comment(lib,"UI64.lib")
+#else
+#pragma comment(lib,"kami.lib")
+#pragma comment(lib,"fmodex_vc.lib")
+#pragma comment(lib,"UI.lib")
+#endif
+
+using namespace klib;
 
 struct callbackParamType 
 {
@@ -103,10 +106,9 @@ int main(){
 		result = system->createSound("common/MF-PANTS.MOD", FMOD_DEFAULT|FMOD_LOOP_NORMAL, 0, &sound);
 		FMODCHECK(result);
 
-		result = system->playSound(FMOD_CHANNEL_FREE, sound, false, &channel);
-		FMODCHECK(result);
+		//result = system->playSound(FMOD_CHANNEL_FREE, sound, false, &channel);
+		//FMODCHECK(result);
 
-		#pragma parallel
 		for (int i = 0; i < 5; i++)
 		{
 			button[i] = new UIButton(gc);
@@ -124,18 +126,17 @@ int main(){
 			dialog->buttonList.push_back(button[i]);
 		}
 
-		#pragma parallel
 		for (int i = 0; i < 1; i++)
 		{
-			anim[i] = new tween::TweenerParam(1000, tween::SINE, tween::EASE_IN_OUT);
-			anim[i]->addProperty(&tweenX, 350);
+			anim[i] = new tween::TweenerParam(2000, tween::ELASTIC, tween::EASE_OUT);
+			anim[i]->addProperty(&tweenX, 1000.0f);
 			anim[i]->addProperty(&tweenY, 100);
-			anim[i]->setRepeatWithReverse(100, true);
+			anim[i]->setRepeatWithReverse(100, false);
 			anim[i]->delay = 4000*i;
 			tweener.addTween(anim[i]);
 		}
 
-		gc->InitShaders(0, 0, "common/default.vert", "common/hipstervision.frag");
+		//gc->InitShaders(0, 0, "common/default.vert", "common/hipstervision.frag");
 		gc->InitShaders(1, 0, "common/default.vert", "common/demo2.frag");
 		//gc->InitShaders(2, 0, "common/default.vert", "common/ssao.frag");
 		//gc->InitShaders(3, 0, "common/diffuse.vert", "common/diffuse.frag");
@@ -153,6 +154,18 @@ int main(){
 		exit(-1);
 	}
 	//FreeConsole();
+
+	json_settings settings;
+	memset(&settings, 0, sizeof (json_settings)); 
+	char error[256];
+	json_value *t = json_parse_ex(&settings, "{\"dicks\": [67,3,234,34,86,93,12,15,87,43,7] }", error);
+
+	cl("JSON: {\"%s\": [", t->u.object.values[0].name);
+	for (int i = 0; i < t->u.object.values[0].value->u.array.length; i++)
+	{
+		cl("%ld,", t->u.object.values[0].value->u.array.values[i]->u.integer);
+	}
+	cl("nullptr] }\n");
 
 	while(status){
 		t0 = clock();
@@ -298,14 +311,14 @@ int main(){
 					tmpclBuffer, mouseXY.x, mouseXY.y, mouseState, rotation, scale, blurBias, 
 					tweener.lastTime
 				);
-				print->Draw(0, 8, consoleBuffer);
+				print->Draw(0, 16, consoleBuffer);
 
 				/*glTranslatef(gc->window.width/2, gc->window.height/2, 0);
 				glRotatef( rotation, 0.0f, 0.0f, 1.0f );
 				glTranslatef(-(gc->window.width/2), -(gc->window.height/2), 0);*/
 
-				//dialog->pos.x = 40+(tweenX/2);
-				//dialog->pos.y = 340+(tweenY/2);
+				dialog->pos.x = -1000+(tweenX)+40;
+				//dialog->pos.y = 120+int(cos((tweenY-50.0f)/25.0f)*120);
 				//dialog->pos.width = 32+tweenX;
 				//dialog->pos.height = 32+tweenY*2;
 				dialog->draw();
@@ -337,7 +350,7 @@ int main(){
 					button[i]->draw();*/
 				}
 
-				buttonFont->Draw(dialog->pos.x+200, dialog->pos.y+200-dialog->pos.height,L"@C333333oi cunt");
+				//buttonFont->Draw(dialog->pos.x+200, dialog->pos.y+200-dialog->pos.height,L"@C333333oi cunt");
 				
 				tweener.step(clock());
 				//gc->Blit2D(testTexture, 40+tweenX, 120+int(cos((tweenY-50.0f)/25.0f)*120), tweenX, 1+(tweenY/100.0f));

@@ -134,8 +134,8 @@ namespace NeoPlatformer{
 		Point<int> debugflags;
 
 		// Env geometrys
-		double dt;
-		double dtMulti;
+		float dt;
+		float dtMulti;
 		int tileWidth, tileHeight;
 		Rect<int> map;
 		Point<int> scroll;

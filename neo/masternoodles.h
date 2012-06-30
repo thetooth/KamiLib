@@ -3,6 +3,7 @@
 #include "kami.h"
 #include "version.h"
 #include "tween.h"
+#include "../UI/UI.h"
 #include <fmod.hpp>
 #include <fmod_errors.h>
 
@@ -13,8 +14,8 @@
 #define chop(x)  ((x)>=0?(long)((x)+0.9):(long)((x)-0.9))
 #define frand() (float)rand()/(float)RAND_MAX
 
-#define APP_VERSION "v0.1.2"
-#define APP_NAMESPACE "neo"
+#define NEO_VERSION "v0.2.0"
+#define NEO_NAMESPACE "neo"
 const int APP_SCREEN_W = 640;
 const int APP_SCREEN_H = 360;
 
