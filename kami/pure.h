@@ -10,7 +10,7 @@
 #include <stdarg.h>
 #include <assert.h>
 #include <sstream>
-#include <string>
+#include <string.h>
 #include <wchar.h>
 #include <unordered_map>
 
@@ -48,7 +48,7 @@ namespace klib {
 #if defined(_WIN32)
 	#define APP_WINDOWMANAGER_CLASS Win32WM
 #else
-	#define APP_WINDOWMANAGER_CLASS XOrgWM
+	#define APP_WINDOWMANAGER_CLASS X11WM
 #endif
 
 #pragma endregion
@@ -58,6 +58,7 @@ namespace klib {
 	static int cursor_x = 0, cursor_y = 0, clBufferAllocLen = APP_BUFFER_SIZE;
 	static bool cursor_L_down = false;
 	extern bool KLGLDebug;
+	extern bool resizeEvent;
 	extern char *clBuffer;
 	//extern std::unordered_map<std::string, void*> clHashTable;
 

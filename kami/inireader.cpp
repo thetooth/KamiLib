@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
-#include "../ini.h"
+#include "ini.h"
 #include "INIReader.h"
 
 KLGLINIReader::KLGLINIReader(char* filename)

@@ -12,11 +12,14 @@
 #include "pure.h"
 #include "version.h"
 
-#if defined(_WIN32)
+#if defined _WIN32
 #pragma comment(lib,"glu32.lib")
 #pragma comment(lib,"opengl32.lib")
 #pragma comment(lib,"Winmm.lib")
+#include "resource.h"
 #include "win32.h"
+#else
+#include "unix.h"
 #endif
 
 #ifdef APP_ENABLE_LUA
@@ -28,7 +31,6 @@
 #include "inireader.h"
 #include "threads.h"
 #include "logicalObjects.h"
-#include "sound.h"
 
 namespace klib{
 
@@ -140,8 +142,8 @@ namespace klib{
 		KLGLColor(int tred, int tgreen, int tblue, int talpha = 255){
 			Assign(tred, tgreen, tblue, talpha);
 		}
-		KLGLColor(KLGLColor &tVcolor){
-			Assign(tVcolor.r, tVcolor.g, tVcolor.b, tVcolor.a);
+		KLGLColor(KLGLColor *tVcolor){
+			Assign(tVcolor->r, tVcolor->g, tVcolor->b, tVcolor->a);
 		}
 		void Set(){
 			glColor4ub(r, g, b, a);
@@ -192,6 +194,7 @@ namespace klib{
 		Rect<int> buffer;
 		int overSampleFactor, scaleFactor;
 		bool vsync;
+		bool fullscreen;
 
 		unsigned int fbo[128]; // The frame buffer object  
 		unsigned int fbo_depth[128]; // The depth buffer for the frame buffer object  
@@ -208,7 +211,7 @@ namespace klib{
 		int shaderClock;
 		KLGLINIReader *config;
 		KLGLTexture *framebuffer, *klibLogo, *InfoBlue, *CheepCheepDebug;
-		KLGLSound *audio;
+		//KLGLSound *audio;
 		double fps;
 
 		KLGL(const char* title = "Application", int width = 640, int height = 480, int framerate = 60, bool fullscreen = false, int OSAA = 1, int scale = 1, float anisotropy = 4.0);

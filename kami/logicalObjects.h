@@ -18,18 +18,21 @@ namespace klib{
 	};
 
 	// Point
-	LOType class Point: public LObject<LOValue> {};
+	LOType class Point: public LObject<LOValue> {
+	/*public:
+		Point(LOValue newx, LOValue newy): LObject(newx, newy){};*/
+	};
 
 	// Rectangle
 	LOType class Rect: public LObject<LOValue> {
 	public:
 		LOValue width;
 		LOValue height;
-		Rect(): LObject(){
+		Rect(): LObject<LOValue>::LObject(){
 			setWidth(0);
 			setHeight(0);
 		};
-		Rect(LOValue newx, LOValue newy, LOValue newwidth, LOValue newheight): LObject(newx, newy) {
+		Rect(LOValue newx, LOValue newy, LOValue newwidth, LOValue newheight): LObject<LOValue>::LObject(newx, newy){
 			setWidth(newwidth);
 			setHeight(newheight);
 		};
@@ -55,13 +58,13 @@ namespace klib{
 		LOValue z;
 		LOValue w;
 		
-		Vec4(): LObject(){
+		Vec4(): LObject<LOValue>::LObject(){
 			x = 0;
 			y = 0;
 			z = 0;
 			w = 0;
 		}
-		Vec4(LOValue newx, LOValue newy, LOValue newz, LOValue neww): LObject(newx, newy) {
+		Vec4(LOValue newx, LOValue newy, LOValue newz, LOValue neww): LObject<LOValue>::LObject(newx, newy){
 			x = newx;
 			y = newy;
 			z = newz;

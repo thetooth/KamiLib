@@ -132,7 +132,7 @@ void main(){
 		stage0 += gradient(texcolor).rgb;
 		stage0 += gaussianblur(true).rgb;
 		stage0 *= pow( 32.0*uv.x*uv.y*(1.0-uv.x)*(1.0-uv.y), 0.15 );
-		stage0 *= rgbgrain(gl_FragCoord.xy*time, 10.5, 1.0);
+		stage0 *= rgbgrain(gl_FragCoord.xy*time, 20.5, 1.0);
 		gl_FragColor = vec4(stage0, 1.0);
 		break;
 	default: // Debug/Experimental

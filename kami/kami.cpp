@@ -10,6 +10,7 @@ namespace klib{
 	// Make extern local to klib
 	char *clBuffer;
 	bool KLGLDebug = false;
+	bool resizeEvent = false;
 
 	KLGLTexture::KLGLTexture(){
 		gltexture = 1;
@@ -27,7 +28,8 @@ namespace klib{
 		FILE *fin = fopen(fname, "rb");
 
 		if(fin == NULL){
-			cl("[FAILED] Resource not found.\n");
+			cl("[FAILED]\n");
+			throw KLGLException("[KLGLTexture::LoadTexture][%d:%s] \nResource \"%s\" could not be opened.", __LINE__, __FILE__, fname);
 			return 1;
 		}
 
@@ -73,7 +75,7 @@ namespace klib{
 		return 0;
 	}
 
-	KLGL::KLGL(const char* title, int width, int height, int framerate, bool fullscreen, int OSAA, int scale, float anisotropy){
+	KLGL::KLGL(const char* _title, int _width, int _height, int _framerate, bool _fullscreen, int _OSAA, int _scale, float _anisotropy){
 
 		try{
 			// State
@@ -94,13 +96,13 @@ namespace klib{
 			cl(APP_MOTD);
 
 			// Initialize the window geometry
-			window.width		= width;
-			window.height		= height;
+			window.width		= _width;
+			window.height		= _height;
 
 			vsync				= true;
-			overSampleFactor	= OSAA;
-			scaleFactor			= scale;
-			fps					= framerate;
+			overSampleFactor	= _OSAA;
+			scaleFactor			= _scale;
+			fps					= _framerate;
 			shaderClock			= 0.0f;
 
 			// Attempt to load runtime configuration
@@ -113,12 +115,12 @@ namespace klib{
 				KLGLDebug		= config->GetBoolean("system", "debug",			KLGLDebug);
 				window.x		= config->GetInteger("system", "lastPosX",		0);
 				window.y		= config->GetInteger("system", "lastPosY",		0);
-				window.width	= config->GetInteger("system", "windowWidth",	width);
-				window.height	= config->GetInteger("system", "windowHeight",	height);
+				window.width	= config->GetInteger("system", "windowWidth",	_width);
+				window.height	= config->GetInteger("system", "windowHeight",	_height);
 				vsync			= config->GetBoolean("system", "vsync",			vsync);
-				scaleFactor		= config->GetInteger("system", "windowScale",	scale);
-				fullscreen		= config->GetBoolean("system", "fullscreen",	fullscreen);
-				overSampleFactor= config->GetInteger("system", "bufferScale",	OSAA);
+				scaleFactor		= config->GetInteger("system", "windowScale",	_scale);
+				fullscreen		= config->GetBoolean("system", "fullscreen",	_fullscreen);
+				overSampleFactor= config->GetInteger("system", "bufferScale",	_OSAA);
 			}
 
 			// Get buffer size from window and sampling parameters
@@ -126,7 +128,7 @@ namespace klib{
 			buffer.height	= window.height*overSampleFactor;
 
 			// Init window
-			windowManager = new KLGLWindowManager(title, window, scaleFactor, fullscreen);
+			windowManager = new KLGLWindowManager(_title, window, scaleFactor, fullscreen);
 
 			glMatrixMode(GL_MODELVIEW);
 			glLoadIdentity();
@@ -156,7 +158,7 @@ namespace klib{
 			glEnable(GL_LIGHT0);
 
 			// Init OpenGL OK!
-			cl("Initialized GL %s @%dx%d 32bits\n", glGetString(GL_VERSION), buffer.width, buffer.height);
+			cl("Initialized %s OpenGL %s @%dx%d\n", glGetString(GL_VENDOR), glGetString(GL_VERSION), buffer.width, buffer.height);
 
 			// Initialize the Lua API
 #ifdef APP_ENABLE_LUA
@@ -173,28 +175,24 @@ namespace klib{
 			// Draw logo and load internal resources
 			InfoBlue = new KLGLTexture(KLGLInfoBluePNG, 205);
 			CheepCheepDebug = new KLGLTexture(KLGLCheepCheepDebugPNG, 296);
-			klibLogo = new KLGLTexture(KLGLStartupLogoPNG, 370);
+			klibLogo = new KLGLTexture(KLGLStartupLogoPNG, 248);
 
 			framebuffer = new KLGLTexture();
 			framebuffer->width = window.width;
 			framebuffer->height = window.height;
 
-#if defined(_DEBUG)
 			OrthogonalStart();
+			glClearColor(ubtof(24), ubtof(20), ubtof(26), 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-			Blit2D(klibLogo, 18, window.height-32);
+			Blit2D(klibLogo, window.width/2-16, window.height/2-16);
 			OrthogonalEnd();
 			windowManager->Swap();
 			glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-#endif
-
-			// Setup audio API
-			audio = new KLGLSound();
 
 			internalStatus = 0;
 
 		}catch(KLGLException e){
-			MessageBox(NULL, e.getMessage(), "KLGLException", MB_OK | MB_ICONERROR);
+			cl("KLGLException::%s\n", e.getMessage());
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -220,9 +218,33 @@ namespace klib{
 		cl(NULL);
 	}
 
+	void KLGL::ProcessEvent(int *status){
+		if(PeekMessage(&windowManager->wm->msg, NULL, NULL, NULL, PM_REMOVE)){
+			if(windowManager->wm->msg.message == WM_QUIT){
+				PostQuitMessage(0);
+				*status = 0;
+			}else{
+				TranslateMessage(&windowManager->wm->msg);
+				DispatchMessage(&windowManager->wm->msg);
+			}
+		}
+	}
+
 	void KLGL::OpenFBO(float fov, float eyex, float eyey, float eyez){
+		if (resizeEvent && !fullscreen){
+			RECT win;
+			GetClientRect(windowManager->wm->hWnd, &win);
+			window.width = max(win.right-win.left, 0);
+			window.height = max(win.bottom-win.top, 0);
+			buffer.width = window.width*overSampleFactor;
+			buffer.height = window.height*overSampleFactor;
+			windowManager->wm->clientResize(window.width, window.height);
+			GenFrameBuffer(fbo[0], fbo_texture[0], fbo_depth[0], buffer.width, buffer.height);
+			GenFrameBuffer(fbo[1], fbo_texture[1], fbo_depth[1], buffer.width, buffer.height);
+			resizeEvent = false;
+		}
 		glLoadIdentity();
-		//glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+		glViewport(0, 0, buffer.width, buffer.height);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT); //Clear the colour buffer (more buffers later on)
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo[0]); // Bind our frame buffer for rendering
 		glPushAttrib(GL_VIEWPORT_BIT | GL_ENABLE_BIT); // Push our glEnable and glViewport states
@@ -233,7 +255,7 @@ namespace klib{
 		//glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 		glLoadIdentity();
-		gluPerspective(fov, 1.0f*buffer.width/buffer.height, 0.1, 2400.0);
+		gluPerspective(fov, 1.0f*buffer.width/buffer.height, 0.1, 100.0);
 		gluLookAt(eyex, eyey, eyez, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0);
 
 		// Set MODELVIEW matrix mode

@@ -55,7 +55,7 @@ namespace NeoPlatformer{
 		return 1;
 	}*/
 
-	Environment::Environment(){
+	Environment::Environment(char *map){
 		mode = 0;
 		dt = 0.0;
 		dtMulti = 1.0;
@@ -66,6 +66,7 @@ namespace NeoPlatformer{
 		scrollspeedMulti = 80;
 		character = NULL;
 		platforms = NULL;
+		mapName = map;
 		mapProg = new char[4096];
 		mapDispListState = 0;
 		mapDispList = glGenLists(1);
@@ -142,17 +143,27 @@ namespace NeoPlatformer{
 		if (character->health <= 0 && gc->shaderClock >= 500 && gc->shaderClock <= 1000){
 
 		}else{
+			Point<int> hudPos = Point<int>();
+			hudPos.x = 8;
+			hudPos.y = gc->buffer.height-40;
+			gc->BlitSprite2D(hudSpriteSheet16, hudPos.x, hudPos.y+0, 0, 1);
+			gc->BlitSprite2D(hudSpriteSheet16, hudPos.x, hudPos.y+16,1, 1);
+			gc->BlitSprite2D(hudSpriteSheet16, hudPos.x+16, hudPos.y+0, 0, 2);
+			gc->BlitSprite2D(hudSpriteSheet16, hudPos.x+16, hudPos.y+16,1, 2);
+			gc->BlitSprite2D(hudSpriteSheet16, hudPos.x+32, hudPos.y+0, 0, 3);
+			gc->BlitSprite2D(hudSpriteSheet16, hudPos.x+32, hudPos.y+16,1, 3);
+
 			int offset = gc->buffer.width-152;
 			for (int i = 0; i <= 16; i++){
-				gc->BlitSprite2D(hudSpriteSheet, offset+(i*8), 16, 1);
+				gc->BlitSprite2D(hudSpriteSheet8, offset+(i*8), 16, 1);
 				if (i == 16){
-					gc->BlitSprite2D(hudSpriteSheet, offset+((i+1)*8), 16, 2);
+					gc->BlitSprite2D(hudSpriteSheet8, offset+((i+1)*8), 16, 2);
 				}else if (i == 0){
-					gc->BlitSprite2D(hudSpriteSheet, offset+((i-1)*8), 16, 0);
+					gc->BlitSprite2D(hudSpriteSheet8, offset+((i-1)*8), 16, 0);
 				}
 
 				if (i <= (character->health * 16) / 100){
-					gc->BlitSprite2D(hudSpriteSheet, offset+(i*8), 16, 3);
+					gc->BlitSprite2D(hudSpriteSheet8, offset+(i*8), 16, 3);
 				}
 			}
 			hudFont->Draw(offset-(16*8), 16, "@DSCORE: 00000");
@@ -209,10 +220,13 @@ namespace NeoPlatformer{
 	}
 
 	void Environment::load_map(char* mapPath){
-		cl("Loading Map: %s+bmd ", mapPath);
+		cl("Loading Map: %s.smp&bmd ", mapPath);
 
-		FILE* mapFile = fopen(mapPath, "rb");
-		FILE* mapInfoFile = fopen(strcat(substr(mapPath, 0, strlen(mapPath)-3), "bmd"), "rb");
+		char* tmpPath = new char[strlen(mapPath)+4];
+		strcpy(tmpPath, mapPath);
+		FILE* mapFile = fopen(strcat(tmpPath, ".smp"), "rb");
+		strcpy(tmpPath, mapPath);
+		FILE* mapInfoFile = fopen(strcat(tmpPath, ".bmd"), "rb");
 
 		if (mapFile == NULL || mapInfoFile == NULL){
 			cl("[ERROR]\n");
@@ -348,13 +362,14 @@ namespace NeoPlatformer{
 
 		try{
 			// Load the map
-			gameEnv->load_map("common/map01.smp");
+			gameEnv->load_map(gameEnv->mapName);
 			// Create our character
 			gameEnv->character = new Character(128, 0, 8, 16);
 			//gameEnv->enemys
 			// Map sprites
 			gameEnv->mapSpriteSheet = new KLGLSprite("common/tilemap.png", 16, 16);
-			gameEnv->hudSpriteSheet = new KLGLSprite("common/hud.png", 8, 8);
+			gameEnv->hudSpriteSheet8 = new KLGLSprite("common/hud8.png", 8, 8);
+			//gameEnv->hudSpriteSheet16 = new KLGLSprite("common/hud16.png", 16, 16);
 			// Textures
 			gameEnv->backdropTexture = new KLGLTexture("common/clouds.png");
 			gameEnv->gameoverTexture = new KLGLTexture("common/gameover.png");
@@ -370,6 +385,10 @@ namespace NeoPlatformer{
 			gameEnv->gcProxy->InitShaders(3, 0, 
 				"common/postDefaultV.glsl",
 				"common/gaussianBlur.frag"
+				);
+			gameEnv->gcProxy->InitShaders(4, 0, 
+				"common/postDefaultV.glsl",
+				"common/lights.frag"
 				);
 		}catch(KLGLException e){
 			MessageBox(NULL, e.getMessage(), "KLGLException", MB_OK | MB_ICONERROR);

@@ -51,25 +51,6 @@ namespace klib {
 
 	LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
-	inline void windowResize(HWND hWnd){
-		RECT windowRect;
-		GetWindowRect(hWnd, &windowRect);
-		
-		int width = windowRect.left-windowRect.right;
-		int height = windowRect.top-windowRect.bottom;
-
-		if (height <= 0)
-			height = 1;
-
-		int aspectratio = width / height;
-		glViewport(0, 0, width, height);
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		gluPerspective(45.0f, aspectratio, 0.2f, 255.0f);
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-	}
-
 	inline void virtualPageCommit(SYSTEM_INFO sysinfo){
 		LPVOID lpvAddr = VirtualAlloc(NULL, sysinfo.dwPageSize, MEM_RESERVE | MEM_COMMIT, PAGE_READONLY | PAGE_GUARD);
 		if(lpvAddr == NULL) {

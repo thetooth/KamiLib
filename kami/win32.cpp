@@ -13,7 +13,7 @@ namespace klib {
 			if(res == ERROR_SUCCESS){
 				pos.length = sizeof(WINDOWPLACEMENT);
 				res = RegQueryValueEx(hKey, TEXT("windowPlacement"), NULL, NULL, (LPBYTE)&pos, NULL);
-				//SetWindowPlacement(hWnd, &pos);
+				SetWindowPlacement(hWnd, &pos);
 				RegCloseKey(hKey);
 			}
 			break;
@@ -32,27 +32,14 @@ namespace klib {
 				PostQuitMessage(0);
 			}
 			break;
-		/*case WM_SIZE:
-			//windowResize(hWnd);
+		case WM_SIZE:
+			resizeEvent = true;
 			break;
-*/
 		default:
 			return DefWindowProc( hWnd, message, wParam, lParam );
 		}
 		return 0;
 	}
-
-	/*void KLGL::ProcessEvent(int *status){
-		if(PeekMessage(&windowManager->wm->msg, NULL, NULL, NULL, PM_REMOVE)){
-			if(windowManager->wm->msg.message == WM_QUIT){
-				PostQuitMessage(0);
-				*status = 0;
-			}else{
-				TranslateMessage(&windowManager->wm->msg);
-				DispatchMessage(&windowManager->wm->msg);
-			}
-		}
-	}*/
 
 	Win32WM::Win32WM(const char* title, Rect<int> window, int scaleFactor, bool fullscreen){
 		// Register win32 class
@@ -83,12 +70,12 @@ namespace klib {
 				cl("The Requested Fullscreen Mode Is Not Supported By\nYour Video Card. Will Use Windowed Mode Instead.\n\n");
 				fullscreen = false;
 			}else{
-				hWnd = CreateWindowEx(WS_EX_APPWINDOW, "KamiGLWnd32", title, WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_POPUP, NULL, NULL, window.width*scaleFactor, window.height*scaleFactor, NULL, NULL, wc.hInstance, NULL );
+				hWnd = CreateWindowEx(WS_EX_APPWINDOW, "KamiGLWnd32", title, WS_POPUP | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, NULL, NULL, window.width*scaleFactor, window.height*scaleFactor, NULL, NULL, wc.hInstance, NULL );
 			}
 		}
 
 		if(!fullscreen){
-			hWnd = CreateWindowEx(WS_EX_APPWINDOW, "KamiGLWnd32", title, WS_CAPTION | WS_POPUPWINDOW, window.x, window.y, window.width*scaleFactor, window.height*scaleFactor, NULL, NULL, wc.hInstance, NULL );
+			hWnd = CreateWindowEx(WS_EX_APPWINDOW, "KamiGLWnd32", title, WS_CAPTION | WS_OVERLAPPEDWINDOW, window.x, window.y, window.width*scaleFactor, window.height*scaleFactor, NULL, NULL, wc.hInstance, NULL );
 			clientResize(window.width*scaleFactor, window.height*scaleFactor);
 		}
 

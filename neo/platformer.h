@@ -97,15 +97,16 @@ namespace NeoPlatformer{
 			soundKey = 0;
 			channelKey = 0;
 
-			cl("Initialized FMOD %08x\n", FMOD_VERSION);
+			cl("Initialized FMOD %d.%d.%d\n", HIWORD(FMOD_VERSION), HIBYTE(LOWORD(FMOD_VERSION)), LOBYTE(LOWORD(FMOD_VERSION)));
 		};
 
 		inline int loadSound(char* file, int key = -1, unsigned int flags = FMOD_DEFAULT){
 			cl("Loading Audio: %s ", file);
 			if (file == NULL || strlen(file) < 1 || system == NULL){
-				throw KLGLException("");
+				throw KLGLException("SHEEIT");
 			}
-			system->createSound(file, flags, 0, &sound[(key = -1 ? soundKey : key)]);
+			result = system->createSound(file, flags, 0, &sound[(key == -1 ? soundKey : key)]);
+			FMODCHECK(result);
 			soundKey++;
 			cl("[OK]\n");
 			return soundKey-1;
@@ -148,6 +149,7 @@ namespace NeoPlatformer{
 		Character* character;
 		//Enemy* enemys[64];
 		list<Platform>* platforms;
+		char *mapName;
 		char *mapData;
 		char *mapMask;
 		char *mapProg;
@@ -155,7 +157,8 @@ namespace NeoPlatformer{
 		// Textures
 		KLGLFont *hudFont;
 		KLGLSprite *mapSpriteSheet;
-		KLGLSprite *hudSpriteSheet;
+		KLGLSprite *hudSpriteSheet8;
+		KLGLSprite *hudSpriteSheet16;
 		KLGLTexture *backdropTexture;
 		KLGLTexture *gameoverTexture;
 
@@ -163,7 +166,7 @@ namespace NeoPlatformer{
 		int mapDispListState;
 		unsigned int mapDispList;
 
-		Environment();
+		Environment(char *map);
 		~Environment();
 		void comp(KLGL* gc, int offsetX = 0, int offsetY = 0);
 		void drawHUD(KLGL* gc);

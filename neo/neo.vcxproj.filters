@@ -98,5 +98,17 @@
       <Filter>common</Filter>
     </None>
     <None Include="Common\ReadMe.txt" />
+    <None Include="common\diffuse.vert">
+      <Filter>common</Filter>
+    </None>
+    <None Include="common\diffuse.frag">
+      <Filter>common</Filter>
+    </None>
+    <None Include="common\lights.frag">
+      <Filter>common</Filter>
+    </None>
+    <None Include="common\waves.frag">
+      <Filter>common</Filter>
+    </None>
   </ItemGroup>
 </Project>

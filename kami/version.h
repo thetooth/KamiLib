@@ -1,0 +1,2 @@
+#define APP_BUILD_VERSION 607
+#define APP_BUILD_TIME 0x4ffef24a
