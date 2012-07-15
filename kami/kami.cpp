@@ -121,6 +121,7 @@ namespace klib{
 				scaleFactor		= config->GetInteger("system", "windowScale",	_scale);
 				fullscreen		= config->GetBoolean("system", "fullscreen",	_fullscreen);
 				overSampleFactor= config->GetInteger("system", "bufferScale",	_OSAA);
+				bufferAutoSize	= config->GetBoolean("system", "bufferAutoSize",	false);
 			}
 
 			// Get buffer size from window and sampling parameters
@@ -236,11 +237,13 @@ namespace klib{
 			GetClientRect(windowManager->wm->hWnd, &win);
 			window.width = max(win.right-win.left, 0);
 			window.height = max(win.bottom-win.top, 0);
-			buffer.width = window.width*overSampleFactor;
-			buffer.height = window.height*overSampleFactor;
-			windowManager->wm->clientResize(window.width, window.height);
-			GenFrameBuffer(fbo[0], fbo_texture[0], fbo_depth[0], buffer.width, buffer.height);
-			GenFrameBuffer(fbo[1], fbo_texture[1], fbo_depth[1], buffer.width, buffer.height);
+			windowManager->wm->clientResize(window.width, window.height);			
+			if (bufferAutoSize){
+				buffer.width = window.width*overSampleFactor;
+				buffer.height = window.height*overSampleFactor;
+				GenFrameBuffer(fbo[0], fbo_texture[0], fbo_depth[0], buffer.width, buffer.height);
+				GenFrameBuffer(fbo[1], fbo_texture[1], fbo_depth[1], buffer.width, buffer.height);
+			}
 			resizeEvent = false;
 		}
 		glLoadIdentity();
@@ -446,9 +449,9 @@ namespace klib{
 		glMatrixMode(GL_PROJECTION);
 		glPushMatrix();
 		glLoadIdentity();
-		glOrtho(0, window.width*scale, 0, window.height*scale, -1, 1);
+		glOrtho(0, (buffer.width/overSampleFactor)*scale, 0, (buffer.height/overSampleFactor)*scale, -1, 1);
 		glScalef(1.0f, -1.0f, 1.0f);
-		glTranslatef(0.0f, -window.height*scale, 0.0f);
+		glTranslatef(0.0f, -(buffer.height/overSampleFactor)*scale, 0.0f);
 		glMatrixMode(GL_MODELVIEW);
 		glDisable(GL_LIGHTING);
 	}

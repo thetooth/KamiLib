@@ -195,6 +195,7 @@ namespace klib{
 		int overSampleFactor, scaleFactor;
 		bool vsync;
 		bool fullscreen;
+		bool bufferAutoSize;
 
 		unsigned int fbo[128]; // The frame buffer object  
 		unsigned int fbo_depth[128]; // The depth buffer for the frame buffer object  
