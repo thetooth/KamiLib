@@ -1,6 +1,7 @@
 #pragma once
 
 #define GL_GLEXT_PROTOTYPES
+#define stricmp strcasecmp
 
 #include <GL/gl.h>
 #include <GL/glx.h>
@@ -30,5 +31,10 @@ namespace klib {
 
 		void _swap();
 		void clientResize(int nWidth, int nHeight);
+		
+	private:
+		inline static int WaitForNotify( Display *dpy, XEvent *event, XPointer arg ) {
+			return (event->type == MapNotify) && (event->xmap.window == (Window) arg);
+		}
 	};
 }

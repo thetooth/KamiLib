@@ -230,7 +230,7 @@ namespace tween {
 				listener->onComplete(*param);
 				break;
 			default:
-				throw std::runtime_error("Tweener::dispatchEvent - Event not found.");
+				throw klib::KLGLException("Tweener::dispatchEvent - Event not found.");
 				break;
 			}
 

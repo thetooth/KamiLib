@@ -1,7 +1,6 @@
 #include "kami.h"
 #include "picopng.h"
 #include "databin.h"
-#include "resource.h"
 #include <iostream>
 #include <string>
 
@@ -220,7 +219,7 @@ namespace klib{
 	}
 
 	void KLGL::ProcessEvent(int *status){
-		if(PeekMessage(&windowManager->wm->msg, NULL, NULL, NULL, PM_REMOVE)){
+		/*if(PeekMessage(&windowManager->wm->msg, NULL, NULL, NULL, PM_REMOVE)){
 			if(windowManager->wm->msg.message == WM_QUIT){
 				PostQuitMessage(0);
 				*status = 0;
@@ -228,10 +227,11 @@ namespace klib{
 				TranslateMessage(&windowManager->wm->msg);
 				DispatchMessage(&windowManager->wm->msg);
 			}
-		}
+		}*/
 	}
 
 	void KLGL::OpenFBO(float fov, float eyex, float eyey, float eyez){
+		#if defined _WIN32
 		if (resizeEvent && !fullscreen){
 			RECT win;
 			GetClientRect(windowManager->wm->hWnd, &win);
@@ -246,8 +246,9 @@ namespace klib{
 			}
 			resizeEvent = false;
 		}
+		#endif
 		glLoadIdentity();
-		glViewport(0, 0, buffer.width, buffer.height);
+		glViewport(0, 0, window.width, window.height);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT); //Clear the colour buffer (more buffers later on)
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo[0]); // Bind our frame buffer for rendering
 		glPushAttrib(GL_VIEWPORT_BIT | GL_ENABLE_BIT); // Push our glEnable and glViewport states
@@ -278,18 +279,24 @@ namespace klib{
 		glLoadIdentity();
 		glDisable(GL_LIGHTING);
 
-		BindShaders(0);
+		//BindShaders(0);
 		glUniform1f(glGetUniformLocation(GetShaderID(0), "time"), shaderClock);
-		glUniform2f(glGetUniformLocation(GetShaderID(0), "BUFFER_EXTENSITY"), window.width*scaleFactor, window.height*scaleFactor);
+		glUniform2f(glGetUniformLocation(GetShaderID(0), "BUFFER_EXTENSITY"), buffer.width*scaleFactor, buffer.height*scaleFactor);
 		shaderClock = (clock()%1000)+fps;
 
 		glBindTexture(GL_TEXTURE_2D, fbo_texture[0]); // Bind our frame buffer texture
 		glBegin(GL_QUADS);
 		{
-			glTexCoord2d(0.0,0.0); glVertex3d(-1.0,-1.0, 0);
-			glTexCoord2d(1.0,0.0); glVertex3d(+1.0,-1.0, 0);
-			glTexCoord2d(1.0,1.0); glVertex3d(+1.0,+1.0, 0);
-			glTexCoord2d(0.0,1.0); glVertex3d(-1.0,+1.0, 0);
+			/*//(x + s, y+s)-(x+w-s, y+h-s)
+			double aspX = min(double(double(buffer.width/buffer.height)*window.height)/double(buffer.height), 1.0);
+			double aspY = min(double(double(buffer.width/buffer.height)*window.width)/double(buffer.width), 1.0);
+			//double aspY = 1.0;*/
+
+			Rect<int> ratio = ASPRatio(window, buffer, false);
+			glTexCoord2d(0.0,0.0); glVertex3d(-(ratio.width/double(window.width)),	-(ratio.height/double(window.height)), 0);
+			glTexCoord2d(1.0,0.0); glVertex3d(+(ratio.width/double(window.width)),	-(ratio.height/double(window.height)), 0);
+			glTexCoord2d(1.0,1.0); glVertex3d(+(ratio.width/double(window.width)),	+(ratio.height/double(window.height)), 0);
+			glTexCoord2d(0.0,1.0); glVertex3d(-(ratio.width/double(window.width)),	+(ratio.height/double(window.height)), 0);
 		}
 		glEnd();
 		glBindTexture(GL_TEXTURE_2D, 0); // Unbind any textures
@@ -297,6 +304,28 @@ namespace klib{
 
 		// Swap!
 		windowManager->Swap();
+	}
+
+	Rect<int> KLGL::ASPRatio(Rect<int> &rcScreen, Rect<int> &sizePicture, bool bCenter){
+		Rect<int> rect(rcScreen);
+		double dWidth = rcScreen.width;
+		double dHeight = rcScreen.height;
+		double dAspectRatio = dWidth/dHeight;
+
+		double dPictureWidth = sizePicture.width;
+		double dPictureHeight = sizePicture.height;
+		double dPictureAspectRatio = dPictureWidth/dPictureHeight;
+
+		if (dPictureAspectRatio < dAspectRatio){
+			int nNewWidth =  (int)(dHeight/dPictureHeight*dPictureWidth);
+			int nCenteringFactor = (bCenter ? (rcScreen.width - nNewWidth) / 2 : 0 );
+			rect = Rect<int>(nCenteringFactor, 0, nNewWidth + nCenteringFactor, (int)dHeight);
+		}else if (dPictureAspectRatio > dAspectRatio){
+			int nNewHeight = (int)(dWidth/dPictureWidth*dPictureHeight);
+			int nCenteringFactor = (bCenter ? (rcScreen.height - nNewHeight) / 2 : 0);
+			rect = Rect<int>(0, nCenteringFactor, (int)dWidth, nNewHeight + nCenteringFactor);
+		}
+		return rect;
 	}
 
 	void KLGL::GenFrameBuffer(GLuint &fbo, GLuint &fbo_texture, GLuint &fbo_depth, int bufferWidth, int bufferHeight) {
@@ -569,10 +598,9 @@ namespace klib{
 	}
 
 	void KLGL::BindMultiPassShader(int shaderProgId, int alliterations, bool flipOddBuffer, float x, float y, float width, float height){
-		if (width < 0.0f || height < 0.0f)
-		{
-			width = window.width;
-			height = window.height;
+		if (width < 0.0f || height < 0.0f){
+			width = buffer.width;
+			height = buffer.height;
 		}
 
 		glPushMatrix();

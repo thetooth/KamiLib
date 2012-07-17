@@ -26,7 +26,7 @@ int main(){
 	char textBuffer[4096] = {};
 	bool quit = false, internalTimer = false, mapScroll = false;
 	int frame = 0,fps = 0,cycle = 0, th_id = 0, nthreads = 0, qualityPreset = 0, shaderAlliterations = 0;
-	float tweenX = 0, tweenY = 0, titleFade = 0;
+	float tweenX = 0, tweenY = 0, titleFade = 0.0f;
 	POINT mouseXY;
 	clock_t t0 = clock(),t1 = 0,t2 = 0;
 	char wTitle[256] = {};
@@ -44,12 +44,6 @@ int main(){
 	tween::TweenerParam titleFaderTween(2000, tween::EXPO, tween::EASE_OUT);
 	titleFaderTween.addProperty(&titleFade, 255);
 	tweener.addTween(&titleFaderTween);
-
-	tween::TweenerParam tween1(2000, tween::EXPO, tween::EASE_IN_OUT);
-	tween1.addProperty(&tweenX, 350);
-	tween1.addProperty(&tweenY, 100);
-	tween1.setRepeatWithReverse(100, true);
-	tweener.addTween(&tween1);
 
 	// Audio
 	Audio *audio = NULL;
@@ -97,8 +91,8 @@ int main(){
 		dialog->bgColor = new KLGLColor(51, 51, 115, 255);
 		dialog->pos.width = 512;
 		dialog->pos.height = 256;
-		dialog->pos.x = (gc->window.width/2)-(dialog->pos.width/2)-8;
-		dialog->pos.y = (gc->window.height/2)-(dialog->pos.height/2)-8;
+		dialog->pos.x = (gc->buffer.width/2)-(dialog->pos.width/2)-8;
+		dialog->pos.y = (gc->buffer.height/2)-(dialog->pos.height/2)-8;
 
 		// Fonts
 		font = new KLGLFont(charmapTexture->gltexture, charmapTexture->width, charmapTexture->height, 8, 8, -1);
@@ -296,8 +290,8 @@ int main(){
 				sprintf(textBuffer, "@CFFFFFF@D%s\n\n%s\n> %s%c", clBuffer, console->buffer, inputBuffer, (frame%16 <= 4 ? '_' : '\0'));
 
 				// Update clock
-				t1 = clock();
 				tweener.step(t0);
+				t1 = clock();
 
 				gc->OpenFBO(45, 0.0, 0.0, 0.0);
 				gc->OrthogonalStart();
@@ -318,6 +312,7 @@ int main(){
 						}
 					}
 					scrollOffset++;
+					glColor4ub(255, 255, 255, 255);
 
 					/*gc->OrthogonalStart(gc->overSampleFactor/1.0f);
 					gc->BindShaders(5);
@@ -382,7 +377,7 @@ int main(){
 					// Draw console
 					gc->OrthogonalStart(gc->overSampleFactor);
 					font->Draw(0, 8, textBuffer);
-					gc->Rectangle2D(0, 0, gc->buffer.width, gc->buffer.height, KLGLColor(0, 0, 0, 255-titleFade));
+					//gc->Rectangle2D(0, 0, gc->buffer.width, gc->buffer.height, KLGLColor(0, 0, 0, 255-titleFade));
 				}
 				gc->OrthogonalEnd();
 				gc->Swap();
@@ -488,9 +483,9 @@ int main(){
 							glBindTexture(GL_TEXTURE_2D, gc->fbo_texture[1]);
 							glBegin(GL_QUADS);
 							glTexCoord2d(0.0,0.0); glVertex2i(0,				0);
-							glTexCoord2d(1.0,0.0); glVertex2i(gc->window.width,	0);
-							glTexCoord2d(1.0,1.0); glVertex2i(gc->window.width,	gc->window.height);
-							glTexCoord2d(0.0,1.0); glVertex2i(0,				gc->window.height);
+							glTexCoord2d(1.0,0.0); glVertex2i(gc->buffer.width,	0);
+							glTexCoord2d(1.0,1.0); glVertex2i(gc->buffer.width,	gc->buffer.height);
+							glTexCoord2d(0.0,1.0); glVertex2i(0,				gc->buffer.height);
 							glEnd();
 							glBindTexture(GL_TEXTURE_2D, 0);
 						}
@@ -521,6 +516,8 @@ int main(){
 						// Compute game physics and update events
 						gameEnv->comp(gc, (mapScroll ? mouseXY.x - gc->buffer.width / 2 : 0), (mapScroll ? mouseXY.y - gc->buffer.height / 2 : 0));
 
+						gameEnv->debugflags.x = mouseXY.x;
+						gameEnv->debugflags.y = mouseXY.y;
 						// Debug info
 						if (KLGLDebug)
 						{
@@ -564,13 +561,13 @@ int main(){
 						//glScalef(float(gc->window.width)/float(APP_SCREEN_W), float(gc->window.width)/float(APP_SCREEN_W), 0.0);
 
 						// Background
-						int horizon = max(gc->window.width, gc->window.height+(-gameEnv->scroll.y));
+						int horizon = max(gc->buffer.width, gc->buffer.height+(-gameEnv->scroll.y));
 						int stratosphere = min(0, -gameEnv->scroll.y);
 						glBegin(GL_QUADS);
 						glColor3ub(71,84,93);
-						glVertex2i(0, stratosphere); glVertex2i(gc->window.width, stratosphere);
+						glVertex2i(0, stratosphere); glVertex2i(gc->buffer.width, stratosphere);
 						glColor3ub(214,220,214);
-						glVertex2i(gc->window.width, horizon); glVertex2i(0, horizon);
+						glVertex2i(gc->buffer.width, horizon); glVertex2i(0, horizon);
 						glEnd();
 
 						// Barell rotation
@@ -604,7 +601,7 @@ int main(){
 						// Lighting effects
 						gc->BindShaders(4);
 						glUniform1f(glGetUniformLocation(gc->GetShaderID(4), "time"), gc->shaderClock);
-						glUniform2f(glGetUniformLocation(gc->GetShaderID(4), "resolution"), gc->window.width*gc->overSampleFactor, gc->window.height*gc->overSampleFactor);
+						glUniform2f(glGetUniformLocation(gc->GetShaderID(4), "resolution"), gc->buffer.width/gc->overSampleFactor, gc->buffer.height/gc->overSampleFactor);
 						glUniform2f(glGetUniformLocation(gc->GetShaderID(4), "position"), (gameEnv->scroll.x-(56*16))/1.0f, (gameEnv->scroll.y-(27*16))/1.0f);
 						glUniform1f(glGetUniformLocation(gc->GetShaderID(4), "radius"), 140.0f);
 						glUniform1f(glGetUniformLocation(gc->GetShaderID(4), "blendingDivision"), 5.0f+sin(cycle/16.0f));
@@ -614,8 +611,8 @@ int main(){
 						// Master post shader data
 						gc->BindShaders(1);
 						glUniform1f(glGetUniformLocation(gc->GetShaderID(1), "time"), gc->shaderClock);
-						glUniform2f(glGetUniformLocation(gc->GetShaderID(1), "BUFFER_EXTENSITY"), gc->window.width*gc->scaleFactor, gc->window.height*gc->scaleFactor);
-						gc->BindMultiPassShader(1, 1, false);
+						glUniform2f(glGetUniformLocation(gc->GetShaderID(1), "BUFFER_EXTENSITY"), gc->buffer.width/gc->overSampleFactor, gc->buffer.height/gc->overSampleFactor);
+						gc->BindMultiPassShader(1, 1, true);
 						gc->UnbindShaders();
 
 						// HUD, Score, Health, etc

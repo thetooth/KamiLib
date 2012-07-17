@@ -1,11 +1,13 @@
 #version 130
-#extension GL_EXT_gpu_shader4 : enable
+
+out vec4 FragmentColor;
 
 #define KERNEL_SIZE  4.0
 
 uniform float time;
 uniform int preset = 0;
 uniform vec2 center = vec2(0.5, 0.5);
+uniform vec2 BUFFER_EXTENSITY = vec2(1024.0f, 1024.0f);
 uniform sampler2D sceneTex;
 uniform sampler2D depthTex;
 
@@ -15,8 +17,8 @@ uniform float BRIGHT_PASS_THRESHOLD = 0.75;
 uniform float BRIGHT_PASS_OFFSET = 1.5;
 float contrast = 1.0;
 
-vec2 texcoord = vec2(gl_TexCoord[0]).st;
-vec4 texcolor = texture2D(sceneTex, gl_TexCoord[0].st);
+vec2 texcoord = vec2(gl_FragCoord.x/BUFFER_EXTENSITY.x, gl_FragCoord.y/BUFFER_EXTENSITY.y);
+vec4 texcolor = texture2D(sceneTex, texcoord);
 
 float rand(vec2 co){
 	return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
@@ -64,32 +66,6 @@ float vignette(float bounds, float offset, vec2 pos)
 	return smoothstep(bounds, offset, distance(texcoord, pos));
 }
 
-vec4 dreamvision(){
-	vec2 uv = gl_TexCoord[0].xy;
-  vec4 c = texture2D(sceneTex, uv);
-  float randEx = rand(vec2(time,time))*0.25;
-  
-  uv *= rand(vec2(time,time))/0.95;
-  
-  c += texture2D(sceneTex, uv+0.001+randEx);
-  c += texture2D(sceneTex, uv+0.003+randEx);
-  c += texture2D(sceneTex, uv+0.005+randEx);
-  c += texture2D(sceneTex, uv+0.007+randEx);
-  c += texture2D(sceneTex, uv+0.009+randEx);
-  c += texture2D(sceneTex, uv+0.011+randEx);
-
-  c += texture2D(sceneTex, uv-0.001+randEx);
-  c += texture2D(sceneTex, uv-0.003+randEx);
-  c += texture2D(sceneTex, uv-0.005+randEx);
-  c += texture2D(sceneTex, uv-0.007+randEx);
-  c += texture2D(sceneTex, uv-0.009+randEx);
-  c += texture2D(sceneTex, uv-0.011+randEx);
-
-  c.rgb = vec3((c.r+c.g+c.b)/3.0);
-  c = c / 9.5;
-  return c;
-}
-
 vec3 colormerge(){
 	float r = (texcolor.r+texcolor.g+texcolor.b)/3.0;
 	return vec3(r, r, r);
@@ -112,20 +88,20 @@ vec3 rgbgrain(vec2 seed, float division, float offset){
 }
 
 void main(){
-	vec2 uv = gl_TexCoord[0].xy;
+	vec2 uv = texcoord;
 	vec3 stage0;
 	switch(preset){
 	case 0: // Simple
-		gl_FragColor = texcolor;
+		FragmentColor = texcolor;
 		break;
 	case 1: // Normal
 		stage0 = gradient(texcolor).rgb;
-		gl_FragColor = vec4(stage0, 1.0);
+		FragmentColor = vec4(stage0, 1.0);
 		break;
 	case 2: // High
 		float grain = (rand(gl_FragCoord.xy*time)/20.0)+1.0;
 		stage0 = (gradient(texcolor).rgb)*grain;
-		gl_FragColor = vec4(stage0*vignette(1.8, 0.0, vec2(0.5, 0.5)), 1.0);
+		FragmentColor = vec4(stage0*vignette(1.8, 0.0, vec2(0.5, 0.5)), 1.0);
 		break;
 	case 3: // Full Retard
 		stage0 = vec3(0.0);
@@ -133,9 +109,9 @@ void main(){
 		stage0 += gaussianblur(true).rgb;
 		stage0 *= pow( 32.0*uv.x*uv.y*(1.0-uv.x)*(1.0-uv.y), 0.15 );
 		stage0 *= rgbgrain(gl_FragCoord.xy*time, 20.5, 1.0);
-		gl_FragColor = vec4(stage0, 1.0);
+		FragmentColor = vec4(stage0, 1.0);
 		break;
 	default: // Debug/Experimental
-		gl_FragColor = vec4(texcolor.a, texcolor.a, texcolor.a, 1.0);
+		FragmentColor = vec4(texcolor.a, texcolor.a, texcolor.a, 1.0);
 	}
 }

@@ -283,7 +283,7 @@ namespace klib{
 		static char* LoadShaderFile(const char* fname);
 		static void PrintShaderInfoLog(GLuint obj, int isShader = 1);
 		KLGLTexture nullTexture;
-
+		Rect<int> ASPRatio(Rect<int> &rcScreen, Rect<int> &sizePicture, bool bCenter = true);
 	};
 	
 	class KLGLWindowManager {

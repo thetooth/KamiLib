@@ -4,6 +4,10 @@
 #include "ini.h"
 #include "INIReader.h"
 
+#ifndef _WIN32
+#include "unix.h"
+#endif
+
 KLGLINIReader::KLGLINIReader(char* filename)
 {
 	_error = ini_parse(filename, ValueHandler, this);

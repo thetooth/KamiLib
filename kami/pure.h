@@ -30,19 +30,21 @@ namespace klib {
 #if		defined __ECC || defined __ICC || defined __INTEL_COMPILER
 #	define APP_COMPILER_STRING "Intel C/C++"
 #elif	defined __GNUC__
-#	define APP_COMPILER_STRING "Gnu GCC"
+#	define APP_COMPILER_STRING "GNU/GCC"
 #elif	defined _MSC_VER
 #	define APP_COMPILER_STRING "Microsoft Visual C++"
 #elif  !defined APP_COMPILER_STRING
 #	define APP_COMPILER_STRING "Unknown compiler"
 #endif
+
+	// Macro to print out actual def names
 #	define DEFASSTR(x)	#x
 
 	// Check arch
 #if _WIN64 || __x86_64__ || __ppc64__
-#define APP_ARCH_STRING "x86-64"
+#	define APP_ARCH_STRING "AMD64"
 #else
-#define APP_ARCH_STRING "x86"
+#	define APP_ARCH_STRING "x86"
 #endif
 
 #if defined(_WIN32)
@@ -122,7 +124,7 @@ namespace klib {
 		va_list arg;
 		va_start(arg, format);
 		vsprintf(tBuffer, format, arg);
-		ret = vprintf(format, arg);
+		ret = printf(tBuffer);
 		va_end(arg);
 
 		// Append the new string to the buffer
