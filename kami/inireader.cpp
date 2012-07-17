@@ -2,7 +2,7 @@
 #include <cctype>
 #include <cstdlib>
 #include "ini.h"
-#include "INIReader.h"
+#include "inireader.h"
 
 #ifndef _WIN32
 #include "unix.h"
