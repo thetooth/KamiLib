@@ -86,7 +86,7 @@ namespace klib{
 		char* getMessage();
 	};
 
-	inline char *file_contents(char *filename)
+	inline char *file_contents(const char *filename)
 	{
 		if (filename == NULL) {
 			return NULL;
@@ -247,7 +247,7 @@ namespace klib{
 		void Rectangle2D(int x, int y, int width, int height, KLGLColor vcolor = KLGLColor(255, 0, 0, 255));
 		void OrthogonalStart(float scale = 1.0f);
 		void OrthogonalEnd();
-		void BindMultiPassShader(int shaderProgId = 0, int alliterations = 1, bool flipOddBuffer = true, float x = 0.0f, float y = 0.0f, float width = -1.0f, float height = -1.0f);
+		void BindMultiPassShader(int shaderProgId = 0, int alliterations = 1, bool flipOddBuffer = true, float x = 0.0f, float y = 0.0f, float width = -1.0f, float height = -1.0f, int textureSlot = 0);
 
 		// Automatically load and setup a shader program for given vertex and frag shader scripts
 		int InitShaders(int shaderProgId, int isString, const char *vsFile = NULL, const char *fsFile = NULL, const char *gpFile = NULL, const char *tsFile = NULL);
@@ -280,7 +280,7 @@ namespace klib{
 		float getElapsedTimeInMs(){
 			return clock()/(CLOCKS_PER_SEC/1000);
 		}
-		static char* LoadShaderFile(const char* fname);
+		const char* LoadShaderFile(const char* fname);
 		static void PrintShaderInfoLog(GLuint obj, int isShader = 1);
 		KLGLTexture nullTexture;
 		Rect<int> ASPRatio(Rect<int> &rcScreen, Rect<int> &sizePicture, bool bCenter = true);
@@ -289,11 +289,14 @@ namespace klib{
 	class KLGLWindowManager {
 	public:
 		APP_WINDOWMANAGER_CLASS* wm;
-		KLGLWindowManager(const char* title, Rect<int> window, int scaleFactor, bool fullscreen){
+		KLGLWindowManager(const char* title, Rect<int> *window, int scaleFactor, bool fullscreen){
 			wm = new APP_WINDOWMANAGER_CLASS(title, window, scaleFactor, fullscreen);
 		}
 		void Swap(){
 			wm->_swap();
+		}
+		void ProcessEvent(int *status){
+			*status = wm->_event();
 		}
 	};
 

@@ -6,6 +6,7 @@
 #include "../UI/UI.h"
 #include <fmod.hpp>
 #include <fmod_errors.h>
+#include <Python.h>
 
 #ifndef PI
 #define PI 3.1415926535897932384626433832795

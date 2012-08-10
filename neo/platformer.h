@@ -3,6 +3,7 @@
 #define APP_ENABLE_LUA 1
 #include "kami.h"
 #include "logicalObjects.h"
+#include "particles.h"
 #include <list>
 #include <map>
 #include <unordered_map>
@@ -19,36 +20,62 @@ namespace NeoPlatformer{
 	class Environment;
 	class ObjectInterface;
 	class Character;
+	class Enemy;
 	class Platform;
 
-	// Global pointer to our environment(used for lua)
-	extern Environment *envCallbackPtr;
-	extern map<const char*, void*, cmp_cstring> neoVarList;
+	// Global pointer to our environment(used for python)
+	extern map<const char*, void*, cmp_cstring> neoCallbackList;
 
-	/*static void neo_register_info (lua_State *L) {
-		lua_pushliteral (L, "_COPYRIGHT");
-		lua_pushliteral (L, "Copyright (C) 2005-2011 Ameoto Systems Inc. All Rights Reserved.");
-		lua_settable (L, -3);
-		lua_pushliteral (L, "_DESCRIPTION");
-		lua_pushliteral (L, "test");
-		lua_settable (L, -3);
-		lua_pushliteral (L, "_VERSION");
-		lua_pushliteral (L, "Neo Interop v1");
-		lua_settable (L, -3);
+	static PyObject *neoErrorHandler;
+	static PyObject *neoClHandler(PyObject *self, PyObject *args){
+		const char *arg1;
+		int sts = 0;
+
+		if (!PyArg_ParseTuple(args, "s", &arg1)){
+			return NULL;
+		}
+
+		sts = cl(arg1);
+
+		if (sts < 0) {
+			PyErr_SetString(neoErrorHandler, "System command failed");
+			return NULL;
+		}
+		return PyLong_FromLong(sts);
 	}
+	static PyObject *neoSetHandler(PyObject *self, PyObject *args){
+		const char *key;
+		int val;
+		int sts = 0;
 
-	int l_get( lua_State *L );
-	int l_set( lua_State *L );
+		if (!PyArg_ParseTuple(args, "si", &key, &val)){
+			return NULL;
+		}
 
-	const struct luaL_Reg neolib[] =
-	{
-		{ "__index",	l_get	},
-		{ "__newindex",	l_set	},
-		{"cl",			clL		},
-		{ NULL,			NULL	}
+		Environment *gameEnv = (Environment*)neoCallbackList["gameEnv"];
+		if (gameEnv == NULL || key == NULL){
+			sts = -1;
+		}else{
+			*((int*)neoCallbackList[key]) = val;
+		}
+
+		if (sts < 0) {
+			PyErr_SetString(neoErrorHandler, "Failed to set value!");
+			return NULL;
+		}
+		return PyLong_FromLong(sts);
+	}
+	static PyMethodDef neoMethods[] = {
+		{"cl", neoClHandler, METH_VARARGS, "Print to console."},
+		{"set", neoSetHandler, METH_VARARGS, "Set values exposed by game engine."},
+		{NULL, NULL, 0, NULL}
 	};
-
-	int luaopen_neo(lua_State *L);*/
+	static struct PyModuleDef neoModule = {
+		PyModuleDef_HEAD_INIT, "neo", NULL, -1, neoMethods
+	};
+	inline PyObject* PyInit_neo(void){
+		return PyModule_Create(&neoModule);
+	}
 
 	// The direction of the obstacle that I collided with.  See Character::checkCollision()
 	enum CollisionType {C_NONE, C_UP, C_DOWN, C_LEFT, C_RIGHT, C_SLOPELEFT, C_SLOPERIGHT};
@@ -125,8 +152,6 @@ namespace NeoPlatformer{
 	class Environment
 	{
 	public:
-
-		//
 		KLGL *gcProxy;
 		Audio *audioProxy;
 
@@ -147,8 +172,8 @@ namespace NeoPlatformer{
 
 		// Map data
 		Character* character;
-		//Enemy* enemys[64];
-		list<Platform>* platforms;
+		vector<Enemy*> enemys;
+		vector<Platform> platforms;
 		char *mapName;
 		char *mapData;
 		char *mapMask;
@@ -198,22 +223,14 @@ namespace NeoPlatformer{
 	// Interface for objects including the player
 	class ObjectInterface {
 	public:
+		// Environment pointer
+		Environment *envPtr;
+
 		Point<float> pos;  // Position
 		Point<float> vel;  // Velocity
 
 		Rect<int> collisionRect;
 		Rect<int> standingRect;
-	};
-
-	class Character : public ObjectInterface
-	{
-	public:
-		// Enviroment pointer
-		Environment *envPtr;
-
-		// Players profile(score, lvl, ammo, etc)
-		int score;
-		int health;
 
 		// Physical constants
 		// Adjust these in the constructor (or set them later) to make the
@@ -238,6 +255,22 @@ namespace NeoPlatformer{
 		bool leftPressed;
 		bool landedLastFrame;
 
+		virtual void comp(Environment *env){};
+		virtual void land(int platformY){};
+		virtual void hitCeiling(int platformY){};
+		virtual void wallLeft(int wallX){};
+		virtual void wallRight(int wallX){};
+		virtual void slopeLeft(int charX, int wallY){};
+		virtual void slopeRight(int charX, int wallY){};
+	};
+
+	class Character : public ObjectInterface
+	{
+	public:
+		// Players profile(score, lvl, ammo, etc)
+		int score;
+		int health;
+
 		// Animation
 		int walkAnime;
 
@@ -257,22 +290,21 @@ namespace NeoPlatformer{
 		void leftUp();
 		void right();
 		void rightUp();
-		void drag(Environment &env);
+		void drag();
 		void comp(Environment *env);
 	};
 
 	class Enemy : public ObjectInterface {
 	public:
-		// Enviroment pointer
-		Environment *envPtr;
-
-		int  collisionDetect; // -1 Left 0 None +1 Right
-
 		Enemy(float x, float y, int w, int h);
 		~Enemy();
 
-		void comp(Environment *env);
+		void draw(KLGL* gc, KLGLSprite *sprite, int frame);
 		void patrol();
+		void land(int platformY);
+		void wallLeft(int wallX);
+		void wallRight(int wallX);
+		void comp(Environment *env);
 	};
 
 	class Platform
@@ -295,8 +327,8 @@ namespace NeoPlatformer{
 		~Platform(){};
 		void scroll_normal();
 		void draw(KLGL* gc, Environment* env, KLGLSprite* sprite);
-		CollisionType checkCollision(Environment &env, list<Platform>::iterator platformData);
-		int checkOverheadSlope(list<Platform>::iterator platformData);
+		CollisionType checkCollision(ObjectInterface *object, double dt, vector<Platform>::iterator platformData);
+		int checkOverheadSlope(vector<Platform>::iterator platformData);
 	private:
 	};
 
@@ -315,5 +347,48 @@ namespace NeoPlatformer{
 			sinPos += sinStep;
 		}
 		if (sinPos >= pie2) sinPos -= pie2;
+	}
+
+	inline void drawSinWave(float mag){
+		static float start;
+		if (start == NULL){
+			start = 0.0f;
+		}
+		float radius = 7.5;
+		float x2=0,y2,cx,cy,fx,fy;
+		float cos_y,cache_cos_y;
+		int cache = 0;
+		start += 1.0;
+		if(start >360) {
+			start = 0;
+		}
+		glBegin(GL_LINES);
+		float angle = 0;
+		for(angle=start; ; angle+=1.0) {
+			if(angle>1020) {
+				angle = 0.0;
+				break;
+			}
+			float rad_angle = angle * 3.14 / 180;
+			x2 = x2+0.1;
+			y2 = radius * sin((double)rad_angle);
+			cos_y = radius * sin((double)-rad_angle);
+			if (cache) {
+				glVertex2f(cx*mag,cy*mag);
+				glVertex2f(x2*mag,y2*mag);
+
+				glVertex2f(cx*mag,cache_cos_y*mag);
+				glVertex2f(x2*mag,cos_y*mag);
+
+			} else {
+				fx = x2;
+				fy = y2;
+			}
+			cache = 1;
+			cx = x2;
+			cy = y2;
+			cache_cos_y = cos_y;
+		}
+		glEnd();
 	}
 }

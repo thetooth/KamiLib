@@ -26,11 +26,14 @@ namespace klib {
 		int                   numReturned;
 		int                   swapFlag;
 		
-		X11WM(const char* title, Rect<int> window, int scaleFactor, bool fullscreen);
+		Rect<int> *window;
+		
+		X11WM(const char* _title, Rect<int> *_window, int _scaleFactor, bool _fullscreen);
 		~X11WM();
 
 		void _swap();
 		void clientResize(int nWidth, int nHeight);
+		int _event();
 		
 	private:
 		inline static int WaitForNotify( Display *dpy, XEvent *event, XPointer arg ) {

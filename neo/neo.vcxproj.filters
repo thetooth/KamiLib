@@ -26,6 +26,9 @@
     <ClInclude Include="console.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="particles.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="platformer.cpp">
@@ -35,6 +38,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="console.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="particles.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -108,6 +114,21 @@
       <Filter>common</Filter>
     </None>
     <None Include="common\waves.frag">
+      <Filter>common</Filter>
+    </None>
+    <None Include="common\crt.frag">
+      <Filter>common</Filter>
+    </None>
+    <None Include="common\crt.vert">
+      <Filter>common</Filter>
+    </None>
+    <None Include=".\common\utility.frag">
+      <Filter>common</Filter>
+    </None>
+    <None Include="common\bindMultiTexture.frag">
+      <Filter>common</Filter>
+    </None>
+    <None Include="common\fastBloom.frag">
       <Filter>common</Filter>
     </None>
   </ItemGroup>

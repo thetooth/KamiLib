@@ -24,20 +24,20 @@ namespace klib {
 		KLGLThread();
 		KLGLThread(const char* nm);
 		virtual ~KLGLThread();
-		void setName(const char* nm);
-		string getName() const;
-		unsigned long *getHandle();
-		void start();
+		virtual void setName(const char* nm);
+		virtual string getName() const;
+		virtual unsigned long *getHandle();
+		virtual void start();
 		virtual void run();
-		void sleep(long ms);
-		void suspend();
-		void resume();
-		void stop();
+		virtual void sleep(long ms);
+		virtual void suspend();
+		virtual void resume();
+		virtual void stop();
 
-		void setPriority(int p);
+		virtual void setPriority(int p);
 
-		bool wait(const char* m,long ms=5000);
-		void release(const char* m);
+		virtual bool wait(const char* m,long ms=5000);
+		virtual void release(const char* m);
 
 		// unsigned long* to the low-level thread object
 		unsigned long* m_hThread;

@@ -18,6 +18,7 @@ int main(){
 	font = new KLGLFont();
 
 	while(status){
+		gc->windowManager->ProcessEvent(&status);
 		gc->OpenFBO();
 		gc->OrthogonalStart();
 		{

@@ -39,12 +39,6 @@
     <ClInclude Include="threads.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="GL\glew.h">
-      <Filter>Header Files\3rd Party</Filter>
-    </ClInclude>
-    <ClInclude Include="GL\wglew.h">
-      <Filter>Header Files\3rd Party</Filter>
-    </ClInclude>
     <ClInclude Include="md5.h">
       <Filter>Header Files\3rd Party</Filter>
     </ClInclude>

@@ -1,4 +1,4 @@
-#version 330 core
+#include "common/utility.frag"
 
 uniform vec2 BUFFER_EXTENSITY = vec2(1024.0f, 1024.0f);
 uniform sampler2D image;

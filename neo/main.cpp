@@ -4,6 +4,7 @@
 #include "platformer.h"
 #include "console.h"
 
+#ifdef _WIN32
 #ifdef KLGLENV64
 #pragma comment(lib,"kami64.lib")
 #pragma comment(lib,"fmodex64_vc.lib")
@@ -11,22 +12,24 @@
 #else
 #pragma comment(lib,"kami.lib")
 #pragma comment(lib,"fmodex_vc.lib")
+#pragma comment(lib,"python3.lib")
 #pragma comment(lib,"UI.lib")
+#endif
 #endif
 
 using namespace klib;
 using namespace NeoPlatformer;
 
 void Loading(KLGL *gc, KLGLTexture *loading);
-void Warning(KLGL *gc, KLGLTexture *warning, char *errorMessage);
+void Warning(KLGL *gc, char *errorMessage, KLGLTexture *warning = nullptr);
 
-int main(){
-	int consoleInput = 1;
+int main(int argc, wchar_t **argv){
+	int consoleInput = 0;
 	char inputBuffer[256] = {};
 	char textBuffer[4096] = {};
 	bool quit = false, internalTimer = false, mapScroll = false;
 	int frame = 0,fps = 0,cycle = 0, th_id = 0, nthreads = 0, qualityPreset = 0, shaderAlliterations = 0;
-	float tweenX = 0, tweenY = 0, titleFade = 0.0f;
+	float tweenX = 0, tweenY = 0, titleFade = 0;
 	POINT mouseXY;
 	clock_t t0 = clock(),t1 = 0,t2 = 0;
 	char wTitle[256] = {};
@@ -39,11 +42,11 @@ int main(){
 
 	Console *console;
 	UIDialog *dialog;
+	LiquidParticleThread* particleThread[4];
+	LiquidParticles particleTest = LiquidParticles(1000, &mouseXY, APP_SCREEN_W, APP_SCREEN_H);
 
 	tween::Tweener tweener;
 	tween::TweenerParam titleFaderTween(2000, tween::EXPO, tween::EASE_OUT);
-	titleFaderTween.addProperty(&titleFade, 255);
-	tweener.addTween(&titleFaderTween);
 
 	// Audio
 	Audio *audio = NULL;
@@ -52,14 +55,22 @@ int main(){
 	* Init
 	*/
 	KLGL *gc;
-	KLGLTexture *charmapTexture, *titleTexture, *loadingTexture, *userInterfaceTexture, *testTexture, *startupTexture, *warningTexture;
-	KLGLSprite *uiSprites;
+	KLGLTexture *charmapTexture, *titleTexture, *loadingTexture, *testTexture, *startupTexture, *warningTexture;
+	KLGLSprite *loaderSprite;
 	KLGLFont *font;
+
+	t0 = clock();
 
 	try {
 
 		// Init display
 		gc = new KLGL("Neo", APP_SCREEN_W, APP_SCREEN_H, 60, false, 2, 2);
+
+		// Python
+		PyImport_AppendInittab("neo", PyInit_neo);
+		//Py_SetProgramName(argv[0]);
+		Py_Initialize();
+		PyRun_SimpleString("import platform; import neo; neo.cl(\"Initialized Python {0}\\n\".format(platform.python_version()))");
 
 		// Loading screen and menu buffer
 		warningTexture = new KLGLTexture("common/warning.png");
@@ -67,12 +78,12 @@ int main(){
 
 		// Init sound
 		audio = new Audio();
-		audio->loadSound("common/startup.wav", 0, FMOD_LOOP_OFF);
+		audio->loadSound("common/startup.wav", 10, FMOD_LOOP_OFF);
+		audio->loadSound("common/title-outoflimits.mp3", 0, FMOD_LOOP_NORMAL);
 
 		// :3
 		Loading(gc, startupTexture);
-		audio->system->playSound(FMOD_CHANNEL_FREE, audio->sound[0], false, &audio->channel[0]);
-
+		audio->system->playSound(FMOD_CHANNEL_FREE, audio->sound[10], false, &audio->channel[0]);
 
 		// Configuration values
 		internalTimer		= gc->config->GetBoolean("neo", "useInternalTimer", true);
@@ -81,12 +92,14 @@ int main(){
 
 		// Textures
 		charmapTexture  = new KLGLTexture("common/internalfont.png");
-		userInterfaceTexture = new KLGLTexture("common/hud16.png");
-		testTexture = new KLGLTexture("common/tmp.png");
+		testTexture = new KLGLTexture("common/out[composite].png");
 		loadingTexture = new KLGLTexture("common/loading.png");
+		titleTexture = new KLGLTexture("common/neo-logo.png");
+
+		// Sprites
+		loaderSprite = new KLGLSprite(testTexture, 64, 64);
 
 		// UI
-		uiSprites = new KLGLSprite(userInterfaceTexture, 16, 16);
 		dialog = new UIDialog(gc, "common/UI_Interface.png");
 		dialog->bgColor = new KLGLColor(51, 51, 115, 255);
 		dialog->pos.width = 512;
@@ -97,17 +110,12 @@ int main(){
 		// Fonts
 		font = new KLGLFont(charmapTexture->gltexture, charmapTexture->width, charmapTexture->height, 8, 8, -1);
 
-		// Audio
-		audio->loadSound("common/title.ogg", 0, FMOD_LOOP_NORMAL);
-		audio->loadSound("common/music.ogg", 1, FMOD_LOOP_NORMAL);
-		audio->loadSound("common/jump.wav", 2, FMOD_LOOP_OFF);
-		audio->loadSound("common/hurt.wav", 3, FMOD_LOOP_OFF);
-		audio->loadSound("common/ambient2.mp3", 4, FMOD_LOOP_NORMAL);
-
 		// Game Console
-		console = new Console(4046);
+		console = new Console(4096);
 
 		// Default shaders
+		gc->GenFrameBuffer(gc->fbo[2], gc->fbo_texture[2], gc->fbo_depth[2]);
+		gc->GenFrameBuffer(gc->fbo[3], gc->fbo_texture[3], gc->fbo_depth[3]);
 		gc->InitShaders(0, 0, 
 			"common/passthrough.vert",
 			"common/passthrough.frag"
@@ -121,10 +129,16 @@ int main(){
 			"common/waves.frag"
 			);
 
+		// Particles
+		particleTest.numThreads = 4;
+		for (int i = 0; i < particleTest.numThreads; i++){
+			particleThread[i] = new LiquidParticleThread(&particleTest);
+			particleThread[i]->status = false;
+		}
+
 	}catch(KLGLException e){
 		quit = 1;
-		Warning(gc, warningTexture, e.getMessage());
-		//MessageBox(NULL, e.getMessage(), "KLGLException", MB_OK | MB_ICONERROR);
+		Warning(gc, e.getMessage(), warningTexture);
 	}
 
 	cl("\nNeo %s R%d", NEO_VERSION, APP_BUILD_VERSION);
@@ -136,16 +150,23 @@ int main(){
 #endif
 	}
 
-	while (clock()-t0 < 5000 && !KLGLDebug){
+	while (clock()-t0 < 2500 && !KLGLDebug){
 		// Ain't no thing
+		Sleep(10);
 	}
 
-	audio->system->playSound(FMOD_CHANNEL_FREE, audio->sound[0], false, &audio->channel[0]);
-	audio->channel[0]->setVolume(0.5f);
+	audio->system->playSound(FMOD_CHANNEL_FREE, audio->sound[0], false, &audio->channel[1]);
+	audio->channel[1]->setVolume(0.5f);
+
+	tweener.step(clock());
+	titleFaderTween.addProperty(&titleFade, 255);
+	tweener.addTween(&titleFaderTween);
 
 	while (!quit)
 	{
 		t0 = clock();
+
+#pragma region Input events
 
 		if(PeekMessage( &gc->windowManager->wm->msg, NULL, 0, 0, PM_REMOVE)){
 			if(gc->windowManager->wm->msg.message == WM_QUIT){
@@ -209,11 +230,15 @@ int main(){
 							}
 							fill_n(inputBuffer, 256, '\0');
 						}
+					} else if (gc->windowManager->wm->msg.wParam == VK_RETURN) {
+						particleTest.threadingState = 2; // This pauses the simulation
+						mode = GameMode::_MAPLOAD;
 					}
 					break;
 				case GameMode::_INGAME:
 					switch (gc->windowManager->wm->msg.wParam){
 					case VK_RETURN:
+						particleTest.threadingState = 1;
 						mode = GameMode::_MAPDESTROY;
 						break;
 					case VK_T:
@@ -264,6 +289,9 @@ int main(){
 				TranslateMessage(&gc->windowManager->wm->msg);
 				DispatchMessage(&gc->windowManager->wm->msg);
 			}
+
+#pragma endregion
+
 		}else if (t0-t2 >= CLOCKS_PER_SEC){
 			fps = frame;
 			frame = 0;
@@ -298,86 +326,29 @@ int main(){
 				{
 					// Reset pallet
 					KLGLColor(255, 255, 255, 255).Set();
-					// Draw BG
-					gc->OrthogonalStart(gc->overSampleFactor/2.0f);
-					static int scrollOffset;
-					if (scrollOffset == NULL || scrollOffset > 16){
-						scrollOffset = 0;
-					}
-					for (int y = 0; y-1 <= gc->buffer.height/32; y++)
-					{
-						for (int x = 0; x-1 <= gc->buffer.width/32; x++)
-						{
-							gc->BlitSprite2D(uiSprites, (x*16)-scrollOffset, (y*16)-scrollOffset, 0);
-						}
-					}
-					scrollOffset++;
-					glColor4ub(255, 255, 255, 255);
 
-					/*gc->OrthogonalStart(gc->overSampleFactor/1.0f);
+					gc->OrthogonalStart();
+
+					gc->OrthogonalStart(gc->overSampleFactor/1.0f);
 					gc->BindShaders(5);
 					glUniform1f(glGetUniformLocation(gc->GetShaderID(5), "time"), cycle/40.0f);
 					glUniform2f(glGetUniformLocation(gc->GetShaderID(5), "resolution"), gc->window.width*(gc->overSampleFactor/1.0f), gc->window.height*(gc->overSampleFactor/1.0f));
 					gc->BindMultiPassShader(5, 1, false);
-					gc->UnbindShaders();*/
-
-					/*gc->OrthogonalEnd();
-
-					glPushMatrix();
-					glLoadIdentity();
-
-					glBindTexture(GL_TEXTURE_2D, startupTexture->gltexture);
-					gc->BindShaders(4);
-					glTranslatef(0.0f, 0.0f, 6.0f);
-					glRotatef(cycle/1.0f, 1.0f, 1.0f, 1.0f);	// Rotate the cube about (1, 1, 1)
-
-					
-					glBegin(GL_QUADS);                 // Draw using quads
-					glColor3f(0.0f, 1.0f, 0.0f);    // Green
-					glVertex3f( 1.0f, 1.0f, -1.0f); // Top-right of the quad (Top)
-					glVertex3f(-1.0f, 1.0f, -1.0f); // Top-left of the quad (Top)
-					glVertex3f(-1.0f, 1.0f,  1.0f); // Bottom-left of the quad (Top)
-					glVertex3f( 1.0f, 1.0f,  1.0f); // Bottom-right of the quad (Top)
-
-					glColor3f(1.0f, 0.5f, 0.0f);     // Orange
-					glVertex3f( 1.0f, -1.0f,  1.0f); // Top-right of the quad (Bottom)
-					glVertex3f(-1.0f, -1.0f,  1.0f); // Top-left of the quad (Bottom)
-					glVertex3f(-1.0f, -1.0f, -1.0f); // Bottom-left of the quad (Bottom)
-					glVertex3f( 1.0f, -1.0f, -1.0f); // Bottom-right of the quad (Bottom)
-
-					glColor3f(1.0f, 0.0f, 0.0f);     // Red
-					glVertex3f( 1.0f,  1.0f, 1.0f);  // Top-right of the quad (Front)
-					glVertex3f(-1.0f,  1.0f, 1.0f);  // Top-left of the quad (Front)
-					glVertex3f(-1.0f, -1.0f, 1.0f);  // Bottom-left of the quad (Front)
-					glVertex3f( 1.0f, -1.0f, 1.0f);  // Bottom-right of the quad (Front)
-
-					glColor3f(1.0f, 1.0f, 0.0f);     // Yellow
-					glVertex3f( 1.0f, -1.0f, -1.0f); // Bottom-left of the quad (Back)
-					glVertex3f(-1.0f, -1.0f, -1.0f); // Bottom-right of the quad (Back)
-					glVertex3f(-1.0f,  1.0f, -1.0f); // Top-right of the quad (Back)
-					glVertex3f( 1.0f,  1.0f, -1.0f); // Top-left of the quad (Back)
-
-					glColor3f(0.0f, 0.0f, 1.0f);     // Blue
-					glVertex3f(-1.0f,  1.0f,  1.0f); // Top-right of the quad (Left)
-					glVertex3f(-1.0f,  1.0f, -1.0f); // Top-left of the quad (Left)
-					glVertex3f(-1.0f, -1.0f, -1.0f); // Bottom-left of the quad (Left)
-					glVertex3f(-1.0f, -1.0f,  1.0f); // Bottom-right of the quad (Left)
-
-					glColor3f(1.0f, 0.0f, 1.0f);     // Violet
-					glVertex3f( 1.0f,  1.0f, -1.0f); // Top-right of the quad (Right)
-					glVertex3f( 1.0f,  1.0f,  1.0f); // Top-left of the quad (Right)
-					glVertex3f( 1.0f, -1.0f,  1.0f); // Bottom-left of the quad (Right)
-					glVertex3f( 1.0f, -1.0f, -1.0f); // Bottom-right of the quad (Right)
-					glEnd();   // Done drawing the color cube
-					glBindTexture(GL_TEXTURE_2D, NULL);
-
 					gc->UnbindShaders();
-					glPopMatrix();*/
+
+					//drawSinWave(mouseXY.x/10.0f);
+
+					gc->Blit2D(titleTexture, 0, 0);
+					gc->BlitSprite2D(loaderSprite, 0, 0, cycle);
 
 					// Draw console
-					gc->OrthogonalStart(gc->overSampleFactor);
-					font->Draw(0, 8, textBuffer);
-					//gc->Rectangle2D(0, 0, gc->buffer.width, gc->buffer.height, KLGLColor(0, 0, 0, 255-titleFade));
+					//gc->OrthogonalStart(gc->overSampleFactor);
+					//font->Draw(0, 8, textBuffer);
+
+					// Fader
+					if (titleFade < 254){
+						gc->Rectangle2D(0, 0, gc->buffer.width, gc->buffer.height, KLGLColor(0, 0, 0, int(255-titleFade)));
+					}
 				}
 				gc->OrthogonalEnd();
 				gc->Swap();
@@ -388,11 +359,11 @@ int main(){
 				try{
 					// Shutdown any sound the menu mite be playing
 					audio->channel[0]->stop();
+					audio->channel[1]->stop();
 					// Initialize the game engine
 					gameEnv = new Environment("common/map01");
 					gameEnv->gcProxy = gc;
 					gameEnv->audioProxy = audio;
-					gameEnv->hudSpriteSheet16 = uiSprites;
 					// Pass-through our font
 					gameEnv->hudFont = font;
 					// Setup a thread to load and parse our map(if the map is large we want to be able to check its progress).
@@ -499,7 +470,7 @@ int main(){
 						{
 							for (int x = 0; x-1 <= gc->buffer.width/32; x++)
 							{
-								gc->BlitSprite2D(uiSprites, (x*16)-scrollOffset, (y*16)-scrollOffset, 0);
+								gc->BlitSprite2D(gameEnv->hudSpriteSheet16, (x*16)-scrollOffset, (y*16)-scrollOffset, 0);
 							}
 						}
 						scrollOffset++;
@@ -518,6 +489,9 @@ int main(){
 
 						gameEnv->debugflags.x = mouseXY.x;
 						gameEnv->debugflags.y = mouseXY.y;
+
+						PyRun_SimpleString("neo.set(\"gameEnv.scrollX\", 10)");
+
 						// Debug info
 						if (KLGLDebug)
 						{
@@ -595,8 +569,11 @@ int main(){
 						// Draw Map
 						gameEnv->drawMap(gc);
 
-						// Draw Player
+						// Draw Player & Enemys
 						gameEnv->character->draw(gameEnv, gc, gameEnv->mapSpriteSheet, frame);
+						for (auto enemy = gameEnv->enemys.begin(); enemy != gameEnv->enemys.end(); enemy++){
+							(*enemy)->draw(gc, gameEnv->mapSpriteSheet, frame);
+						}
 
 						// Lighting effects
 						gc->BindShaders(4);
@@ -608,11 +585,28 @@ int main(){
 						gc->BindMultiPassShader(4, 1, false);
 						gc->UnbindShaders();
 
+						// Adv Bloom
+						gc->BindShaders(3);
+						glUniform1i(glGetUniformLocation(gc->GetShaderID(3), "image"), 0);
+						glUniform1i(glGetUniformLocation(gc->GetShaderID(3), "slave"), 1);
+						glUniform1f(glGetUniformLocation(gc->GetShaderID(3), "time"), gc->shaderClock);
+						glUniform2f(glGetUniformLocation(gc->GetShaderID(3), "resolution"), gc->buffer.width/gc->overSampleFactor, gc->buffer.height/gc->overSampleFactor);
+						gc->BindMultiPassShader(3, 1, false);
+						gc->UnbindShaders();
+
+						/*gc->BindShaders(2);
+						glUniform1i(glGetUniformLocation(gc->GetShaderID(2), "image"), 0);
+						glUniform1i(glGetUniformLocation(gc->GetShaderID(2), "slave"), 1);
+						glUniform1f(glGetUniformLocation(gc->GetShaderID(2), "time"), gc->shaderClock);
+						glUniform2f(glGetUniformLocation(gc->GetShaderID(2), "resolution"), gc->buffer.width/gc->overSampleFactor, gc->buffer.height/gc->overSampleFactor);
+						gc->BindMultiPassShader(2, 1, false);
+						gc->UnbindShaders();*/
+
 						// Master post shader data
 						gc->BindShaders(1);
 						glUniform1f(glGetUniformLocation(gc->GetShaderID(1), "time"), gc->shaderClock);
-						glUniform2f(glGetUniformLocation(gc->GetShaderID(1), "BUFFER_EXTENSITY"), gc->buffer.width/gc->overSampleFactor, gc->buffer.height/gc->overSampleFactor);
-						gc->BindMultiPassShader(1, 1, true);
+						glUniform2f(glGetUniformLocation(gc->GetShaderID(1), "resolution"), gc->buffer.width/gc->overSampleFactor, gc->buffer.height/gc->overSampleFactor);
+						gc->BindMultiPassShader(1, 1, false);
 						gc->UnbindShaders();
 
 						// HUD, Score, Health, etc
@@ -633,6 +627,11 @@ int main(){
 		}
 
 	}
+	particleTest.threadingState = 0;
+	for (int i = 0; i < particleTest.numThreads; i++){
+		particleThread[i]->stop();
+		delete particleThread[i];
+	}
 	delete gc;
 	return 0;
 }
@@ -651,12 +650,14 @@ void Loading(KLGL *gc, KLGLTexture *loading)
 	gc->Swap();
 }
 
-void Warning(KLGL *gc, KLGLTexture *warning, char *errorMessage){
+void Warning(KLGL *gc, char *errorMessage, KLGLTexture *warning){
 	KLGLFont *font = new KLGLFont();
 	gc->OpenFBO();
 	gc->OrthogonalStart();
 	{
-		gc->Blit2D(warning, 0, 0);
+		if (warning != nullptr){
+			gc->Blit2D(warning, 0, 0);
+		}
 		font->Draw(0, 42, errorMessage);
 	}
 	gc->OrthogonalEnd();

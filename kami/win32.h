@@ -5,8 +5,8 @@
 #endif
 
 #include <Windows.h>
-#include "GL/glew.h"
-#include "GL/wglew.h"
+#include "glew.h"
+#include "wglew.h"
 #include "pure.h"
 #include "logicalObjects.h"
 
@@ -135,11 +135,12 @@ namespace klib {
 		HGLRC hRC,hRCAUX;
 		MSG msg;
 		
-		Win32WM(const char* title, Rect<int> window, int scaleFactor, bool fullscreen);
+		Win32WM(const char* title, Rect<int> *window, int scaleFactor, bool fullscreen);
 		~Win32WM();
 
 		void _swap();
 		void clientResize(int nWidth, int nHeight);
+		int _event();
 	};
 
 	class Win32Resource {

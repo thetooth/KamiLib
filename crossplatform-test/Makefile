@@ -22,4 +22,4 @@ $(EXEC): $(OBJECTS)
 	$(CPP) -g $(OBJECTS) -I../kami -I. -I/usr/include -L/usr/lib -lX11 -lGL -lGLU -L../kami -lkami -o $(EXEC)
 
 clean:
-	rm -f $(EXEC) libkami.a
+	rm -f $(EXEC) $(OBJECTS)

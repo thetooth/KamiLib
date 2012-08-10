@@ -3,6 +3,7 @@
 #include "databin.h"
 #include <iostream>
 #include <string>
+#include <regex>
 
 namespace klib{
 
@@ -128,7 +129,7 @@ namespace klib{
 			buffer.height	= window.height*overSampleFactor;
 
 			// Init window
-			windowManager = new KLGLWindowManager(_title, window, scaleFactor, fullscreen);
+			windowManager = new KLGLWindowManager(_title, &window, scaleFactor, fullscreen);
 
 			glMatrixMode(GL_MODELVIEW);
 			glLoadIdentity();
@@ -219,15 +220,7 @@ namespace klib{
 	}
 
 	void KLGL::ProcessEvent(int *status){
-		/*if(PeekMessage(&windowManager->wm->msg, NULL, NULL, NULL, PM_REMOVE)){
-			if(windowManager->wm->msg.message == WM_QUIT){
-				PostQuitMessage(0);
-				*status = 0;
-			}else{
-				TranslateMessage(&windowManager->wm->msg);
-				DispatchMessage(&windowManager->wm->msg);
-			}
-		}*/
+		windowManager->ProcessEvent(status);
 	}
 
 	void KLGL::OpenFBO(float fov, float eyex, float eyey, float eyez){
@@ -498,25 +491,25 @@ namespace klib{
 		const char* sData;
 		shader_id[shaderProgId] = glCreateProgram();
 
-#define sLoad(x) (isString ? x : file_contents(const_cast<char*>(x)))
+#define sLoad(x) (isString ? x : LoadShaderFile(x))
 
 		sData = sLoad(vsFile);
-		if (vsFile != NULL && sData != NULL){
+		if (vsFile != NULL && sData != nullptr){
 			cl("Compiling %s\n", vsFile);
 			shader_vp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_VERTEX_SHADER,	 sData);
 		}
 		sData = sLoad(fsFile);
-		if (fsFile != NULL && sData != NULL){
+		if (fsFile != NULL && sData != nullptr){
 			cl("Compiling %s\n", fsFile);
 			shader_fp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_FRAGMENT_SHADER, sData);
 		}
 		sData = sLoad(gsFile);
-		if (gsFile != NULL && sData != NULL){
+		if (gsFile != NULL && sData != nullptr){
 			cl("Compiling %s\n", gsFile);
 			shader_gp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_GEOMETRY_SHADER, sData);
 		}
 		sData = sLoad(tsFile);
-		if (tsFile != NULL && sData != NULL){
+		if (tsFile != NULL && sData != nullptr){
 			cl("Compiling %s\n", tsFile);
 			shader_tp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_ARB_tessellation_shader, sData);
 		}
@@ -548,26 +541,26 @@ namespace klib{
 		return tmpLinker;
 	}
 
-	char* KLGL::LoadShaderFile(const char *fname){
-		char* shaderString = NULL;
-		FILE *file = fopen(fname, "rt");
-		if(fname != NULL && file != NULL){
-			fseek(file, 0, SEEK_END);
-			int count = ftell(file);
-			rewind(file);
+	const char* KLGL::LoadShaderFile(const char *fname){
+		if (fname == NULL || strlen == 0){
+			return nullptr;
+		}
 
-			if (count > 0) {
-				shaderString = (char*)malloc(count + 1);
-				count = fread(shaderString, sizeof(char), count, file);
-				shaderString[count] = '\0';
-			}
-			fclose(file);
+		static char* outBuff;
+		std::string shaderString(file_contents(const_cast<char*>(fname)));
+		
+		std::basic_regex<char> includeMatch("#include([\\s]+|[\\t]+)\"([^\"]+)\"");
+		std::match_results<std::string::const_iterator> matches;
+
+		while(std::regex_search(shaderString, matches, includeMatch)){
+			std::string includePath(matches[2]);
+			std::string content(file_contents(includePath.c_str()));
+			shaderString = regex_replace(shaderString, includeMatch, content);
 		}
-		if (shaderString == NULL)
-		{
-			throw KLGLException("Error loading shader file: %s", fname);
-		}
-		return shaderString;
+
+		outBuff = (char*)malloc(shaderString.length());
+		strcpy(outBuff, shaderString.c_str());
+		return outBuff;
 	}
 
 	void KLGL::PrintShaderInfoLog(GLuint obj, int isShader){
@@ -597,7 +590,7 @@ namespace klib{
 		}
 	}
 
-	void KLGL::BindMultiPassShader(int shaderProgId, int alliterations, bool flipOddBuffer, float x, float y, float width, float height){
+	void KLGL::BindMultiPassShader(int shaderProgId, int alliterations, bool flipOddBuffer, float x, float y, float width, float height, int textureSlot){
 		if (width < 0.0f || height < 0.0f){
 			width = buffer.width;
 			height = buffer.height;
@@ -606,11 +599,18 @@ namespace klib{
 		glPushMatrix();
 		glLoadIdentity();
 
+		int primary = (textureSlot != 0 ? textureSlot*2 : 0);
+		int secondary = (textureSlot != 0 ? (textureSlot*2)+1 : 1);
+
 		for (int i = 0; i < alliterations; i++)
 		{
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo[1]);
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo[secondary]);
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, fbo_texture[0]);
+			/*glActiveTexture(GL_TEXTURE0+textureSlot);
+			glBindTexture(GL_TEXTURE_2D, fbo_texture[2]);*/
+			
 
 			BindShaders(shaderProgId);
 			glBegin(GL_QUADS);
@@ -622,9 +622,13 @@ namespace klib{
 			UnbindShaders();
 			glBindTexture(GL_TEXTURE_2D, 0);
 
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo[0]);
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo[primary]);
 			//glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+			
+			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, fbo_texture[1]);
+			/*glActiveTexture(GL_TEXTURE0+textureSlot);
+			glBindTexture(GL_TEXTURE_2D, fbo_texture[3]);*/
 
 			glBegin(GL_QUADS);
 			// Fix for odd flipping when using gl_FragCoord
@@ -641,6 +645,10 @@ namespace klib{
 			}
 			glEnd();
 			glBindTexture(GL_TEXTURE_2D, 0);
+		}
+
+		if (textureSlot != 0){
+			glActiveTexture(GL_TEXTURE0);
 		}
 
 		glPopMatrix();

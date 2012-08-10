@@ -41,7 +41,7 @@ namespace klib {
 		return 0;
 	}
 
-	Win32WM::Win32WM(const char* title, Rect<int> window, int scaleFactor, bool fullscreen){
+	Win32WM::Win32WM(const char* title, Rect<int> *window, int scaleFactor, bool fullscreen){
 		// Register win32 class
 		wc.style = CS_OWNDC;
 		wc.lpfnWndProc = WndProc;
@@ -61,8 +61,8 @@ namespace klib {
 			DEVMODE dmScreenSettings;
 			memset(&dmScreenSettings,0,sizeof(dmScreenSettings));
 			dmScreenSettings.dmSize=sizeof(dmScreenSettings);
-			dmScreenSettings.dmPelsWidth	= window.width*scaleFactor;
-			dmScreenSettings.dmPelsHeight	= window.height*scaleFactor;
+			dmScreenSettings.dmPelsWidth	= window->width*scaleFactor;
+			dmScreenSettings.dmPelsHeight	= window->height*scaleFactor;
 			dmScreenSettings.dmBitsPerPel	= 32;
 			dmScreenSettings.dmFields=DM_BITSPERPEL|DM_PELSWIDTH|DM_PELSHEIGHT;
 
@@ -70,13 +70,13 @@ namespace klib {
 				cl("The Requested Fullscreen Mode Is Not Supported By\nYour Video Card. Will Use Windowed Mode Instead.\n\n");
 				fullscreen = false;
 			}else{
-				hWnd = CreateWindowEx(WS_EX_APPWINDOW, "KamiGLWnd32", title, WS_POPUP | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, NULL, NULL, window.width*scaleFactor, window.height*scaleFactor, NULL, NULL, wc.hInstance, NULL );
+				hWnd = CreateWindowEx(WS_EX_APPWINDOW, "KamiGLWnd32", title, WS_POPUP | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, NULL, NULL, window->width*scaleFactor, window->height*scaleFactor, NULL, NULL, wc.hInstance, NULL );
 			}
 		}
 
 		if(!fullscreen){
-			hWnd = CreateWindowEx(WS_EX_APPWINDOW, "KamiGLWnd32", title, WS_CAPTION | WS_OVERLAPPEDWINDOW, window.x, window.y, window.width*scaleFactor, window.height*scaleFactor, NULL, NULL, wc.hInstance, NULL );
-			clientResize(window.width*scaleFactor, window.height*scaleFactor);
+			hWnd = CreateWindowEx(WS_EX_APPWINDOW, "KamiGLWnd32", title, WS_CAPTION | WS_OVERLAPPEDWINDOW, window->x, window->y, window->width*scaleFactor, window->height*scaleFactor, NULL, NULL, wc.hInstance, NULL );
+			clientResize(window->width*scaleFactor, window->height*scaleFactor);
 		}
 
 		SetWindowText(hWnd, "Loading...");
@@ -131,6 +131,20 @@ namespace klib {
 
 	void Win32WM::_swap(){
 		SwapBuffers(hDC);
+	}
+
+	int Win32WM::_event(){
+		int status = 1;
+		if(PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE)){
+			if(msg.message == WM_QUIT){
+				PostQuitMessage(0);
+				status = 0;
+			}else{
+				TranslateMessage(&msg);
+				DispatchMessage(&msg);
+			}
+		}
+		return status;
 	}
 
 	void Win32WM::clientResize(int nWidth, int nHeight){

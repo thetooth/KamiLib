@@ -22,4 +22,4 @@ $(EXEC): $(OBJECTS)
 	ar rvcs lib$(EXEC).a $(OBJECTS)
 
 clean:
-	rm -f $(EXEC) libkami.a
+	rm -f $(EXEC) libkami.a $(OBJECTS)

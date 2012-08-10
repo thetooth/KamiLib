@@ -76,24 +76,24 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>C:\Program Files %28x86%29\FMOD SoundSystem\FMOD Programmers API Windows\api\inc;$(SolutionDir)kami;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Program Files %28x86%29\FMOD SoundSystem\FMOD Programmers API Windows\api\lib;$(SolutionDir)$(IntDir);$(LibraryPath)</LibraryPath>
+    <IncludePath>D:\Development\Application\stackless\PCbuild;D:\Development\Application\stackless\PC;D:\Development\Application\stackless\Include;C:\Program Files %28x86%29\FMOD SoundSystem\FMOD Programmers API Windows\api\inc;$(SolutionDir)kami;$(IncludePath)</IncludePath>
+    <LibraryPath>D:\Development\Application\stackless\PCbuild;C:\Program Files %28x86%29\FMOD SoundSystem\FMOD Programmers API Windows\api\lib;$(SolutionDir)$(IntDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>C:\Program Files %28x86%29\FMOD SoundSystem\FMOD Programmers API Windows\api\inc;$(SolutionDir)kami;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Program Files %28x86%29\FMOD SoundSystem\FMOD Programmers API Windows\api\lib;$(SolutionDir)$(IntDir);$(LibraryPath)</LibraryPath>
+    <IncludePath>D:\Development\Application\stackless\PCbuild;D:\Development\Application\stackless\PC;D:\Development\Application\stackless\Include;C:\Program Files %28x86%29\FMOD SoundSystem\FMOD Programmers API Windows\api\inc;$(SolutionDir)kami;$(IncludePath)</IncludePath>
+    <LibraryPath>D:\Development\Application\stackless\PCbuild;C:\Program Files %28x86%29\FMOD SoundSystem\FMOD Programmers API Windows\api\lib;$(SolutionDir)$(IntDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>C:\Program Files %28x86%29\FMOD SoundSystem\FMOD Programmers API Windows\api\inc;$(SolutionDir)kami;$(IncludePath)</IncludePath>
+    <IncludePath>D:\Development\Application\stackless\PCbuild;D:\Development\Application\stackless\PC;D:\Development\Application\stackless\Include;C:\Program Files %28x86%29\FMOD SoundSystem\FMOD Programmers API Windows\api\inc;$(SolutionDir)kami;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LibraryPath>C:\Program Files %28x86%29\FMOD SoundSystem\FMOD Programmers API Windows\api\lib;$(SolutionDir)$(IntDir);$(LibraryPath)</LibraryPath>
+    <LibraryPath>D:\Development\Application\stackless\PCbuild;C:\Program Files %28x86%29\FMOD SoundSystem\FMOD Programmers API Windows\api\lib;$(SolutionDir)$(IntDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>C:\Program Files %28x86%29\FMOD SoundSystem\FMOD Programmers API Windows\api\inc;$(SolutionDir)kami;$(IncludePath)</IncludePath>
+    <IncludePath>D:\Development\Application\stackless\PCbuild;D:\Development\Application\stackless\PC;D:\Development\Application\stackless\Include;C:\Program Files %28x86%29\FMOD SoundSystem\FMOD Programmers API Windows\api\inc;$(SolutionDir)kami;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LibraryPath>C:\Program Files %28x86%29\FMOD SoundSystem\FMOD Programmers API Windows\api\lib;$(SolutionDir)$(IntDir);$(LibraryPath)</LibraryPath>
+    <LibraryPath>D:\Development\Application\stackless\PCbuild;C:\Program Files %28x86%29\FMOD SoundSystem\FMOD Programmers API Windows\api\lib;$(SolutionDir)$(IntDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -148,7 +148,7 @@
       <WarningLevel>Level3</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <OptimizeForWindowsApplication>true</OptimizeForWindowsApplication>
       <Cpp0xSupport>true</Cpp0xSupport>
     </ClCompile>
@@ -162,21 +162,27 @@
   <ItemGroup>
     <ClInclude Include="console.h" />
     <ClInclude Include="masternoodles.h" />
+    <ClInclude Include="particles.h" />
     <ClInclude Include="platformer.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="console.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="particles.cpp" />
     <ClCompile Include="platformer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="common\bindMultiTexture.frag" />
     <None Include="common\clouds.png">
       <DeploymentContent>true</DeploymentContent>
     </None>
+    <None Include="common\crt.frag" />
+    <None Include="common\crt.vert" />
     <None Include="common\diffuse.frag" />
     <None Include="common\diffuse.vert" />
     <None Include="common\dither.frag" />
+    <None Include="common\fastBloom.frag" />
     <None Include="common\gameover.png">
       <DeploymentContent>true</DeploymentContent>
     </None>
@@ -194,6 +200,7 @@
     <None Include="common\map01.smp">
       <DeploymentContent>true</DeploymentContent>
     </None>
+    <None Include=".\common\utility.frag" />
     <None Include="common\passthrough.frag" />
     <None Include="common\passthrough.vert" />
     <None Include="common\postDefaultF.glsl">
