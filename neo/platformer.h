@@ -14,6 +14,85 @@ using namespace klib;
 #define FPM 9
 #define MAP_PHASE_ADJ_SPEED			64
 
+namespace emb
+{
+
+	typedef std::function<void(std::string)> stdout_write_type;
+
+	struct Stdout
+	{
+		PyObject_HEAD
+			stdout_write_type write;
+	};
+
+	PyObject* Stdout_write(PyObject* self, PyObject* args);
+	PyObject* Stdout_flush(PyObject* self, PyObject* args);
+
+	static PyMethodDef Stdout_methods[] =
+	{
+		{"write", Stdout_write, METH_VARARGS, "sys.stdout.write"},
+		{"flush", Stdout_flush, METH_VARARGS, "sys.stdout.write"},
+		{0, 0, 0, 0} // sentinel
+	};
+
+	static PyTypeObject StdoutType =
+	{
+		PyVarObject_HEAD_INIT(0, 0)
+		"emb.StdoutType",     /* tp_name */
+		sizeof(Stdout),       /* tp_basicsize */
+		0,                    /* tp_itemsize */
+		0,                    /* tp_dealloc */
+		0,                    /* tp_print */
+		0,                    /* tp_getattr */
+		0,                    /* tp_setattr */
+		0,                    /* tp_reserved */
+		0,                    /* tp_repr */
+		0,                    /* tp_as_number */
+		0,                    /* tp_as_sequence */
+		0,                    /* tp_as_mapping */
+		0,                    /* tp_hash  */
+		0,                    /* tp_call */
+		0,                    /* tp_str */
+		0,                    /* tp_getattro */
+		0,                    /* tp_setattro */
+		0,                    /* tp_as_buffer */
+		Py_TPFLAGS_DEFAULT,   /* tp_flags */
+		"emb.Stdout objects", /* tp_doc */
+		0,                    /* tp_traverse */
+		0,                    /* tp_clear */
+		0,                    /* tp_richcompare */
+		0,                    /* tp_weaklistoffset */
+		0,                    /* tp_iter */
+		0,                    /* tp_iternext */
+		Stdout_methods,       /* tp_methods */
+		0,                    /* tp_members */
+		0,                    /* tp_getset */
+		0,                    /* tp_base */
+		0,                    /* tp_dict */
+		0,                    /* tp_descr_get */
+		0,                    /* tp_descr_set */
+		0,                    /* tp_dictoffset */
+		0,                    /* tp_init */
+		0,                    /* tp_alloc */
+		0,                    /* tp_new */
+	};
+
+	static PyModuleDef embmodule =
+	{
+		PyModuleDef_HEAD_INIT,
+		"emb", 0, -1, 0,
+	};
+
+	// Internal state
+	static PyObject* g_stdout;
+	static PyObject* g_stdout_saved;
+
+	PyMODINIT_FUNC PyInit_emb(void);
+	void set_stdout(stdout_write_type write);
+	void reset_stdout();
+
+}
+
 namespace NeoPlatformer{
 
 	// Classes in this file
@@ -65,14 +144,39 @@ namespace NeoPlatformer{
 		}
 		return PyLong_FromLong(sts);
 	}
+	static PyObject *neoGetHandler(PyObject *self, PyObject *args){
+		const char *key;
+		int val;
+		int sts = 0;
+
+		if (!PyArg_ParseTuple(args, "s", &key)){
+			return NULL;
+		}
+
+		if (key == NULL){
+			sts = -1;
+		}else{
+			val = *((int*)neoCallbackList[key]);
+		}
+
+		if (sts < 0) {
+			PyErr_SetString(neoErrorHandler, "Failed to set value!");
+			return NULL;
+		}
+		return PyLong_FromLong(val);
+	}
+	
 	static PyMethodDef neoMethods[] = {
 		{"cl", neoClHandler, METH_VARARGS, "Print to console."},
 		{"set", neoSetHandler, METH_VARARGS, "Set values exposed by game engine."},
+		{"get", neoGetHandler, METH_VARARGS, "Get values exposed by game engine."},
 		{NULL, NULL, 0, NULL}
 	};
+
 	static struct PyModuleDef neoModule = {
 		PyModuleDef_HEAD_INIT, "neo", NULL, -1, neoMethods
 	};
+
 	inline PyObject* PyInit_neo(void){
 		return PyModule_Create(&neoModule);
 	}
@@ -347,48 +451,5 @@ namespace NeoPlatformer{
 			sinPos += sinStep;
 		}
 		if (sinPos >= pie2) sinPos -= pie2;
-	}
-
-	inline void drawSinWave(float mag){
-		static float start;
-		if (start == NULL){
-			start = 0.0f;
-		}
-		float radius = 7.5;
-		float x2=0,y2,cx,cy,fx,fy;
-		float cos_y,cache_cos_y;
-		int cache = 0;
-		start += 1.0;
-		if(start >360) {
-			start = 0;
-		}
-		glBegin(GL_LINES);
-		float angle = 0;
-		for(angle=start; ; angle+=1.0) {
-			if(angle>1020) {
-				angle = 0.0;
-				break;
-			}
-			float rad_angle = angle * 3.14 / 180;
-			x2 = x2+0.1;
-			y2 = radius * sin((double)rad_angle);
-			cos_y = radius * sin((double)-rad_angle);
-			if (cache) {
-				glVertex2f(cx*mag,cy*mag);
-				glVertex2f(x2*mag,y2*mag);
-
-				glVertex2f(cx*mag,cache_cos_y*mag);
-				glVertex2f(x2*mag,cos_y*mag);
-
-			} else {
-				fx = x2;
-				fy = y2;
-			}
-			cache = 1;
-			cx = x2;
-			cy = y2;
-			cache_cos_y = cos_y;
-		}
-		glEnd();
 	}
 }

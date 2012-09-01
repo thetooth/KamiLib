@@ -43,6 +43,9 @@
     <ClCompile Include="particles.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="miniz.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="common\postDefaultV.glsl">
@@ -83,9 +86,6 @@
       <Filter>common</Filter>
     </None>
     <None Include="common\gameover.png">
-      <Filter>common</Filter>
-    </None>
-    <None Include="common\map01.lua">
       <Filter>common</Filter>
     </None>
     <None Include="common\gaussianBlur.frag">
@@ -129,6 +129,9 @@
       <Filter>common</Filter>
     </None>
     <None Include="common\fastBloom.frag">
+      <Filter>common</Filter>
+    </None>
+    <None Include=".\common\map01.py">
       <Filter>common</Filter>
     </None>
   </ItemGroup>

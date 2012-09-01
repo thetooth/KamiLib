@@ -4,6 +4,8 @@
 #include "platformer.h"
 #include "console.h"
 
+#include "miniz.c"
+
 #ifdef _WIN32
 #ifdef KLGLENV64
 #pragma comment(lib,"kami64.lib")
@@ -24,13 +26,13 @@ void Loading(KLGL *gc, KLGLTexture *loading);
 void Warning(KLGL *gc, char *errorMessage, KLGLTexture *warning = nullptr);
 
 int main(int argc, wchar_t **argv){
-	int consoleInput = 0;
+	int consoleInput = 1;
 	char inputBuffer[256] = {};
 	char textBuffer[4096] = {};
 	bool quit = false, internalTimer = false, mapScroll = false;
 	int frame = 0,fps = 0,cycle = 0, th_id = 0, nthreads = 0, qualityPreset = 0, shaderAlliterations = 0;
 	float tweenX = 0, tweenY = 0, titleFade = 0;
-	POINT mouseXY;
+	POINT mouseXY, mouseXY_prev;
 	clock_t t0 = clock(),t1 = 0,t2 = 0;
 	char wTitle[256] = {};
 
@@ -48,12 +50,16 @@ int main(int argc, wchar_t **argv){
 	tween::Tweener tweener;
 	tween::TweenerParam titleFaderTween(2000, tween::EXPO, tween::EASE_OUT);
 
+	// Miniz
+	mz_bool status;
+	size_t uncomp_size;
+	mz_zip_archive zip_archive;
+	void *p;
+
 	// Audio
 	Audio *audio = NULL;
 
-	/*
-	* Init
-	*/
+	// Kami
 	KLGL *gc;
 	KLGLTexture *charmapTexture, *titleTexture, *loadingTexture, *testTexture, *startupTexture, *warningTexture;
 	KLGLSprite *loaderSprite;
@@ -62,15 +68,54 @@ int main(int argc, wchar_t **argv){
 	t0 = clock();
 
 	try {
-
 		// Init display
 		gc = new KLGL("Neo", APP_SCREEN_W, APP_SCREEN_H, 60, false, 2, 2);
 
+		// Init filesystem
+		memset(&zip_archive, 0, sizeof(zip_archive));
+		status = mz_zip_reader_init_file(&zip_archive, "common.zip", 0);
+		if (!status){
+			cl("mz_zip_reader_init_file() failed!\n");
+		}else{
+			cl("Initialized compressed filesystem(Miniz %s), using it...\n", MZ_VERSION);
+			// Get and print information about each file in the archive.
+			/*for (int i = 0; i < mz_zip_reader_get_num_files(&zip_archive); i++){
+				mz_zip_archive_file_stat file_stat;
+				if (!mz_zip_reader_file_stat(&zip_archive, i, &file_stat)){
+					printf("mz_zip_reader_file_stat() failed!\n");
+					mz_zip_reader_end(&zip_archive);
+					return EXIT_FAILURE;
+				}
+				printf("Filename: \"%s\"\n\tComment: \"%s\"\n\tUncompressed size: %u\n\tCompressed size: %u\n\n", file_stat.m_filename, file_stat.m_comment, (unsigned int)file_stat.m_uncomp_size, (unsigned int)file_stat.m_comp_size);
+			}*/
+			// Try to extract to the heap.
+			char* fname = "ambient.mp3";
+			p = mz_zip_reader_extract_file_to_heap(&zip_archive, fname, &uncomp_size, 0);
+			if (!p){
+				printf("mz_zip_reader_extract_file_to_heap() failed!\n");
+				mz_zip_reader_end(&zip_archive);
+				return EXIT_FAILURE;
+			}
+			cl("Successfully extracted file \"%s\", size %u\n", fname, (unsigned int)uncomp_size);
+
+			//cl("%s", p);
+			// We're done.
+			free(p);
+			mz_zip_reader_end(&zip_archive);
+		}
+
 		// Python
+		PyImport_AppendInittab("emb", emb::PyInit_emb);
 		PyImport_AppendInittab("neo", PyInit_neo);
-		//Py_SetProgramName(argv[0]);
 		Py_Initialize();
+		PyImport_ImportModule("emb");
+		emb::stdout_write_type write = [&] (std::string s) { cl(s.c_str()); };
+		emb::set_stdout(write);
 		PyRun_SimpleString("import platform; import neo; neo.cl(\"Initialized Python {0}\\n\".format(platform.python_version()))");
+
+		GetCursorPos(&mouseXY);
+		ScreenToClient(gc->windowManager->wm->hWnd, &mouseXY);
+		mouseXY_prev = mouseXY;
 
 		// Loading screen and menu buffer
 		warningTexture = new KLGLTexture("common/warning.png");
@@ -78,8 +123,8 @@ int main(int argc, wchar_t **argv){
 
 		// Init sound
 		audio = new Audio();
-		audio->loadSound("common/startup.wav", 10, FMOD_LOOP_OFF);
-		audio->loadSound("common/title-outoflimits.mp3", 0, FMOD_LOOP_NORMAL);
+		audio->loadSound("common/startup.ogg", 10, FMOD_LOOP_OFF);
+		audio->loadSound("common/title2.ogg", 0, FMOD_LOOP_NORMAL);
 
 		// :3
 		Loading(gc, startupTexture);
@@ -92,12 +137,12 @@ int main(int argc, wchar_t **argv){
 
 		// Textures
 		charmapTexture  = new KLGLTexture("common/internalfont.png");
-		testTexture = new KLGLTexture("common/out[composite].png");
+		testTexture = new KLGLTexture("common/cloud10.png");
 		loadingTexture = new KLGLTexture("common/loading.png");
 		titleTexture = new KLGLTexture("common/neo-logo.png");
 
 		// Sprites
-		loaderSprite = new KLGLSprite(testTexture, 64, 64);
+		//loaderSprite = new KLGLSprite(testTexture, 64, 64);
 
 		// UI
 		dialog = new UIDialog(gc, "common/UI_Interface.png");
@@ -116,14 +161,10 @@ int main(int argc, wchar_t **argv){
 		// Default shaders
 		gc->GenFrameBuffer(gc->fbo[2], gc->fbo_texture[2], gc->fbo_depth[2]);
 		gc->GenFrameBuffer(gc->fbo[3], gc->fbo_texture[3], gc->fbo_depth[3]);
-		gc->InitShaders(0, 0, 
-			"common/passthrough.vert",
-			"common/passthrough.frag"
-			);
-		gc->InitShaders(4, 0, 
-			"common/model.vert",
-			"common/model.frag"
-			);
+		/*gc->InitShaders(0, 0, 
+			"common/postDefaultV.glsl",
+			"common/crt.frag"
+			);*/
 		gc->InitShaders(5, 0, 
 			"common/postDefaultV.glsl",
 			"common/waves.frag"
@@ -141,7 +182,11 @@ int main(int argc, wchar_t **argv){
 		Warning(gc, e.getMessage(), warningTexture);
 	}
 
-	cl("\nNeo %s R%d", NEO_VERSION, APP_BUILD_VERSION);
+	cl("\nNeo %s R%d\n", NEO_VERSION, APP_BUILD_VERSION);
+	if (consoleInput)
+	{
+		cl("Python Console Enabled!\n\n");
+	}
 
 	if (quit){
 		MessageBox(NULL, "An important resource is missing or failed to load, check the console window _now_ for more details.", "Error", MB_OK | MB_ICONERROR);
@@ -156,7 +201,7 @@ int main(int argc, wchar_t **argv){
 	}
 
 	audio->system->playSound(FMOD_CHANNEL_FREE, audio->sound[0], false, &audio->channel[1]);
-	audio->channel[1]->setVolume(0.5f);
+	//audio->channel[1]->setVolume(0.5f);
 
 	tweener.step(clock());
 	titleFaderTween.addProperty(&titleFade, 255);
@@ -315,7 +360,7 @@ int main(int argc, wchar_t **argv){
 			switch(mode){
 			case GameMode::_MENU:											// ! Start menu
 
-				sprintf(textBuffer, "@CFFFFFF@D%s\n\n%s\n> %s%c", clBuffer, console->buffer, inputBuffer, (frame%16 <= 4 ? '_' : '\0'));
+				sprintf(textBuffer, "@CFFFFFF@D%s\n\n%s\n>>> %s%c", clBuffer, console->buffer, inputBuffer, (frame%16 <= 4 ? '_' : ' '));
 
 				// Update clock
 				tweener.step(t0);
@@ -329,25 +374,29 @@ int main(int argc, wchar_t **argv){
 
 					gc->OrthogonalStart();
 
-					gc->OrthogonalStart(gc->overSampleFactor/1.0f);
 					gc->BindShaders(5);
 					glUniform1f(glGetUniformLocation(gc->GetShaderID(5), "time"), cycle/40.0f);
 					glUniform2f(glGetUniformLocation(gc->GetShaderID(5), "resolution"), gc->window.width*(gc->overSampleFactor/1.0f), gc->window.height*(gc->overSampleFactor/1.0f));
 					gc->BindMultiPassShader(5, 1, false);
 					gc->UnbindShaders();
 
-					//drawSinWave(mouseXY.x/10.0f);
+					/*gc->Blit2D(testTexture, mouseXY_prev.x-(testTexture->width/2), mouseXY_prev.y-(testTexture->height/2), getAngle(Point<float>(mouseXY.x, mouseXY.y), Point<float>(mouseXY_prev.x, mouseXY_prev.y)));
+					if ((mouseXY.x >= mouseXY_prev.x+4 || mouseXY.x <= mouseXY_prev.x-4) ||
+						(mouseXY.y >= mouseXY_prev.y+4 || mouseXY.y <= mouseXY_prev.y-4)
+						)
+					{
+						mouseXY_prev.x += (mouseXY.x-mouseXY_prev.x)/2;
+						mouseXY_prev.y += (mouseXY.y-mouseXY_prev.y)/2;
+					}*/
 
 					gc->Blit2D(titleTexture, 0, 0);
-					gc->BlitSprite2D(loaderSprite, 0, 0, cycle);
 
 					// Draw console
-					//gc->OrthogonalStart(gc->overSampleFactor);
-					//font->Draw(0, 8, textBuffer);
+					font->Draw(0, 8, textBuffer);
 
 					// Fader
 					if (titleFade < 254){
-						gc->Rectangle2D(0, 0, gc->buffer.width, gc->buffer.height, KLGLColor(0, 0, 0, int(255-titleFade)));
+						//gc->Rectangle2D(0, 0, gc->buffer.width, gc->buffer.height, KLGLColor(0, 0, 0, int(255-titleFade)));
 					}
 				}
 				gc->OrthogonalEnd();
@@ -460,21 +509,21 @@ int main(int argc, wchar_t **argv){
 							glEnd();
 							glBindTexture(GL_TEXTURE_2D, 0);
 						}
-						gc->OrthogonalStart(gc->overSampleFactor/2.0f);
+						/*gc->OrthogonalStart(gc->overSampleFactor/2.0f);
 						static int scrollOffset;
 						if (scrollOffset == NULL || scrollOffset > 16){
-							scrollOffset = 0;
+						scrollOffset = 0;
 						}
 						glColor4ub(255, 255, 255, titleFade);
 						for (int y = 0; y-1 <= gc->buffer.height/32; y++)
 						{
-							for (int x = 0; x-1 <= gc->buffer.width/32; x++)
-							{
-								gc->BlitSprite2D(gameEnv->hudSpriteSheet16, (x*16)-scrollOffset, (y*16)-scrollOffset, 0);
-							}
+						for (int x = 0; x-1 <= gc->buffer.width/32; x++)
+						{
+						gc->BlitSprite2D(gameEnv->hudSpriteSheet16, (x*16)-scrollOffset, (y*16)-scrollOffset, 0);
+						}
 						}
 						scrollOffset++;
-						glColor4ub(255, 255, 255, 255);
+						glColor4ub(255, 255, 255, 255);*/
 
 						gc->OrthogonalStart();
 
@@ -489,8 +538,6 @@ int main(int argc, wchar_t **argv){
 
 						gameEnv->debugflags.x = mouseXY.x;
 						gameEnv->debugflags.y = mouseXY.y;
-
-						PyRun_SimpleString("neo.set(\"gameEnv.scrollX\", 10)");
 
 						// Debug info
 						if (KLGLDebug)
@@ -585,14 +632,24 @@ int main(int argc, wchar_t **argv){
 						gc->BindMultiPassShader(4, 1, false);
 						gc->UnbindShaders();
 
+						/*for (int i = 0; i < 100; i++)
+						{
+						int x = (stars[i]->x-240)-(gameEnv->scroll.x*2);
+						int y = (stars[i]->y-240)-(gameEnv->scroll.y*2);
+						if(x < 0 || x > APP_SCREEN_W || y < 0 || y > APP_SCREEN_H){
+						//continue;
+						}
+						gc->Blit2D(testTexture, x, y);
+						}*/
+
 						// Adv Bloom
-						gc->BindShaders(3);
+						/*gc->BindShaders(3);
 						glUniform1i(glGetUniformLocation(gc->GetShaderID(3), "image"), 0);
 						glUniform1i(glGetUniformLocation(gc->GetShaderID(3), "slave"), 1);
 						glUniform1f(glGetUniformLocation(gc->GetShaderID(3), "time"), gc->shaderClock);
 						glUniform2f(glGetUniformLocation(gc->GetShaderID(3), "resolution"), gc->buffer.width/gc->overSampleFactor, gc->buffer.height/gc->overSampleFactor);
 						gc->BindMultiPassShader(3, 1, false);
-						gc->UnbindShaders();
+						gc->UnbindShaders();*/
 
 						/*gc->BindShaders(2);
 						glUniform1i(glGetUniformLocation(gc->GetShaderID(2), "image"), 0);
@@ -608,6 +665,14 @@ int main(int argc, wchar_t **argv){
 						glUniform2f(glGetUniformLocation(gc->GetShaderID(1), "resolution"), gc->buffer.width/gc->overSampleFactor, gc->buffer.height/gc->overSampleFactor);
 						gc->BindMultiPassShader(1, 1, false);
 						gc->UnbindShaders();
+
+						/*gc->BindShaders(2);
+						glUniform1f(glGetUniformLocation(gc->GetShaderID(2), "time"), gc->shaderClock);
+						//glUniform2f(glGetUniformLocation(gc->GetShaderID(2), "inputSize"), mouseXY.x, mouseXY.y);
+						//glUniform2f(glGetUniformLocation(gc->GetShaderID(2), "outputSize"), mouseXY.x, mouseXY.y);
+						//glUniform2f(glGetUniformLocation(gc->GetShaderID(2), "textureSize"), mouseXY.x, mouseXY.y);
+						gc->BindMultiPassShader(2, 1, false);
+						gc->UnbindShaders();*/
 
 						// HUD, Score, Health, etc
 						gameEnv->drawHUD(gc);

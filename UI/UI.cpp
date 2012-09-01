@@ -67,9 +67,9 @@ namespace klib{
 		glBindTexture(GL_TEXTURE_2D, gc->fbo_texture[10]);
 		glBegin(GL_QUADS);
 		glTexCoord2d(0.0,1.0); glVertex2i(pos.x,					pos.y);
-		glTexCoord2d(1.0,1.0); glVertex2i(pos.x+gc->window.width,	pos.y);
-		glTexCoord2d(1.0,0.0); glVertex2i(pos.x+gc->window.width,	pos.y+gc->window.height);
-		glTexCoord2d(0.0,0.0); glVertex2i(pos.x,					pos.y+gc->window.height);
+		glTexCoord2d(1.0,1.0); glVertex2i(pos.x+gc->buffer.width,	pos.y);
+		glTexCoord2d(1.0,0.0); glVertex2i(pos.x+gc->buffer.width,	pos.y+gc->buffer.height);
+		glTexCoord2d(0.0,0.0); glVertex2i(pos.x,					pos.y+gc->buffer.height);
 		glEnd();
 		glBindTexture(GL_TEXTURE_2D, 0);
 

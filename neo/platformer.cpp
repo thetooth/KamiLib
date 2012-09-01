@@ -5,6 +5,71 @@
 
 using namespace std;
 using namespace klib;
+namespace emb{
+	PyObject* Stdout_write(PyObject* self, PyObject* args)
+	{
+		std::size_t written(0);
+		Stdout* selfimpl = reinterpret_cast<Stdout*>(self);
+		if (selfimpl->write)
+		{
+			char* data;
+			if (!PyArg_ParseTuple(args, "s", &data))
+				return 0;
+
+			std::string str(data);
+			selfimpl->write(str);
+			written = str.size();
+		}
+		return PyLong_FromSize_t(written);
+	}
+
+	PyObject* Stdout_flush(PyObject* self, PyObject* args)
+	{
+		// no-op
+		return Py_BuildValue("");
+	}
+
+	PyMODINIT_FUNC PyInit_emb(void) 
+	{
+		g_stdout = 0;
+		g_stdout_saved = 0;
+
+		StdoutType.tp_new = PyType_GenericNew;
+		if (PyType_Ready(&StdoutType) < 0)
+			return 0;
+
+		PyObject* m = PyModule_Create(&embmodule);
+		if (m)
+		{
+			Py_INCREF(&StdoutType);
+			PyModule_AddObject(m, "Stdout", reinterpret_cast<PyObject*>(&StdoutType));
+		}
+		return m;
+	}
+
+	void set_stdout(stdout_write_type write)
+	{
+		if (!g_stdout)
+		{
+			g_stdout_saved = PySys_GetObject("stdout"); // borrowed
+			g_stdout = StdoutType.tp_new(&StdoutType, 0, 0);
+		}
+
+		Stdout* impl = reinterpret_cast<Stdout*>(g_stdout);
+		impl->write = write;
+		PySys_SetObject("stdout", g_stdout);
+		PySys_SetObject("stderr", g_stdout);
+	}
+
+	void reset_stdout()
+	{
+		if (g_stdout_saved)
+			PySys_SetObject("stdout", g_stdout_saved);
+
+		Py_XDECREF(g_stdout);
+		g_stdout = 0;
+	}
+}
 namespace NeoPlatformer{
 
 	map<const char*, void*, cmp_cstring> neoCallbackList;
@@ -28,11 +93,13 @@ namespace NeoPlatformer{
 
 		neoCallbackList["gameEnv"] = this;
 		neoCallbackList["gameEnv.scrollX"] = &scroll.x;
+		neoCallbackList["gameEnv.scrollY"] = &scroll.y;
 		neoCallbackList["gameEnv.scrollspeed"] = &scrollspeed;
 		neoCallbackList["gameEnv.scrollspeedMulti"] = &scrollspeedMulti;
 	}
 
 	Environment::~Environment(){
+		delete mapData,mapMask,mapProg;
 		glDeleteLists(mapDispList, 1);
 		delete character;
 		platforms.clear();
@@ -85,13 +152,8 @@ namespace NeoPlatformer{
 			}
 		}
 
-		// Do lua events
-		/*int luaStat = luaL_loadstring(gc->lua, mapProg);
-		if (luaStat == 0)
-		{
-		luaStat = lua_pcall(gc->lua, 0, LUA_MULTRET, 0);
-		}
-		gc->LuaCheckError(gc->lua, luaStat);*/
+		// Run python script
+		PyRun_SimpleString(mapProg);
 
 		debugflags.x = character->health;
 		debugflags.y = gc->shaderClock;
@@ -187,21 +249,22 @@ namespace NeoPlatformer{
 	}
 
 	void Environment::load_map(char* mapPath){
-		cl("Loading Map: %s.smp&bmd ", mapPath);
+		cl("Loading Map: %s.smp&bmd&py ", mapPath);
 
 		char* tmpPath = new char[strlen(mapPath)+4];
 		strcpy(tmpPath, mapPath);
 		FILE* mapFile = fopen(strcat(tmpPath, ".smp"), "rb");
 		strcpy(tmpPath, mapPath);
 		FILE* mapInfoFile = fopen(strcat(tmpPath, ".bmd"), "rb");
+		strcpy(tmpPath, mapPath);
+		FILE* mapScriptFile = fopen(strcat(tmpPath, ".py"), "r");
 
-		if (mapFile == NULL || mapInfoFile == NULL){
+		if (mapFile == NULL || mapInfoFile == NULL || mapScriptFile == NULL){
 			cl("[ERROR]\n");
 			throw KLGLException("Error opening map file!");
 			return;
 		}
 
-		//platforms = new list<Platform>;
 		size_t wordSize;
 		char tBuffer[8];
 		map.width = 0;
@@ -260,7 +323,7 @@ namespace NeoPlatformer{
 			cl("- Parsing...\n");
 		}
 
-		// Parse map data into are geometry vectors
+		// Parse map data into geometry vectors
 		for(int x = 0; x < map.width; x++){
 			for(int y = 0; y < map.height; y++){
 				char tile = mapData[lvLookup];
@@ -268,36 +331,26 @@ namespace NeoPlatformer{
 				if(tile > 0){
 					int xl = x;
 					int yl = y;
-					while(mapData[yl*map.width+x] != 0 && mapData[yl*map.width+x] == tile && mapMask[yl*map.width+x] == mask){
+					while(mapData[yl*map.width+xl] != 0 && mapData[yl*map.width+xl] == tile && mapMask[yl*map.width+xl] == mask){
 						yl++;
+						/*while(mapData[yl*map.width+xl] != 0 && mapData[yl*map.width+xl] == tile && mapMask[yl*map.width+xl] == mask){
+							xl++;
+						}*/
 					}
 					map_span(y*map.width+x, x, y, 1, yl-y);
-					//platforms->push_back(Platform(x*tileWidth, y*tileHeight, 1*tileWidth, (yl-y)*tileHeight, lvLookup, mapData, mapMask));
 					y = yl-1;
+					//x = xl-1;
 				}
 			}
 		}
 
-		/*Rect<int> boundingBox = Rect<int>();
-		int primaryTile = -1, primaryMask = -1;
-		for(int x = 0; x < map.width; x++){
-		for(int y = 0; y < map.height; y++){
-		char tile = mapData[lvLookup];
-		char mask = mapMask[lvLookup];
-		if (tile > 0 && tile == primaryTile && mask == primaryMask){
-		boundingBox.width = 1;
-		boundingBox.height += 1;
-		}else{
-		map_span(lvLookup, boundingBox.x, boundingBox.y+1, boundingBox.width+1, boundingBox.height);
-		primaryTile = tile;
-		primaryMask = mask;
-		boundingBox.x = x;
-		boundingBox.y = y;
-		boundingBox.width = 0;
-		boundingBox.height = 0;
-		}
-		}
-		}*/
+		// Load maps script
+		fseek(mapScriptFile, 0, SEEK_END);
+		int scriptLen = ftell(mapScriptFile);
+		rewind(mapScriptFile);
+		mapProg = (char*)malloc(scriptLen);
+		fill_n(mapProg, scriptLen, '\0');
+		fread(mapProg, 1, scriptLen, mapScriptFile);
 
 		cl("[OK]\n");
 	}
@@ -353,7 +406,7 @@ namespace NeoPlatformer{
 				);
 			gameEnv->gcProxy->InitShaders(2, 0, 
 				"common/postDefaultV.glsl",
-				"common/bindMultiTexture.frag"
+				"common/crt.frag"
 				);
 			gameEnv->gcProxy->InitShaders(3, 0, 
 				"common/postDefaultV.glsl",
@@ -789,12 +842,13 @@ namespace NeoPlatformer{
 				int scrX = floorMpl(pos.x, 16)+(iX*sprite->swidth);
 				int scrY = floorMpl(pos.y, 16)+(iY*sprite->sheight);
 				gc->BlitSprite2D(sprite, scrX, scrY, mapDataPtr[tileId+(iY*env->map.width+iX)]);
-				glBegin(GL_LINE);
-				glVertex2i(scrX, scrY);
-				glVertex2i(scrX+16, scrY+16);
-				glEnd();
 			}
 		}
+
+		/*glBegin(GL_LINES);
+		glVertex2i(pos.x, pos.y);
+		glVertex2i(pos.x+collisionRect.width, pos.y+collisionRect.height);
+		glEnd();*/
 	}
 
 	int Platform::checkOverheadSlope(vector<Platform>::iterator platformData){

@@ -272,9 +272,10 @@ namespace klib{
 		glLoadIdentity();
 		glDisable(GL_LIGHTING);
 
-		//BindShaders(0);
+		BindShaders(0);
 		glUniform1f(glGetUniformLocation(GetShaderID(0), "time"), shaderClock);
-		glUniform2f(glGetUniformLocation(GetShaderID(0), "BUFFER_EXTENSITY"), buffer.width*scaleFactor, buffer.height*scaleFactor);
+		glUniform2f(glGetUniformLocation(GetShaderID(0), "resolution"), buffer.width*scaleFactor, buffer.height*scaleFactor);
+		glUniform2f(glGetUniformLocation(GetShaderID(0), "outputSize"), window.width, window.height);
 		shaderClock = (clock()%1000)+fps;
 
 		glBindTexture(GL_TEXTURE_2D, fbo_texture[0]); // Bind our frame buffer texture
@@ -677,10 +678,7 @@ namespace klib{
 	void KLGLFont::Draw(int x, int y, char* text, KLGLColor* vcolor)
 	{
 		int len = strlen(text);
-		static wchar_t* tmpStr;
-		if (tmpStr == NULL || (tmpStr != NULL && wcslen(tmpStr) < len)){
-			tmpStr = (wchar_t*)malloc(len*sizeof(wchar_t));
-		}
+		wchar_t* tmpStr = new wchar_t[len];
 		tmpStr[len] = L'\0';
 		mbstowcs(tmpStr, text, len);
 		Draw(x, y, tmpStr, vcolor);

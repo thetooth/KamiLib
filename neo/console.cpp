@@ -22,10 +22,12 @@ namespace NeoPlatformer{
 			throw KLGLException("Console string error");
 		}
 		// TODO: Write fancy parser
+		int location;
+		char* varName;
 		switch(string[0]){
 		case '$':						// Process var
-			int location = strchr(string, (int)'=')-string+1;
-			char* varName = substr(string, 1, location);
+			location = strchr(string, (int)'=')-string+1;
+			varName = substr(string, 1, location);
 			if (strlen(varName) > 0){
 				auto p = callbackPtrMap.find(varName);
 				auto c = substr(string, location+1, strlen(string)-location);
@@ -43,12 +45,13 @@ namespace NeoPlatformer{
 
 			break;
 		default:						// Append to buffer
-			if (strlen(buffer)+strlen(string)+1 >= bufferLen){
+			/*if (strlen(buffer)+strlen(string)+1 >= bufferLen){
 				throw std::exception("Attempted to append text to a full buffer!");
 				return;
 			}
 			strcat(buffer, string);
-			strcat(buffer, "\n");
+			strcat(buffer, "\n");*/
+			PyRun_SimpleString(string);
 		}
 	}
 }

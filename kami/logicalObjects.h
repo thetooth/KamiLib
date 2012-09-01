@@ -19,8 +19,9 @@ namespace klib{
 
 	// Point
 	LOType class Point: public LObject<LOValue> {
-	/*public:
-		Point(LOValue newx, LOValue newy): LObject(newx, newy){};*/
+	public:
+		Point(): LObject(){};
+		Point(LOValue newx, LOValue newy): LObject(newx, newy){};
 	};
 
 	// Rectangle
