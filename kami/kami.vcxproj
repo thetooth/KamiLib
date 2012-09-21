@@ -139,6 +139,7 @@
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;VC_EXTRALEAN;GLEW_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <Cpp0xSupport>true</Cpp0xSupport>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -179,15 +180,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="cl.h" />
+    <ClInclude Include="config.h" />
     <ClInclude Include="databin.h" />
-    <ClInclude Include="ini.h" />
-    <ClInclude Include="inireader.h" />
-    <ClInclude Include="json.h" />
-    <ClInclude Include="lualoader.h" />
     <ClInclude Include="md5.h" />
+    <ClInclude Include="micro_cjson.hpp" />
     <ClInclude Include="objload.h" />
     <ClInclude Include="pure.h" />
-    <ClInclude Include="sound.h" />
     <ClInclude Include="threads.h" />
     <ClInclude Include="kami.h" />
     <ClInclude Include="picopng.h" />
@@ -198,12 +196,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="glew.c" />
-    <ClCompile Include="ini.c" />
-    <ClCompile Include="inireader.cpp" />
-    <ClCompile Include="json.c" />
     <ClCompile Include="md5.cpp" />
     <ClCompile Include="objload.cpp" />
-    <ClCompile Include="sound.cpp" />
     <ClCompile Include="threads.cpp" />
     <ClCompile Include="kami.cpp" />
     <ClCompile Include="picopng.cpp" />

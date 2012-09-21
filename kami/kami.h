@@ -22,55 +22,12 @@
 #include "unix.h"
 #endif
 
-#ifdef APP_ENABLE_LUA
-#pragma comment(lib,"SLB.lib")
-#include "lualoader.h"
-#endif
-
 // Internal modules
-#include "inireader.h"
+#include "config.h"
 #include "threads.h"
 #include "logicalObjects.h"
 
 namespace klib{
-
-#pragma region KLGL_Interop
-
-#ifdef APP_ENABLE_LUA
-	// Lua interop
-	static void kami_register_info(lua_State *L) {
-		lua_pushliteral (L, "_COPYRIGHT");
-		lua_pushliteral (L, "Copyright (C) 2005-2011 Ameoto Systems Inc. All Rights Reserved.");
-		lua_settable (L, -3);
-		lua_pushliteral (L, "_DESCRIPTION");
-		lua_pushliteral (L, "test");
-		lua_settable (L, -3);
-		lua_pushliteral (L, "_VERSION");
-		lua_pushliteral (L, "Kami Interop v1");
-		lua_settable (L, -3);
-	}
-
-	static int clL(lua_State *L) {
-		const char *str = luaL_checkstring(L, 1);
-		lua_pushinteger(L, cl("%s", str));
-		return 1;
-	}
-
-	static const struct luaL_Reg kamiL[] = {
-		{"cl", clL},
-		{NULL, NULL},
-	};
-
-	inline int luaL_openkami(lua_State *L) {
-		//luaL_newlib(L, kamiL);
-		//luaL_setfuncs(L, kamiL, 0);
-		luaL_openlib(L, "kami", kamiL, 0);
-		kami_register_info(L);
-		return 1;
-	}
-#endif
-
-#pragma endregion
 
 #pragma region KLGL_Classes
 
@@ -210,7 +167,7 @@ namespace klib{
 		Vec4<GLfloat> light_position;		// Default Infinite light location.
 
 		int shaderClock;
-		KLGLINIReader *config;
+		KLGLConfig *config;
 		KLGLTexture *framebuffer, *klibLogo, *InfoBlue, *CheepCheepDebug;
 		//KLGLSound *audio;
 		double fps;
@@ -280,7 +237,7 @@ namespace klib{
 		float getElapsedTimeInMs(){
 			return clock()/(CLOCKS_PER_SEC/1000);
 		}
-		const char* LoadShaderFile(const char* fname);
+		void LoadShaderFile(char **dest, const char* fname);
 		static void PrintShaderInfoLog(GLuint obj, int isShader = 1);
 		KLGLTexture nullTexture;
 		Rect<int> ASPRatio(Rect<int> &rcScreen, Rect<int> &sizePicture, bool bCenter = true);

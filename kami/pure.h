@@ -68,24 +68,13 @@ namespace klib {
 
 #pragma region Inline_System_Utilitys
 
-	inline char *substr(const char *pstr, int start, int len)
-	{
-		if (pstr == 0 || strlen(pstr) == 0 || strlen(pstr) < start || strlen(pstr) < (start+len)){
-			return const_cast<char*>(pstr);
+	inline int substr(char *dest, const char *src, int start, int len){
+		if (src == 0 || strlen(src) == 0 || strlen(src) < start || strlen(src) < (start+len)){
+			return -1;
 		}
 
-		static size_t prev_allocsize;
-		static char *pnew;
-		if (prev_allocsize == NULL){
-			prev_allocsize = 0;
-		}
-		if (pnew == NULL || (pnew != NULL && prev_allocsize < len)){
-			prev_allocsize = len;
-			pnew = new char[len+1];
-		}
-		strncpy(pnew, pstr + start, len);
-		pnew[len] = '\0';
-		return pnew;
+		strncpy(dest, src + start, len);
+		return 0;
 	}
 
 	inline int cl(const char* format, ...){

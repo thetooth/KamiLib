@@ -1,15 +1,27 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <string>
 #include <time.h>
+#include <algorithm>
+
+char* getOption(char ** begin, char ** end, const std::string & option){
+	char ** itr = std::find(begin, end, option);
+	if(itr != end && ++itr != end){
+		return *itr;
+	}
+	return nullptr;
+}
+
+bool optionExists(char** begin, char** end, const std::string& option){
+	return std::find(begin, end, option) != end;
+}
 
 int main(int argc, char *argv[]){
 	char tBuffer[1024] = {};
 	int version = 0;
 
-	FILE *fp = fopen("build.ver", "r");
-	if (fp != NULL)
-	{
+	FILE *fp = fopen("build.ver", "r+");
+	if (fp != NULL){
 		fseek(fp, 0, SEEK_END);
 		int readSize = ftell(fp);
 		rewind(fp);
@@ -19,15 +31,19 @@ int main(int argc, char *argv[]){
 
 	version++;
 	printf("Revision: %d", version);
-	fclose(fp);
 
-	fp = fopen("build.ver", "w+");
 	sprintf(tBuffer, "%d", version);
+	rewind(fp);
 	fwrite(tBuffer, 1, strlen(tBuffer), fp);
 	fclose(fp);
 
+	char* name = getOption(argv, argv+argc, "--name");
+	if (name == nullptr){
+		name = "APP";
+	}
+
 	fp = fopen("version.h", "w+");
-	sprintf(tBuffer, "#define APP_BUILD_VERSION %d\n#define APP_BUILD_TIME 0x%08x", version, time(NULL));
+	sprintf(tBuffer, "#define %s_BUILD_VERSION %d\n#define %s_BUILD_TIME 0x%08x", name, version, name, time(NULL));
 	fwrite(tBuffer, 1, strlen(tBuffer), fp);
 	fclose(fp);
 

@@ -2,8 +2,8 @@ C_FILES = ini.c json.c
 CPP_FILES = inireader.cpp picopng.cpp tween.cpp unix.cpp kami.cpp
 OBJECTS = $(C_FILES:.c=.o) $(CPP_FILES:.cpp=.o)
 
-CC = gcc
-CPP = g++
+CC = clang
+CPP = clang++
 CXXFLAGS = -Wall -std=c++11 -fPIC
 INCLUDE = -I. -I/usr/include
 

@@ -64,8 +64,7 @@ namespace klib{
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, APP_ANISOTROPY);
-		if (APP_ENABLE_MIPMAP)
-		{
+		if (APP_ENABLE_MIPMAP){
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
 			gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, width, height, GL_RGBA, GL_UNSIGNED_BYTE, swap.data());
 		}else{
@@ -92,41 +91,44 @@ namespace klib{
 			//MOTD
 			time_t buildTime = (time_t)APP_BUILD_TIME;
 			char* buildTimeString = asctime(gmtime(&buildTime));
-			cl("KamiLib v0.0.2 R%d %s, %s %s,\n", APP_BUILD_VERSION, substr(buildTimeString, 0, strlen(buildTimeString)-1), APP_ARCH_STRING, APP_COMPILER_STRING);
+			memset(buildTimeString+strlen(buildTimeString)-1, 0, 1); // Remove the \n
+			cl("KamiLib v0.0.2 R%d %s, %s %s,\n", APP_BUILD_VERSION, buildTimeString, APP_ARCH_STRING, APP_COMPILER_STRING);
 			cl(APP_MOTD);
-
-			// Initialize the window geometry
-			window.width		= _width;
-			window.height		= _height;
 
 			vsync				= true;
 			overSampleFactor	= _OSAA;
 			scaleFactor			= _scale;
 			fps					= _framerate;
 			shaderClock			= 0.0f;
+			fullscreen			= _fullscreen;
+			bufferAutoSize		= false;
+
+			// Initialize the window geometry
+			window.x			= 0;
+			window.y			= 0;
+			window.width		= _width;
+			window.height		= _height;
+			buffer.width		= window.width*overSampleFactor;
+			buffer.height		= window.height*overSampleFactor;
 
 			// Attempt to load runtime configuration
-			config = new KLGLINIReader("configuration.ini");
-			if (config->ParseError() == -1){
+			config = new KLGLConfig("configuration.json");
+			if (config->ParseError() == 1){
 				cl("Failed to load configuration file overrides.\n");
-			}else if (config->ParseError()){
-				cl("KLGLINIReader, error on line %s\n", config->ParseError());
 			}else{
-				KLGLDebug		= config->GetBoolean("system", "debug",			KLGLDebug);
-				window.x		= config->GetInteger("system", "lastPosX",		0);
-				window.y		= config->GetInteger("system", "lastPosY",		0);
-				window.width	= config->GetInteger("system", "windowWidth",	_width);
-				window.height	= config->GetInteger("system", "windowHeight",	_height);
-				vsync			= config->GetBoolean("system", "vsync",			vsync);
-				scaleFactor		= config->GetInteger("system", "windowScale",	_scale);
-				fullscreen		= config->GetBoolean("system", "fullscreen",	_fullscreen);
-				overSampleFactor= config->GetInteger("system", "bufferScale",	_OSAA);
-				bufferAutoSize	= config->GetBoolean("system", "bufferAutoSize",	false);
+				KLGLDebug		= config->GetBoolean("system", "debug",				KLGLDebug						);
+				window.x		= config->GetInteger("system", "lastPosX",			0								);
+				window.y		= config->GetInteger("system", "lastPosY",			0								);
+				window.width	= config->GetInteger("system", "windowWidth",		_width							);
+				window.height	= config->GetInteger("system", "windowHeight",		_height							);
+				overSampleFactor= config->GetInteger("system", "bufferScale",		_OSAA							);
+				bufferAutoSize	= config->GetBoolean("system", "bufferAutoSize",	false							);
+				buffer.width	= config->GetInteger("system", "bufferWidth",		window.width*overSampleFactor	);
+				buffer.height	= config->GetInteger("system", "bufferHeight",		window.height*overSampleFactor	);
+				vsync			= config->GetBoolean("system", "vsync",				vsync							);
+				scaleFactor		= config->GetInteger("system", "windowScale",		_scale							);
+				fullscreen		= config->GetBoolean("system", "fullscreen",		_fullscreen						);
 			}
-
-			// Get buffer size from window and sampling parameters
-			buffer.width	= window.width*overSampleFactor;
-			buffer.height	= window.height*overSampleFactor;
 
 			// Init window
 			windowManager = new KLGLWindowManager(_title, &window, scaleFactor, fullscreen);
@@ -160,18 +162,6 @@ namespace klib{
 
 			// Init OpenGL OK!
 			cl("Initialized %s OpenGL %s @%dx%d\n", glGetString(GL_VENDOR), glGetString(GL_VERSION), buffer.width, buffer.height);
-
-			// Initialize the Lua API
-#ifdef APP_ENABLE_LUA
-			lua = luaL_newstate();
-			if (lua != NULL){
-				cl("Initialized %s\n", LUA_VERSION);
-			}else{
-				throw KLGLException("luaInit: %s", lua_tostring(lua, -1));
-			}
-			luaL_openlibs(lua);
-			luaL_openkami(lua);
-#endif
 
 			// Draw logo and load internal resources
 			InfoBlue = new KLGLTexture(KLGLInfoBluePNG, 205);
@@ -210,6 +200,7 @@ namespace klib{
 			glDeleteFramebuffersEXT(1, &fbo[0]);
 		}
 
+		delete config;
 
 #ifdef APP_ENABLE_LUA
 		lua_close(lua);
@@ -217,6 +208,7 @@ namespace klib{
 
 		cl("\n0x%x :3\n", internalStatus);
 		cl(NULL);
+		delete clBuffer;
 	}
 
 	void KLGL::ProcessEvent(int *status){
@@ -249,17 +241,19 @@ namespace klib{
 		// Set the size of the frame buffer view port
 		glViewport(0, 0, buffer.width, buffer.height);
 		glMatrixMode(GL_PROJECTION);
-		//glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 		glLoadIdentity();
+		glOrtho( -2.0, 2.0, -2.0, 2.0, -20.0, 100.0 );
+		glViewport(0, 0, buffer.width, buffer.height);
 		gluPerspective(fov, 1.0f*buffer.width/buffer.height, 0.1, 100.0);
 		gluLookAt(eyex, eyey, eyez, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0);
+		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
 		// Set MODELVIEW matrix mode
 		glMatrixMode(GL_MODELVIEW);
-		//glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
 		glClear (GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_LIGHTING);
+		glEnable(GL_DEPTH_TEST);
+		glShadeModel(GL_SMOOTH);
 	}
 
 	void KLGL::Swap(){
@@ -469,6 +463,7 @@ namespace klib{
 	}
 
 	void KLGL::OrthogonalStart(float scale){
+		glPushAttrib(GL_VIEWPORT_BIT | GL_ENABLE_BIT);
 		glMatrixMode(GL_PROJECTION);
 		glPushMatrix();
 		glLoadIdentity();
@@ -477,39 +472,45 @@ namespace klib{
 		glTranslatef(0.0f, -(buffer.height/overSampleFactor)*scale, 0.0f);
 		glMatrixMode(GL_MODELVIEW);
 		glDisable(GL_LIGHTING);
+		//glDisable(GL_DEPTH_TEST);
+		//glShadeModel(GL_FLAT);
 	}
 
 	void KLGL::OrthogonalEnd(){
-		glEnable(GL_LIGHTING);
+		glPopAttrib();
 		glMatrixMode(GL_PROJECTION);
 		glPopMatrix();
+		glLoadIdentity();
 		glMatrixMode(GL_MODELVIEW);
+		glEnable(GL_LIGHTING);
+		glEnable(GL_DEPTH_TEST);
+		glShadeModel(GL_SMOOTH);
 	}
 
 	int KLGL::InitShaders(int shaderProgId, int isString, const char *vsFile, const char *fsFile, const char *gsFile, const char *tsFile){
 		cl("Initializing Shader ID %d\n", shaderProgId);
 
-		const char* sData;
+		char* sData = nullptr;
 		shader_id[shaderProgId] = glCreateProgram();
 
-#define sLoad(x) (isString ? x : LoadShaderFile(x))
+#define sLoad(dest, src) (isString ? (dest = const_cast<char*>(src)) : LoadShaderFile(&dest, src))
 
-		sData = sLoad(vsFile);
+		sLoad(sData, vsFile);
 		if (vsFile != NULL && sData != nullptr){
 			cl("Compiling %s\n", vsFile);
 			shader_vp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_VERTEX_SHADER,	 sData);
 		}
-		sData = sLoad(fsFile);
+		sLoad(sData, fsFile);
 		if (fsFile != NULL && sData != nullptr){
 			cl("Compiling %s\n", fsFile);
 			shader_fp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_FRAGMENT_SHADER, sData);
 		}
-		sData = sLoad(gsFile);
+		sLoad(sData, gsFile);
 		if (gsFile != NULL && sData != nullptr){
 			cl("Compiling %s\n", gsFile);
 			shader_gp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_GEOMETRY_SHADER, sData);
 		}
-		sData = sLoad(tsFile);
+		sLoad(sData, tsFile);
 		if (tsFile != NULL && sData != nullptr){
 			cl("Compiling %s\n", tsFile);
 			shader_tp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_ARB_tessellation_shader, sData);
@@ -542,13 +543,14 @@ namespace klib{
 		return tmpLinker;
 	}
 
-	const char* KLGL::LoadShaderFile(const char *fname){
-		if (fname == NULL || strlen == 0){
-			return nullptr;
+	void KLGL::LoadShaderFile(char **dest, const char *fname){
+		if (fname == NULL || strlen(fname) == 0){
+			*dest = nullptr;
+			return;
+			//throw KLGLException("File name NULL or emty.");
 		}
 
-		static char* outBuff;
-		std::string shaderString(file_contents(const_cast<char*>(fname)));
+		std::string shaderString(file_contents(fname));
 		
 		std::basic_regex<char> includeMatch("#include([\\s]+|[\\t]+)\"([^\"]+)\"");
 		std::match_results<std::string::const_iterator> matches;
@@ -559,9 +561,9 @@ namespace klib{
 			shaderString = regex_replace(shaderString, includeMatch, content);
 		}
 
-		outBuff = (char*)malloc(shaderString.length());
-		strcpy(outBuff, shaderString.c_str());
-		return outBuff;
+		*dest = (char*)malloc(shaderString.length());
+		strcpy(*dest, shaderString.c_str());
+		shaderString.clear();
 	}
 
 	void KLGL::PrintShaderInfoLog(GLuint obj, int isShader){
@@ -575,18 +577,13 @@ namespace klib{
 		glGetShaderiv(obj, GL_COMPILE_STATUS, &status);
 
 		if ((status != 1 || KLGLDebug) && infoLogLength > 0){
-			//cl("[ERROR]\n");
 			infoLog = (char *)malloc(infoLogLength);
 			if(isShader){
 				glGetShaderInfoLog(obj, infoLogLength, &charsWritten, infoLog);
 			}else{
 				glGetProgramInfoLog(obj, infoLogLength, &charsWritten, infoLog);
 			}
-			infoLogRemainLength = infoLogLength;
-			while(infoLogRemainLength > 0){
-				cl("%s", substr(infoLog, infoLogLength-infoLogRemainLength, min(512, infoLogLength)));
-				infoLogRemainLength -= 512;
-			}
+			cl("%s", infoLog);
 			free(infoLog);
 		}
 	}
@@ -678,11 +675,11 @@ namespace klib{
 	void KLGLFont::Draw(int x, int y, char* text, KLGLColor* vcolor)
 	{
 		int len = strlen(text);
-		wchar_t* tmpStr = new wchar_t[len];
+		wchar_t* tmpStr = new wchar_t[len+8];
 		tmpStr[len] = L'\0';
 		mbstowcs(tmpStr, text, len);
 		Draw(x, y, tmpStr, vcolor);
-		//delete tmpStr;
+		delete [] tmpStr;
 	}
 
 	void KLGLFont::Draw(int x, int y, wchar_t* text, KLGLColor* vcolor)
@@ -700,18 +697,13 @@ namespace klib{
 		int twidth = 4;
 		int dropshadow = 0;
 		size_t stringLen = wcslen(text);
-		static size_t lastStringLen;
 
 		//calculate how wide each character is in term of texture coords
 		GLfloat dtx = (float)c_width/(float)m_width;
 		GLfloat dty = (float)c_height/(float)m_height;
 
-		static char* sbtext;
-		if (sbtext == NULL || lastStringLen < stringLen){
-			sbtext = (char*)malloc(stringLen+1);
-			lastStringLen = stringLen;
-		}
-		sbtext[stringLen] = '\0';
+		char* sbtext = new char[stringLen+8];
+		memset(sbtext, 0, stringLen+8);
 
 		wcstombs(sbtext, text, stringLen);
 		for (char* c = sbtext; *c != 0; c++,cp++) {
@@ -726,25 +718,30 @@ namespace klib{
 				continue;
 			case '@':
 				if (*(c+1) == 'C'){ // Change color
-					static char *token;
-					if (token == NULL){
-						token = (char*)malloc(6);
-					}
-
-					memset(token, 0, 6);
-					strcpy(token, substr(sbtext, cp+2, 6));
-					c += 7;
-					cp+= 7;
-
 					if (vcolor != NULL){ // Ignore color codes if global parameter is set
 						color = vcolor;
 						break;
-					}else{
-						color->r = strtoul(substr(token, 0, 2), NULL, 16);
-						color->g = strtoul(substr(token, 2, 2), NULL, 16);
-						color->b = strtoul(substr(token, 4, 2), NULL, 16);
-						color->a = 255;
 					}
+					char *token = new char[8];
+					char *colorSubStr = new char[4];
+
+					memset(token, 0, 8);
+					memset(colorSubStr, 0, 4);
+					substr(token, sbtext, cp+2, 6);
+
+					c += 7;
+					cp+= 7;
+
+					substr(colorSubStr, token, 0, 2);
+					color->r = strtoul(colorSubStr, NULL, 16);
+					substr(colorSubStr, token, 2, 2);
+					color->g = strtoul(colorSubStr, NULL, 16);
+					substr(colorSubStr, token, 4, 2);
+					color->b = strtoul(colorSubStr, NULL, 16);
+					color->a = 255;
+
+					delete [] token;
+					delete [] colorSubStr;
 					continue;
 				}else if (*(c+1) == 'D'){ // Drop shadow
 					c += 1;
@@ -760,7 +757,7 @@ namespace klib{
 
 			// If not in extended mode subtract the value of the first
 			// char in the character map to get the index in our map
-			int index = text[cp];
+			wchar_t index = text[cp];
 			if(extended == 0){
 				index -= L' ';
 			}else if(extended > 0){
@@ -794,6 +791,7 @@ namespace klib{
 		}
 		glEnd();
 		glBindTexture(GL_TEXTURE_2D, 0);
+		delete [] sbtext;
 	}
 
 	KLGLFont::~KLGLFont(){

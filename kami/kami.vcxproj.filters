@@ -42,16 +42,7 @@
     <ClInclude Include="md5.h">
       <Filter>Header Files\3rd Party</Filter>
     </ClInclude>
-    <ClInclude Include="lualoader.h">
-      <Filter>Header Files\3rd Party</Filter>
-    </ClInclude>
     <ClInclude Include="databin.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ini.h">
-      <Filter>Header Files\3rd Party</Filter>
-    </ClInclude>
-    <ClInclude Include="inireader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="win32.h">
@@ -60,17 +51,17 @@
     <ClInclude Include="pure.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="sound.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="objload.h">
       <Filter>Header Files\3rd Party</Filter>
     </ClInclude>
     <ClInclude Include="tween.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="json.h">
+    <ClInclude Include="micro_cjson.hpp">
       <Filter>Header Files\3rd Party</Filter>
+    </ClInclude>
+    <ClInclude Include="config.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -89,16 +80,7 @@
     <ClCompile Include="md5.cpp">
       <Filter>Source Files\3rd Party</Filter>
     </ClCompile>
-    <ClCompile Include="ini.c">
-      <Filter>Source Files\3rd Party</Filter>
-    </ClCompile>
-    <ClCompile Include="inireader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="win32.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="sound.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="objload.cpp">
@@ -106,9 +88,6 @@
     </ClCompile>
     <ClCompile Include="tween.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="json.c">
-      <Filter>Source Files\3rd Party</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
