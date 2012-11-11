@@ -144,15 +144,16 @@ namespace klib{
 			glViewport(0, 0, window.width*scaleFactor, window.height*scaleFactor);	// Create initial 2D view
 			glEnable(GL_TEXTURE_2D);												// Enable Texture Mapping ( NEW )
 			glShadeModel(GL_SMOOTH);												// Enable Smooth Shading
+			glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);						// Really Nice Perspective Calculations
 			glClearColor(ubtof(153), ubtof(51), ubtof(51), ubtof(255));				// Background Color
 			glClearDepth(1.0f);														// Depth Buffer Setup
-			glEnable(GL_DEPTH_TEST);												// Enables Depth Testing
-			glDepthFunc(GL_LEQUAL);													// The Type Of Depth Testing To Do
-			glAlphaFunc(GL_GREATER, 0.0f);
-			glEnable(GL_ALPHA_TEST);
+
+			//glDepthFunc(GL_LESS);													// The Type Of Depth Testing To Do
+			//glAlphaFunc(GL_GREATER, 0.0f);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glEnable(GL_DEPTH_TEST);
+			glEnable(GL_ALPHA_TEST);
 			glEnable(GL_BLEND);
-			glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);						// Really Nice Perspective Calculations
 
 			light_diffuse = Vec4<GLfloat>(1.0, 1.0, 1.0, 1.0);
 			light_position = Vec4<GLfloat>(1.0, 1.0, 1.0, 0.0);						// Default Infinite light location.
@@ -251,9 +252,6 @@ namespace klib{
 		// Set MODELVIEW matrix mode
 		glMatrixMode(GL_MODELVIEW);
 		glClear (GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-		glEnable(GL_LIGHTING);
-		glEnable(GL_DEPTH_TEST);
-		glShadeModel(GL_SMOOTH);
 	}
 
 	void KLGL::Swap(){
@@ -270,16 +268,11 @@ namespace klib{
 		glUniform1f(glGetUniformLocation(GetShaderID(0), "time"), shaderClock);
 		glUniform2f(glGetUniformLocation(GetShaderID(0), "resolution"), buffer.width*scaleFactor, buffer.height*scaleFactor);
 		glUniform2f(glGetUniformLocation(GetShaderID(0), "outputSize"), window.width, window.height);
-		shaderClock = (clock()%1000)+fps;
+		shaderClock = clock();
 
 		glBindTexture(GL_TEXTURE_2D, fbo_texture[0]); // Bind our frame buffer texture
 		glBegin(GL_QUADS);
 		{
-			/*//(x + s, y+s)-(x+w-s, y+h-s)
-			double aspX = min(double(double(buffer.width/buffer.height)*window.height)/double(buffer.height), 1.0);
-			double aspY = min(double(double(buffer.width/buffer.height)*window.width)/double(buffer.width), 1.0);
-			//double aspY = 1.0;*/
-
 			Rect<int> ratio = ASPRatio(window, buffer, false);
 			glTexCoord2d(0.0,0.0); glVertex3d(-(ratio.width/double(window.width)),	-(ratio.height/double(window.height)), 0);
 			glTexCoord2d(1.0,0.0); glVertex3d(+(ratio.width/double(window.width)),	-(ratio.height/double(window.height)), 0);
@@ -323,15 +316,20 @@ namespace klib{
 			bufferHeight = buffer.height;
 		}
 		// Depth Buffer
-		glGenTextures(1, &fbo_depth);
+		/*glGenTextures(1, &fbo_depth);
 		glBindTexture(GL_TEXTURE_2D, fbo_depth);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, bufferWidth, bufferHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glBindTexture(GL_TEXTURE_2D, 0);
+		glBindTexture(GL_TEXTURE_2D, 0);*/
+
+		glGenRenderbuffers(1, &fbo_depth);
+		glBindRenderbuffer(GL_RENDERBUFFER, fbo_depth);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, bufferWidth, bufferHeight);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
 		// Texture Buffer
 		glGenTextures(1, &fbo_texture);
@@ -347,11 +345,10 @@ namespace klib{
 		glGenFramebuffersEXT(1, &fbo);
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo);
 
-		glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, fbo_depth);
+		//glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, fbo_depth, 0);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbo_depth);
 		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, fbo_texture, 0);
 		glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
-
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 
 		GLenum status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 
@@ -364,6 +361,8 @@ namespace klib{
 		default:
 			throw KLGLException("Error: invalid framebuffer config!\n");
 		}
+
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 	}
 
 	void KLGL::Blit2D(KLGLTexture* texture, int x, int y, float rotation, float scale, KLGLColor vcolor, Rect<float> mask){
@@ -472,8 +471,7 @@ namespace klib{
 		glTranslatef(0.0f, -(buffer.height/overSampleFactor)*scale, 0.0f);
 		glMatrixMode(GL_MODELVIEW);
 		glDisable(GL_LIGHTING);
-		//glDisable(GL_DEPTH_TEST);
-		//glShadeModel(GL_FLAT);
+		glDisable(GL_DEPTH_TEST);
 	}
 
 	void KLGL::OrthogonalEnd(){
@@ -493,7 +491,7 @@ namespace klib{
 		char* sData = nullptr;
 		shader_id[shaderProgId] = glCreateProgram();
 
-#define sLoad(dest, src) (isString ? (dest = const_cast<char*>(src)) : LoadShaderFile(&dest, src))
+#define sLoad(dest, src) LoadShaderFile(&dest, src)
 
 		sLoad(sData, vsFile);
 		if (vsFile != NULL && sData != nullptr){

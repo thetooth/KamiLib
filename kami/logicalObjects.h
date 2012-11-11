@@ -20,7 +20,7 @@ namespace klib{
 	// Point
 	LOType class Point: public LObject<LOValue> {
 	public:
-		Point(): LObject(){};
+		Point(): LObject::LObject(){};
 		Point(LOValue newx, LOValue newy): LObject(newx, newy){};
 	};
 

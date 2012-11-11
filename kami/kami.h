@@ -24,7 +24,7 @@
 
 // Internal modules
 #include "config.h"
-#include "threads.h"
+//#include "threads.h"
 #include "logicalObjects.h"
 
 namespace klib{
