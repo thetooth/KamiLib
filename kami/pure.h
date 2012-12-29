@@ -26,6 +26,8 @@ namespace klib {
 #define APP_ANISOTROPY 4.0
 #define APP_CONSOLE_LINES 32
 
+#define uchar2vec(x) vector<unsigned char>(reinterpret_cast<unsigned char*>(x), reinterpret_cast<unsigned char*>(x)+sizeof(x))
+
 	// Determine compiler
 #if		defined __ECC || defined __ICC || defined __INTEL_COMPILER
 #	define APP_COMPILER_STRING "Intel C/C++"

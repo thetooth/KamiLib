@@ -85,6 +85,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <IncludePath>$(SolutionDir)kami\3rd_party;$(SolutionDir)$(IntDir);$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)$(IntDir);$(LibraryPath)</LibraryPath>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <IncludePath>$(SolutionDir)kami\3rd_party;$(SolutionDir)$(IntDir);$(IncludePath)</IncludePath>
@@ -136,7 +137,6 @@
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;VC_EXTRALEAN;GLEW_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <Cpp0xSupport>true</Cpp0xSupport>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -182,6 +182,7 @@
     <ClInclude Include="cl.h" />
     <ClInclude Include="config.h" />
     <ClInclude Include="databin.h" />
+    <ClInclude Include="font_unicode.h" />
     <ClInclude Include="md5.h" />
     <ClInclude Include="micro_cjson.hpp" />
     <ClInclude Include="objload.h" />
@@ -197,6 +198,7 @@
   <ItemGroup>
     <ClCompile Include="glew.c" />
     <ClCompile Include="md5.cpp" />
+    <ClCompile Include="miniz.c" />
     <ClCompile Include="objload.cpp" />
     <ClCompile Include="threads.cpp" />
     <ClCompile Include="kami.cpp" />

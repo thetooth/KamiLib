@@ -1,6 +1,7 @@
 #include "kami.h"
 #include "picopng.h"
 #include "databin.h"
+//#include "font_unicode.h"
 #include <iostream>
 #include <string>
 #include <regex>
@@ -25,22 +26,22 @@ namespace klib{
 
 	int KLGLTexture::LoadTexture(const char *fname){
 		cl("Loading Texture: %s ", fname);
-		FILE *fin = fopen(fname, "rb");
+		unique_ptr<FILE, int(*)(FILE*)> filePtr(fopen(fname, "rb"), fclose);
 
-		if(fin == NULL){
+		if(filePtr == NULL){
 			cl("[FAILED]\n");
 			throw KLGLException("[KLGLTexture::LoadTexture][%d:%s] \nResource \"%s\" could not be opened.", __LINE__, __FILE__, fname);
 			return 1;
 		}
 
 		// Pass a big file and we could be sitting here for a long time
-		fseek(fin, 0, SEEK_END);
-		size_t size = ftell(fin);
-		rewind(fin);
+		fseek(filePtr.get(), 0, SEEK_END);
+		size_t size = ftell(filePtr.get());
+		rewind(filePtr.get());
 
 		unsigned char *data = new unsigned char[size+8];
-		fread((unsigned char*)data, 1, size, fin);
-		fclose(fin);
+		fread((unsigned char*)data, 1, size, filePtr.get());
+		filePtr.release();
 
 		InitTexture(data, size);
 		data[size+1] = '\0';
@@ -217,7 +218,7 @@ namespace klib{
 	}
 
 	void KLGL::OpenFBO(float fov, float eyex, float eyey, float eyez){
-		#if defined _WIN32
+#if defined _WIN32
 		if (resizeEvent && !fullscreen){
 			RECT win;
 			GetClientRect(windowManager->wm->hWnd, &win);
@@ -232,7 +233,7 @@ namespace klib{
 			}
 			resizeEvent = false;
 		}
-		#endif
+#endif
 		glLoadIdentity();
 		glViewport(0, 0, window.width, window.height);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT); //Clear the colour buffer (more buffers later on)
@@ -243,9 +244,9 @@ namespace klib{
 		glViewport(0, 0, buffer.width, buffer.height);
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
-		glOrtho( -2.0, 2.0, -2.0, 2.0, -20.0, 100.0 );
+		glOrtho( -2.0, 2.0, -2.0, 2.0, -100.0, 100.0 );
 		glViewport(0, 0, buffer.width, buffer.height);
-		gluPerspective(fov, 1.0f*buffer.width/buffer.height, 0.1, 100.0);
+		gluPerspective(fov, 1.0f*buffer.width/buffer.height, -100.0, 100.0);
 		gluLookAt(eyex, eyey, eyez, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
@@ -549,7 +550,7 @@ namespace klib{
 		}
 
 		std::string shaderString(file_contents(fname));
-		
+
 		std::basic_regex<char> includeMatch("#include([\\s]+|[\\t]+)\"([^\"]+)\"");
 		std::match_results<std::string::const_iterator> matches;
 
@@ -606,7 +607,7 @@ namespace klib{
 			glBindTexture(GL_TEXTURE_2D, fbo_texture[0]);
 			/*glActiveTexture(GL_TEXTURE0+textureSlot);
 			glBindTexture(GL_TEXTURE_2D, fbo_texture[2]);*/
-			
+
 
 			BindShaders(shaderProgId);
 			glBegin(GL_QUADS);
@@ -620,7 +621,7 @@ namespace klib{
 
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo[primary]);
 			//glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-			
+
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, fbo_texture[1]);
 			/*glActiveTexture(GL_TEXTURE0+textureSlot);
@@ -750,41 +751,63 @@ namespace klib{
 				break;
 			}
 
-			// Increment current cursor position
-			cx += cw;
+			if(true){
+				wchar_t index = text[cp];
+				GLfloat tx = (float)charsetDesc.Chars[index].x/(float)charsetDesc.Width;
+				GLfloat ty = (float)charsetDesc.Chars[index].y/(float)charsetDesc.Height;
+				GLfloat tw = (float)charsetDesc.Chars[index].Width/(float)charsetDesc.Width;
+				GLfloat th = (float)charsetDesc.Chars[index].Height/(float)charsetDesc.Height;
+				GLfloat tcx = (float)(cx+charsetDesc.Chars[index].XOffset);
+				GLfloat tcy = (float)(cy+charsetDesc.Chars[index].YOffset);
+				GLfloat tcw = (float)(charsetDesc.Chars[index].Width);
+				GLfloat tch = (float)(charsetDesc.Chars[index].Height);
 
-			// If not in extended mode subtract the value of the first
-			// char in the character map to get the index in our map
-			wchar_t index = text[cp];
-			if(extended == 0){
-				index -= L' ';
-			}else if(extended > 0){
-				index -= extended;
-			}
+				// Increment current cursor position
+				cx += charsetDesc.Chars[index].XAdvance;
 
-			int col = index%c_per_row;
-			int row = (index-col)/c_per_row;
-
-			// find the texture coords
-			GLfloat tx = (float)(col * c_width)/(float)m_width;
-			GLfloat ty = (float)(row * c_height)/(float)m_height;
-
-			if (dropshadow == 1){
-				glColor4ub(0, 0, 0, 127);
-
-				glTexCoord2f(tx,		ty+dty);	glVertex2i(x+cx-1,		y+cy+ch+1);
-				glTexCoord2f(tx+dtx,	ty+dty);	glVertex2i(x+cx+cw-1,	y+cy+ch+1);
-				glTexCoord2f(tx+dtx,	ty);		glVertex2i(x+cx+cw-1,	y+cy+1);
-				glTexCoord2f(tx,		ty);		glVertex2i(x+cx-1,		y+cy+1);
-			}
-			{
 				color->Set();
 
-				glTexCoord2f(tx,		ty+dty);	glVertex2i(x+cx,		y+cy+ch);
-				glTexCoord2f(tx+dtx,	ty+dty);	glVertex2i(x+cx+cw,		y+cy+ch);
-				glTexCoord2f(tx+dtx,	ty);		glVertex2i(x+cx+cw,		y+cy);
-				glTexCoord2f(tx,		ty);		glVertex2i(x+cx,		y+cy);
+				glTexCoord2f(tx,	ty+th);	glVertex2i(x+tcx,		y+tcy+tch);
+				glTexCoord2f(tx+tw,	ty+th);	glVertex2i(x+tcx+tcw,		y+tcy+tch);
+				glTexCoord2f(tx+tw,	ty);	glVertex2i(x+tcx+tcw,		y+tcy);
+				glTexCoord2f(tx,	ty);	glVertex2i(x+tcx,		y+cy);
+			}else{
+				// If not in extended mode subtract the value of the first
+				// char in the character map to get the index in our map
+				wchar_t index = text[cp];
+				if(extended == 0){
+					index -= L' ';
+				}else if(extended > 0){
+					index -= extended;
+				}
 
+				// Increment current cursor position
+				cx += cw;
+
+				int col = index%c_per_row;
+				int row = (index-col)/c_per_row;
+
+				// find the texture coords
+				GLfloat tx = (float)(col * c_width)/(float)m_width;
+				GLfloat ty = (float)(row * c_height)/(float)m_height;
+
+				if (dropshadow == 1){
+					glColor4ub(0, 0, 0, 127);
+
+					glTexCoord2f(tx,		ty+dty);	glVertex2i(x+cx-1,		y+cy+ch+1);
+					glTexCoord2f(tx+dtx,	ty+dty);	glVertex2i(x+cx+cw-1,	y+cy+ch+1);
+					glTexCoord2f(tx+dtx,	ty);		glVertex2i(x+cx+cw-1,	y+cy+1);
+					glTexCoord2f(tx,		ty);		glVertex2i(x+cx-1,		y+cy+1);
+				}
+				{
+					color->Set();
+
+					glTexCoord2f(tx,		ty+dty);	glVertex2i(x+cx,		y+cy+ch);
+					glTexCoord2f(tx+dtx,	ty+dty);	glVertex2i(x+cx+cw,		y+cy+ch);
+					glTexCoord2f(tx+dtx,	ty);		glVertex2i(x+cx+cw,		y+cy);
+					glTexCoord2f(tx,		ty);		glVertex2i(x+cx,		y+cy);
+
+				}
 			}
 		}
 		glEnd();
@@ -794,6 +817,89 @@ namespace klib{
 
 	KLGLFont::~KLGLFont(){
 		delete color;
+	}
+
+	bool KLGLFont::ParseFnt(std::istream& stream){
+		string line;
+		string Read, Key, Value;
+		std::size_t i;
+		std::size_t end;
+		while( !stream.eof() )
+		{
+			std::stringstream LineStream;
+			std::getline( stream, line );
+			LineStream << line;
+
+			//read the line's type
+			LineStream >> Read;
+			if( Read == "common" )
+			{
+				//this holds common data
+				while( !LineStream.eof() )
+				{
+					std::stringstream Converter;
+					LineStream >> Read;
+					i = Read.find('=');
+					end = Read.length()-i-1;
+					Key = Read.substr( 0, i );
+					Value = Read.substr(i+1, end);
+
+					//assign the correct value
+					Converter << Value;
+					if( Key == "lineHeight" )
+						Converter >> charsetDesc.LineHeight;
+					else if( Key == "base" )
+						Converter >> charsetDesc.Base;
+					else if( Key == "scaleW" )
+						Converter >> charsetDesc.Width;
+					else if( Key == "scaleH" )
+						Converter >> charsetDesc.Height;
+					else if( Key == "pages" )
+						Converter >> charsetDesc.Pages;
+				}
+			}
+			else if( Read == "char" )
+			{
+				//this is data for a specific char
+				unsigned short CharID = 0;
+
+				while( !LineStream.eof() )
+				{
+					std::stringstream Converter;
+					LineStream >> Read;
+					i = Read.find('=');
+					end = Read.length()-i-1;
+					Key = Read.substr( 0, i );
+					Value = Read.substr(i+1, end);
+
+					//assign the correct value
+					Converter << Value;
+					if( Key == "id" ){
+						Converter >> CharID;
+					}else if( Key == "x" ){
+						Converter >> charsetDesc.Chars[CharID].x;
+					}else if( Key == "y" ){
+						Converter >> charsetDesc.Chars[CharID].y;
+					}else if( Key == "width" ){
+						Converter >> charsetDesc.Chars[CharID].Width;
+					}else if( Key == "height" ){
+						Converter >> charsetDesc.Chars[CharID].Height;
+					}else if( Key == "xoffset" ){
+						Converter >> charsetDesc.Chars[CharID].XOffset;
+					}else if( Key == "yoffset" ){
+						Converter >> charsetDesc.Chars[CharID].YOffset;
+					}else if( Key == "xadvance" ){
+						Converter >> charsetDesc.Chars[CharID].XAdvance;
+					}else if( Key == "page" ){
+						Converter >> charsetDesc.Chars[CharID].Page;
+					}else if( Key == "chnl" ){
+
+					}
+				}
+			}
+		}
+
+		return true;
 	}
 
 	KLGLSprite::KLGLSprite(const char *fname, int sWidth, int sHeight){

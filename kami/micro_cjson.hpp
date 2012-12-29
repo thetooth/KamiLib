@@ -54,7 +54,7 @@ namespace MicroCJson {
 		void *pointer;
 		JSONDataType type;
 
-		struct JSONData_t *operator[](const char *s)
+		struct JSONData_t* operator[](const char *s)
 		{
 			if(this->type != VDT_MAP)
 				return false;
@@ -62,7 +62,7 @@ namespace MicroCJson {
 			return ((map<string, struct JSONData_t*> *) this->pointer)->find(string(s))->second;
 		}
 
-		struct JSONData_t *operator[](unsigned int s)
+		struct JSONData_t* operator[](unsigned int s)
 		{
 			if(this->type != VDT_LIST)
 				return false;
@@ -71,7 +71,7 @@ namespace MicroCJson {
 		}
 	} JSONData;
 
-	void JSONData_listDump(JSONData* d_list, int i);
+	const std::string JSONData_listDump(JSONData* d_list, int i);
 
 	inline JSONData *vdgi(JSONData *p, int k){
 		return ((* ((JSONData *) p))[k]);
@@ -143,46 +143,51 @@ namespace MicroCJson {
 		}
 	}
 
-	inline void JSONData_mapDump(JSONData* d_map, int i)
+	inline const std::string JSONData_mapDump(JSONData* d_map, int i)
 	{	
+		std::stringstream buffer(stringstream::in | stringstream::out);
 		map<string, JSONData*> *p_map = (map<string, JSONData*> *) d_map->pointer;
 		map<string, JSONData*>::iterator it;
 
-		for(int j=0; j<i; j++)
-			cout << '\t';
-		cout << "{" << endl;
+		for(int j=0; j<i; j++){
+			buffer << '\t';
+		}
+		buffer << "{" << endl;
 		for ( it=p_map->begin() ; it != p_map->end(); it++ ){
 			if(it->second->type == VDT_MAP){
 				for(int j=0; j<i; j++)
-					cout << '\t';
-				cout << it->first << " => ";
+					buffer << '\t';
+				buffer << it->first << " => ";
 
-				JSONData_mapDump(it->second, i+1);
+				buffer << JSONData_mapDump(it->second, i+1);
 			}
 
 			else if(it->second->type == VDT_LIST){
 				for(int j=0; j<i; j++)
-					cout << '\t';
-				cout << it->first << " => ";
+					buffer << '\t';
+				buffer << it->first << " => ";
 
-				JSONData_listDump(it->second, i+1);
+				buffer << JSONData_listDump(it->second, i+1);
 			}
 
 			else if(it->second->type == VDT_STRING){
 				for(int j=0; j<i; j++)
-					cout << '\t';
-				cout << it->first << " => \"" << JSONData_toString(it->second) << '\"' << endl;
+					buffer << '\t';
+				buffer << it->first << " => \"" << JSONData_toString(it->second) << '\"' << endl;
 			}
 
 			else {
 				for(int j=0; j<i; j++)
-					cout << '\t';
-				cout << it->first << " => " << JSONData_toString(it->second) << endl;
+					buffer << '\t';
+				buffer << it->first << " => " << JSONData_toString(it->second) << endl;
 			}
 		}
-		for(int j=0; j<i; j++)
-			cout << '\t';
-		cout << "}" << endl;
+		for(int j=0; j<i; j++){
+			buffer << '\t';
+		}
+		buffer << "}" << endl;
+
+		return buffer.str();
 	}
 
 	inline JSONData *JSONData_listCreate()
@@ -204,45 +209,48 @@ namespace MicroCJson {
 		return true;
 	}
 
-	inline void JSONData_listDump(JSONData* d_list, int i)
+	inline const std::string JSONData_listDump(JSONData* d_list, int i)
 	{
+		std::stringstream buffer(stringstream::in|stringstream::out);
 		vector<JSONData*> *p_list = (vector<JSONData*> *) d_list->pointer;
 
-		cout << "[" << endl;
+		buffer << "[" << endl;
 		for ( unsigned int z=0; z<p_list->size(); z++ ){
 			if((*p_list)[z]->type == VDT_MAP){
 				for(int j=0; j<i; j++)
-					cout << '\t';
+					buffer << '\t';
 
-				JSONData_mapDump((JSONData *) (*p_list)[z], i+1);
+				buffer << JSONData_mapDump((JSONData *) (*p_list)[z], i+1);
 			}
 
 			else if((*p_list)[z]->type == VDT_LIST){
 				for(int j=0; j<i; j++)
-					cout << '\t';
+					buffer << '\t';
 
-				JSONData_listDump((JSONData *) (*p_list)[z]->pointer, i+1);
+				buffer << JSONData_listDump((JSONData *) (*p_list)[z]->pointer, i+1);
 
 				for(int j=0; j<i; j++)
-					cout << '\t';
-				cout << "]" << endl;
+					buffer << '\t';
+				buffer << "]" << endl;
 			}		
 
 			else if((*p_list)[z]->type == VDT_STRING){
 				for(int j=0; j<i+1; j++)
-					cout << '\t';
-				cout << JSONData_toString((*p_list)[z]) << endl;
+					buffer << '\t';
+				buffer << JSONData_toString((*p_list)[z]) << endl;
 			}
 
 			else {
 				for(int j=0; j<i; j++)
-					cout << '\t';
-				cout << JSONData_toString((*p_list)[z]) << ", ";
+					buffer << '\t';
+				buffer << JSONData_toString((*p_list)[z]) << ", ";
 			}
 		}
 		for(int j=0; j<i; j++)
-			cout << '\t';
-		cout << "]" << endl;
+			buffer << '\t';
+		buffer << "]" << endl;
+
+		return buffer.str();
 	}
 
 	inline JSONData *JSONData_createNull()
@@ -337,14 +345,14 @@ namespace MicroCJson {
 		delete data;
 	}
 
-	inline void JSONData_dump(JSONData *data)
+	inline const std::string JSONData_dump(JSONData *data)
 	{
 		if(data == nullptr){
-			cout << "!nullptr" << endl;
+			return "!nullptr";
 		}else if(data->type == VDT_MAP){
-			JSONData_mapDump(data, 0);
+			return JSONData_mapDump(data, 0);
 		}else if(data->type == VDT_LIST){
-			JSONData_listDump(data, 0);
+			return JSONData_listDump(data, 0);
 		}
 	}
 

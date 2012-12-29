@@ -45,7 +45,7 @@
 #ifndef __OBJ_LOAD__H__
 #define __OBJ_LOAD__H__
 
-#include "kami.h"
+#include "win32.h"
 #include <fstream>
 #include <string.h>
 #include <set>

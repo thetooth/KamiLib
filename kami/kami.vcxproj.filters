@@ -63,6 +63,9 @@
     <ClInclude Include="config.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="font_unicode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="kami.cpp">
@@ -88,6 +91,9 @@
     </ClCompile>
     <ClCompile Include="tween.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="miniz.c">
+      <Filter>Source Files\3rd Party</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

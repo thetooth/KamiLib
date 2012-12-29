@@ -8,6 +8,7 @@
 #include <iostream>
 #include <string.h>
 #include <time.h>
+#include <memory>
 
 #include "pure.h"
 #include "version.h"
@@ -24,8 +25,8 @@
 
 // Internal modules
 #include "config.h"
-//#include "threads.h"
 #include "logicalObjects.h"
+#include "objload.h"
 
 namespace klib{
 
@@ -34,6 +35,7 @@ namespace klib{
 	// Pre define
 	class KLGL;
 	class KLGLWindowManager;
+	class KLGLObj;
 
 	class KLGLException {
 	private:
@@ -133,6 +135,19 @@ namespace klib{
 		}
 		KLGLSprite(const char *fname, int sWidth, int sHeight);
 		~KLGLSprite();
+	};
+
+	class KLGLObj : public Obj::File {
+	public:
+		KLGLTexture *texture;
+		KLGLObj(){
+
+		};
+	protected:
+		inline unsigned int OnLoadTexture(const char filename[]){
+			texture = new KLGLTexture(filename);
+			return texture->gltexture;
+		}
 	};
 
 	// General drawing helper and view mode manager
@@ -261,10 +276,33 @@ namespace klib{
 	class KLGLFont
 	{
 	public:
+		struct Descriptor
+		{
+			//clean 16 bytes
+			short x, y;
+			short Width, Height;
+			short XOffset, YOffset;
+			short XAdvance;
+			short Page;
+
+			Descriptor() : x( 0 ), y( 0 ), Width( 0 ), Height( 0 ), XOffset( 0 ), YOffset( 0 ),
+				XAdvance( 0 ), Page( 0 )
+			{ }
+		};
+		struct Charset
+		{
+			short LineHeight;
+			short Base;
+			short Width, Height;
+			short Pages;
+			Descriptor Chars[100000];
+		} charsetDesc;
+
 		KLGLFont();
 		KLGLFont(GLuint init_texture, GLuint init_m_width, GLuint init_m_height, GLuint init_c_width, GLuint init_c_height, int init_extended = 0);
 		void Draw(int x, int y, char* text, KLGLColor* vcolor = NULL);
 		void Draw(int x, int y, wchar_t* text, KLGLColor* vcolor = NULL);
+		bool ParseFnt(std::istream& Stream);
 		~KLGLFont();
 		//private:
 		GLuint c_texture;

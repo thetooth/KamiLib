@@ -15,12 +15,17 @@ namespace klib{
 		inline void setY(LOValue newy){ y = newy; };
 		inline void moveTo(LOValue newx, LOValue newy){ setX(newx); setY(newy); };
 		inline void rMoveTo(LOValue deltax, LOValue deltay){ moveTo(getX() + deltax, getY() + deltay); };
+		inline void moveAngle(LOValue angle, LOValue speed = 1, LOValue time = 1){
+			float rad = angle * (PI / 180);
+			x += cos(rad) * (time * speed);
+			y -= sin(rad) * (time * speed);
+		}
 	};
 
 	// Point
 	LOType class Point: public LObject<LOValue> {
 	public:
-		Point(): LObject::LObject(){};
+		Point(): LObject(){};
 		Point(LOValue newx, LOValue newy): LObject(newx, newy){};
 	};
 

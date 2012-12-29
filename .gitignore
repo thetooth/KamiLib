@@ -1,0 +1,7 @@
+# git ignore file
+Debug/*
+Release/*
+x64/*
+*/Debug/*
+*/Release/*
+*/x64/*
