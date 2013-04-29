@@ -1,14 +1,16 @@
 #pragma once
 
 #define GL_GLEXT_PROTOTYPES
+#define X11_EVENT_MASK ExposureMask | StructureNotifyMask | SubstructureNotifyMask | PropertyChangeMask | KeyPressMask | KeyReleaseMask
 #define stricmp strcasecmp
 
 #include <GL/gl.h>
 #include <GL/glx.h>
 #include <GL/glu.h>
 #include <GL/glext.h>
+#include <vector>
 #include "pure.h"
-#include "logicalObjects.h"
+#include "input.h"
 
 namespace klib {
 	class X11WM {
@@ -33,7 +35,7 @@ namespace klib {
 
 		void _swap();
 		void clientResize(int nWidth, int nHeight);
-		int _event();
+		int _event(std::vector<KLGLKeyEvent> *keyQueue);
 		
 	private:
 		inline static int WaitForNotify( Display *dpy, XEvent *event, XPointer arg ) {

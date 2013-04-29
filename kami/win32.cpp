@@ -7,23 +7,24 @@ namespace klib {
 		WINDOWPLACEMENT pos;
 		LONG res;
 		switch (message){
-		case WM_CREATE:
+			// TODO: Fix loading of positions!
+			/*case WM_CREATE:
 			res = RegOpenKey(HKEY_CURRENT_USER, TEXT("Software\\Ameoto\\Neo"), &hKey);
 
 			if(res == ERROR_SUCCESS){
-				pos.length = sizeof(WINDOWPLACEMENT);
-				res = RegQueryValueEx(hKey, TEXT("windowPlacement"), NULL, NULL, (LPBYTE)&pos, NULL);
-				SetWindowPlacement(hWnd, &pos);
-				RegCloseKey(hKey);
+			pos.length = sizeof(WINDOWPLACEMENT);
+			res = RegQueryValueEx(hKey, TEXT("windowPlacement"), NULL, NULL, (LPBYTE)&pos, NULL);
+			SetWindowPlacement(hWnd, &pos);
+			RegCloseKey(hKey);
 			}
-			break;
+			break;*/
 		case WM_CLOSE:
 		case WM_DESTROY:
-			pos.length = sizeof(WINDOWPLACEMENT);
+			/*pos.length = sizeof(WINDOWPLACEMENT);
 			GetWindowPlacement(hWnd, &pos);
 			RegCreateKey(HKEY_CURRENT_USER, TEXT("Software\\Ameoto\\Neo"), &hKey);
 			RegSetValueEx(hKey, TEXT("windowPlacement"), NULL, REG_BINARY, (BYTE*)&pos, sizeof(WINDOWPLACEMENT));
-			RegCloseKey(hKey);
+			RegCloseKey(hKey);*/
 			PostQuitMessage( 0 );
 			break;
 		case WM_KEYDOWN:
@@ -127,18 +128,29 @@ namespace klib {
 			exit(EXIT_FAILURE);
 		}
 		glewIinitHandle = NULL;
+
+		// Initialize reference table for key codes
+		initKeyTable();
 	}
 
 	void Win32WM::_swap(){
 		SwapBuffers(hDC);
 	}
 
-	int Win32WM::_event(){
+	int Win32WM::_event(std::vector<KLGLKeyEvent> *keyQueue){
 		int status = 1;
 		if(PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE)){
 			if(msg.message == WM_QUIT){
 				PostQuitMessage(0);
 				status = 0;
+			}else if(msg.message == WM_KEYDOWN || msg.message == WM_KEYUP){
+				(*keyQueue).push_back(KLGLKeyEvent(
+					KLGLKeyEvent::translateNativeKeyCode(msg.wParam), 
+					vktochar(msg.wParam), 
+					(msg.wParam == VK_SHIFT ? KLGLKeyEvent::SHIFT_DOWN : 0), 
+					msg.wParam, 
+					(msg.message == WM_KEYDOWN ? true : false)
+					));
 			}else{
 				TranslateMessage(&msg);
 				DispatchMessage(&msg);
@@ -182,5 +194,134 @@ namespace klib {
 		}
 		// determine the size of the resource, so we know how much to write out to file!  
 		size = SizeofResource(NULL, hRes);
+	}
+
+	unsigned int sKeyTable[MAX_KEYCODE];
+
+	// Much of this keyTable is courtesy of SDL's keyboard handling code
+	static void initKeyTable(){
+		for( int c = 0; c < MAX_KEYCODE; ++c ){
+			sKeyTable[c] = KLGLKeyEvent::KEY_UNKNOWN;
+		}
+
+		sKeyTable[VK_BACK] = KLGLKeyEvent::KEY_BACKSPACE;
+		sKeyTable[VK_TAB] = KLGLKeyEvent::KEY_TAB;
+		sKeyTable[VK_CLEAR] = KLGLKeyEvent::KEY_CLEAR;
+		sKeyTable[VK_RETURN] = KLGLKeyEvent::KEY_RETURN;
+		sKeyTable[VK_PAUSE] = KLGLKeyEvent::KEY_PAUSE;
+		sKeyTable[VK_ESCAPE] = KLGLKeyEvent::KEY_ESCAPE;
+		sKeyTable[VK_SPACE] = KLGLKeyEvent::KEY_SPACE;
+		sKeyTable[0xDE] = KLGLKeyEvent::KEY_QUOTE;
+		sKeyTable[0xBC] = KLGLKeyEvent::KEY_COMMA;
+		sKeyTable[0xDD] = KLGLKeyEvent::KEY_MINUS;
+		sKeyTable[0xBE] = KLGLKeyEvent::KEY_PERIOD;
+		sKeyTable[0xBF] = KLGLKeyEvent::KEY_SLASH;
+		sKeyTable['0'] = KLGLKeyEvent::KEY_0;
+		sKeyTable['1'] = KLGLKeyEvent::KEY_1;
+		sKeyTable['2'] = KLGLKeyEvent::KEY_2;
+		sKeyTable['3'] = KLGLKeyEvent::KEY_3;
+		sKeyTable['4'] = KLGLKeyEvent::KEY_4;
+		sKeyTable['5'] = KLGLKeyEvent::KEY_5;
+		sKeyTable['6'] = KLGLKeyEvent::KEY_6;
+		sKeyTable['7'] = KLGLKeyEvent::KEY_7;
+		sKeyTable['8'] = KLGLKeyEvent::KEY_8;
+		sKeyTable['9'] = KLGLKeyEvent::KEY_9;
+		sKeyTable[0xBA] = KLGLKeyEvent::KEY_SEMICOLON;
+		sKeyTable[0xBB] = KLGLKeyEvent::KEY_EQUALS;
+		sKeyTable[0xDB] = KLGLKeyEvent::KEY_LEFTBRACKET;
+		sKeyTable[0xDC] = KLGLKeyEvent::KEY_BACKSLASH;
+		sKeyTable[VK_OEM_102] = KLGLKeyEvent::KEY_LESS;
+		sKeyTable[0xDD] = KLGLKeyEvent::KEY_RIGHTBRACKET;
+		sKeyTable[0xC0] = KLGLKeyEvent::KEY_BACKQUOTE;
+		sKeyTable[0xDF] = KLGLKeyEvent::KEY_BACKQUOTE;
+		sKeyTable['A'] = KLGLKeyEvent::KEY_a;
+		sKeyTable['B'] = KLGLKeyEvent::KEY_b;
+		sKeyTable['C'] = KLGLKeyEvent::KEY_c;
+		sKeyTable['D'] = KLGLKeyEvent::KEY_d;
+		sKeyTable['E'] = KLGLKeyEvent::KEY_e;
+		sKeyTable['F'] = KLGLKeyEvent::KEY_f;
+		sKeyTable['G'] = KLGLKeyEvent::KEY_g;
+		sKeyTable['H'] = KLGLKeyEvent::KEY_h;
+		sKeyTable['I'] = KLGLKeyEvent::KEY_i;
+		sKeyTable['J'] = KLGLKeyEvent::KEY_j;
+		sKeyTable['K'] = KLGLKeyEvent::KEY_k;
+		sKeyTable['L'] = KLGLKeyEvent::KEY_l;
+		sKeyTable['M'] = KLGLKeyEvent::KEY_m;
+		sKeyTable['N'] = KLGLKeyEvent::KEY_n;
+		sKeyTable['O'] = KLGLKeyEvent::KEY_o;
+		sKeyTable['P'] = KLGLKeyEvent::KEY_p;
+		sKeyTable['Q'] = KLGLKeyEvent::KEY_q;
+		sKeyTable['R'] = KLGLKeyEvent::KEY_r;
+		sKeyTable['S'] = KLGLKeyEvent::KEY_s;
+		sKeyTable['T'] = KLGLKeyEvent::KEY_t;
+		sKeyTable['U'] = KLGLKeyEvent::KEY_u;
+		sKeyTable['V'] = KLGLKeyEvent::KEY_v;
+		sKeyTable['W'] = KLGLKeyEvent::KEY_w;
+		sKeyTable['X'] = KLGLKeyEvent::KEY_x;
+		sKeyTable['Y'] = KLGLKeyEvent::KEY_y;
+		sKeyTable['Z'] = KLGLKeyEvent::KEY_z;
+		sKeyTable[VK_DELETE] = KLGLKeyEvent::KEY_DELETE;
+
+		sKeyTable[VK_NUMPAD0] = KLGLKeyEvent::KEY_KP0;
+		sKeyTable[VK_NUMPAD1] = KLGLKeyEvent::KEY_KP1;
+		sKeyTable[VK_NUMPAD2] = KLGLKeyEvent::KEY_KP2;
+		sKeyTable[VK_NUMPAD3] = KLGLKeyEvent::KEY_KP3;
+		sKeyTable[VK_NUMPAD4] = KLGLKeyEvent::KEY_KP4;
+		sKeyTable[VK_NUMPAD5] = KLGLKeyEvent::KEY_KP5;
+		sKeyTable[VK_NUMPAD6] = KLGLKeyEvent::KEY_KP6;
+		sKeyTable[VK_NUMPAD7] = KLGLKeyEvent::KEY_KP7;
+		sKeyTable[VK_NUMPAD8] = KLGLKeyEvent::KEY_KP8;
+		sKeyTable[VK_NUMPAD9] = KLGLKeyEvent::KEY_KP9;
+		sKeyTable[VK_DECIMAL] = KLGLKeyEvent::KEY_KP_PERIOD;
+		sKeyTable[VK_DIVIDE] = KLGLKeyEvent::KEY_KP_DIVIDE;
+		sKeyTable[VK_MULTIPLY] = KLGLKeyEvent::KEY_KP_MULTIPLY;
+		sKeyTable[VK_SUBTRACT] = KLGLKeyEvent::KEY_KP_MINUS;
+		sKeyTable[VK_ADD] = KLGLKeyEvent::KEY_KP_PLUS;
+
+		sKeyTable[VK_UP] = KLGLKeyEvent::KEY_UP;
+		sKeyTable[VK_DOWN] = KLGLKeyEvent::KEY_DOWN;
+		sKeyTable[VK_RIGHT] = KLGLKeyEvent::KEY_RIGHT;
+		sKeyTable[VK_LEFT] = KLGLKeyEvent::KEY_LEFT;
+		sKeyTable[VK_INSERT] = KLGLKeyEvent::KEY_INSERT;
+		sKeyTable[VK_HOME] = KLGLKeyEvent::KEY_HOME;
+		sKeyTable[VK_END] = KLGLKeyEvent::KEY_END;
+		sKeyTable[VK_PRIOR] = KLGLKeyEvent::KEY_PAGEUP;
+		sKeyTable[VK_NEXT] = KLGLKeyEvent::KEY_PAGEDOWN;
+
+		sKeyTable[VK_F1] = KLGLKeyEvent::KEY_F1;
+		sKeyTable[VK_F2] = KLGLKeyEvent::KEY_F2;
+		sKeyTable[VK_F3] = KLGLKeyEvent::KEY_F3;
+		sKeyTable[VK_F4] = KLGLKeyEvent::KEY_F4;
+		sKeyTable[VK_F5] = KLGLKeyEvent::KEY_F5;
+		sKeyTable[VK_F6] = KLGLKeyEvent::KEY_F6;
+		sKeyTable[VK_F7] = KLGLKeyEvent::KEY_F7;
+		sKeyTable[VK_F8] = KLGLKeyEvent::KEY_F8;
+		sKeyTable[VK_F9] = KLGLKeyEvent::KEY_F9;
+		sKeyTable[VK_F10] = KLGLKeyEvent::KEY_F10;
+		sKeyTable[VK_F11] = KLGLKeyEvent::KEY_F11;
+		sKeyTable[VK_F12] = KLGLKeyEvent::KEY_F12;
+		sKeyTable[VK_F13] = KLGLKeyEvent::KEY_F13;
+		sKeyTable[VK_F14] = KLGLKeyEvent::KEY_F14;
+		sKeyTable[VK_F15] = KLGLKeyEvent::KEY_F15;
+
+		sKeyTable[VK_NUMLOCK] = KLGLKeyEvent::KEY_NUMLOCK;
+		sKeyTable[VK_CAPITAL] = KLGLKeyEvent::KEY_CAPSLOCK;
+		sKeyTable[VK_SCROLL] = KLGLKeyEvent::KEY_SCROLLOCK;
+		sKeyTable[VK_RSHIFT] = KLGLKeyEvent::KEY_RSHIFT;
+		sKeyTable[VK_LSHIFT] = KLGLKeyEvent::KEY_LSHIFT;
+		sKeyTable[VK_RCONTROL] = KLGLKeyEvent::KEY_RCTRL;
+		sKeyTable[VK_LCONTROL] = KLGLKeyEvent::KEY_LCTRL;
+		sKeyTable[VK_RMENU] = KLGLKeyEvent::KEY_RALT;
+		sKeyTable[VK_LMENU] = KLGLKeyEvent::KEY_LALT;
+		sKeyTable[VK_RWIN] = KLGLKeyEvent::KEY_RSUPER;
+		sKeyTable[VK_LWIN] = KLGLKeyEvent::KEY_LSUPER;
+
+		sKeyTable[VK_HELP] = KLGLKeyEvent::KEY_HELP;
+		sKeyTable[VK_PRINT] = KLGLKeyEvent::KEY_PRINT;
+		sKeyTable[VK_SNAPSHOT] = KLGLKeyEvent::KEY_PRINT;
+		sKeyTable[VK_CANCEL] = KLGLKeyEvent::KEY_BREAK;
+		sKeyTable[VK_APPS] = KLGLKeyEvent::KEY_MENU;
+
+		sTableInited = true;
 	}
 }

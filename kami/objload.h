@@ -45,7 +45,11 @@
 #ifndef __OBJ_LOAD__H__
 #define __OBJ_LOAD__H__
 
+#if defined _WIN32
 #include "win32.h"
+#else
+#include "unix.h"
+#endif
 #include <fstream>
 #include <string.h>
 #include <set>

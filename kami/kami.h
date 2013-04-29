@@ -9,6 +9,9 @@
 #include <string.h>
 #include <time.h>
 #include <memory>
+#include <vector>
+#include <algorithm>
+#include <functional>
 
 #include "pure.h"
 #include "version.h"
@@ -25,8 +28,8 @@
 
 // Internal modules
 #include "config.h"
-#include "logicalObjects.h"
 #include "objload.h"
+#include "input.h"
 
 namespace klib{
 
@@ -65,7 +68,7 @@ namespace klib{
 		if (buffer == NULL || (buffer != NULL && strlen(buffer) < length+1)){
 			buffer = (char*)malloc(length+1);
 		}
-		
+
 		fread(buffer, 1, length, f);
 		fclose(f);
 		buffer[length] = '\0';
@@ -147,6 +150,28 @@ namespace klib{
 		inline unsigned int OnLoadTexture(const char filename[]){
 			texture = new KLGLTexture(filename);
 			return texture->gltexture;
+		}
+	};
+
+	class KLGLWindowManager {
+	public:
+		APP_WINDOWMANAGER_CLASS* wm;
+		KLGLWindowManager(const char* title, Rect<int> *window, int scaleFactor, bool fullscreen){
+			wm = new APP_WINDOWMANAGER_CLASS(title, window, scaleFactor, fullscreen);
+		}
+		void Swap(){
+			wm->_swap();
+		}
+		// Events
+		std::vector<KLGLKeyEvent> keyQueue;
+		void ProcessEvent(int *status){
+			if (*status == 0){
+				return;
+			}
+			keyQueue.erase(std::remove_if(keyQueue.begin(), keyQueue.end(), [](KLGLKeyEvent e) {
+				return e.isfinished();
+			}), keyQueue.end());
+			*status = wm->_event(&keyQueue);
 		}
 	};
 
@@ -246,7 +271,21 @@ namespace klib{
 
 			glDeleteProgram(shader_id[id]);
 		}
-		void ProcessEvent(int *status);
+		int ProcessEvent(int *status);
+		/*template <typename IteratorT, typename FunctionT> FunctionT HandleEvent(FunctionT func){
+		std::vector<KLGLKeyEvent>::iterator it = windowManager->keyQueue.begin();
+		for(;it != windowManager->keyQueue.end(); ++it){
+			func(it);
+		}
+		return func;
+		};*/
+		std::function<void(std::vector<KLGLKeyEvent>::iterator)> HandleEvent(std::function<void(std::vector<KLGLKeyEvent>::iterator)> func){
+			std::vector<KLGLKeyEvent>::iterator it = windowManager->keyQueue.begin();
+			for(;it != windowManager->keyQueue.end(); ++it){
+				func(it);
+			}
+			return func;
+		}
 
 	private:
 		float getElapsedTimeInMs(){
@@ -256,20 +295,6 @@ namespace klib{
 		static void PrintShaderInfoLog(GLuint obj, int isShader = 1);
 		KLGLTexture nullTexture;
 		Rect<int> ASPRatio(Rect<int> &rcScreen, Rect<int> &sizePicture, bool bCenter = true);
-	};
-	
-	class KLGLWindowManager {
-	public:
-		APP_WINDOWMANAGER_CLASS* wm;
-		KLGLWindowManager(const char* title, Rect<int> *window, int scaleFactor, bool fullscreen){
-			wm = new APP_WINDOWMANAGER_CLASS(title, window, scaleFactor, fullscreen);
-		}
-		void Swap(){
-			wm->_swap();
-		}
-		void ProcessEvent(int *status){
-			*status = wm->_event();
-		}
 	};
 
 	// Simple text drawing

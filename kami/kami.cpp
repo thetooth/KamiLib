@@ -1,7 +1,6 @@
 #include "kami.h"
 #include "picopng.h"
 #include "databin.h"
-//#include "font_unicode.h"
 #include <iostream>
 #include <string>
 #include <regex>
@@ -28,7 +27,7 @@ namespace klib{
 		cl("Loading Texture: %s ", fname);
 		unique_ptr<FILE, int(*)(FILE*)> filePtr(fopen(fname, "rb"), fclose);
 
-		if(filePtr == NULL){
+		if(filePtr == nullptr){
 			cl("[FAILED]\n");
 			throw KLGLException("[KLGLTexture::LoadTexture][%d:%s] \nResource \"%s\" could not be opened.", __LINE__, __FILE__, fname);
 			return 1;
@@ -163,7 +162,7 @@ namespace klib{
 			glEnable(GL_LIGHT0);
 
 			// Init OpenGL OK!
-			cl("Initialized %s OpenGL %s @%dx%d\n", glGetString(GL_VENDOR), glGetString(GL_VERSION), buffer.width, buffer.height);
+			cl("Initialized %s OpenGL %s %dx%d\n", glGetString(GL_VENDOR), glGetString(GL_VERSION), buffer.width, buffer.height);
 
 			// Draw logo and load internal resources
 			InfoBlue = new KLGLTexture(KLGLInfoBluePNG, 205);
@@ -213,18 +212,20 @@ namespace klib{
 		delete clBuffer;
 	}
 
-	void KLGL::ProcessEvent(int *status){
+	int KLGL::ProcessEvent(int *status){
 		windowManager->ProcessEvent(status);
+		return *status;
 	}
 
 	void KLGL::OpenFBO(float fov, float eyex, float eyey, float eyez){
-#if defined _WIN32
 		if (resizeEvent && !fullscreen){
-			RECT win;
-			GetClientRect(windowManager->wm->hWnd, &win);
-			window.width = max(win.right-win.left, 0);
-			window.height = max(win.bottom-win.top, 0);
-			windowManager->wm->clientResize(window.width, window.height);			
+			#if defined _WIN32
+				RECT win;
+				GetClientRect(windowManager->wm->hWnd, &win);
+				window.width = max(win.right-win.left, 0);
+				window.height = max(win.bottom-win.top, 0);
+				windowManager->wm->clientResize(window.width, window.height);		
+			#endif	
 			if (bufferAutoSize){
 				buffer.width = window.width*overSampleFactor;
 				buffer.height = window.height*overSampleFactor;
@@ -233,7 +234,6 @@ namespace klib{
 			}
 			resizeEvent = false;
 		}
-#endif
 		glLoadIdentity();
 		glViewport(0, 0, window.width, window.height);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT); //Clear the colour buffer (more buffers later on)
@@ -529,7 +529,7 @@ namespace klib{
 	unsigned int KLGL::ComputeShader(unsigned int &shaderProgram, unsigned int shaderType, const char* shaderString){
 		if (shaderString == NULL){
 			throw KLGLException("NULL ptr given instead of shader string.");
-			return NULL;
+			return 0;
 		}
 		unsigned int tmpLinker = glCreateShader(shaderType);
 		glShaderSource(tmpLinker, 1, &shaderString, 0);
@@ -551,14 +551,18 @@ namespace klib{
 
 		std::string shaderString(file_contents(fname));
 
-		std::basic_regex<char> includeMatch("#include([\\s]+|[\\t]+)\"([^\"]+)\"");
-		std::match_results<std::string::const_iterator> matches;
+		/*try {
+			std::basic_regex<char> includeMatch("#include([\\s]+|[\\t]+)\"([^\"]+)\"");
+			std::match_results<std::string::const_iterator> matches;
 
-		while(std::regex_search(shaderString, matches, includeMatch)){
-			std::string includePath(matches[2]);
-			std::string content(file_contents(includePath.c_str()));
-			shaderString = regex_replace(shaderString, includeMatch, content);
-		}
+			while(std::regex_search(shaderString, matches, includeMatch)){
+				std::string includePath(matches[2]);
+				std::string content(file_contents(includePath.c_str()));
+				shaderString = regex_replace(shaderString, includeMatch, content);
+			}
+		}catch(std::regex_error e){
+			cl("%s", e.what());
+		}*/
 
 		*dest = (char*)malloc(shaderString.length());
 		strcpy(*dest, shaderString.c_str());

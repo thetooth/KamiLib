@@ -1,4 +1,7 @@
 #pragma once
+
+#include <math.h>
+
 #define LOType template <class LOValue>
 namespace klib{
 
@@ -16,7 +19,7 @@ namespace klib{
 		inline void moveTo(LOValue newx, LOValue newy){ setX(newx); setY(newy); };
 		inline void rMoveTo(LOValue deltax, LOValue deltay){ moveTo(getX() + deltax, getY() + deltay); };
 		inline void moveAngle(LOValue angle, LOValue speed = 1, LOValue time = 1){
-			float rad = angle * (PI / 180);
+			float rad = angle * (APP_PI / 180);
 			x += cos(rad) * (time * speed);
 			y -= sin(rad) * (time * speed);
 		}
@@ -25,8 +28,8 @@ namespace klib{
 	// Point
 	LOType class Point: public LObject<LOValue> {
 	public:
-		Point(): LObject(){};
-		Point(LOValue newx, LOValue newy): LObject(newx, newy){};
+		Point(): LObject<LOValue>::LObject(){};
+		Point(LOValue newx, LOValue newy): LObject<LOValue>::LObject(newx, newy){};
 	};
 
 	// Rectangle

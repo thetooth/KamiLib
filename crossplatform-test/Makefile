@@ -2,24 +2,24 @@ C_FILES =
 CPP_FILES = demo01.cpp
 OBJECTS = $(C_FILES:.c=.o) $(CPP_FILES:.cpp=.o)
 
-CC = gcc
-CPP = g++
-CXXFLAGS = -Wall -std=c++11 -fPIC
-INCLUDE = -I. -I/usr/include
+CC = clang
+CPP = clang++
+
+INCLUDE = -I. -I/usr/include -I../kami
+LDFLAGS = -L/usr/lib -L../kami -lX11 -lGL -lGLU -lkami
+CFLAGS = -Wall -fPIC -O0 $(INCLUDE)
+CXXFLAGS = -Wall -std=c++11 -fPIC -O0 $(INCLUDE)
 
 EXEC = demo01
 
-LDLIBS = -lX11 -lGL -lGLU
-LDFLAGS = -L/usr/lib
-
 %.o: %.c
-	$(CC) -g -c $< -o $@
+	$(CC) -g $(CFLAGS) -c $< -o $@
 
 %.o: %.cpp
-	$(CPP) -g -std=c++11 -c $< -o $@ -I../kami -L../kami -lkami
+	$(CPP) -g $(CXXFLAGS) -c $< -o $@
 
 $(EXEC): $(OBJECTS)
-	$(CPP) -g $(OBJECTS) -I../kami -I. -I/usr/include -L/usr/lib -lX11 -lGL -lGLU -L../kami -lkami -o $(EXEC)
+	$(CPP) -g $(OBJECTS) $(CXXFLAGS) $(LDFLAGS) -o $(EXEC)
 
 clean:
 	rm -f $(EXEC) $(OBJECTS)

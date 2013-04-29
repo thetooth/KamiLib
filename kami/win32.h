@@ -8,7 +8,7 @@
 #include "glew.h"
 #include "wglew.h"
 #include "pure.h"
-#include "logicalObjects.h"
+#include "input.h"
 
 namespace klib {
 
@@ -140,7 +140,7 @@ namespace klib {
 
 		void _swap();
 		void clientResize(int nWidth, int nHeight);
-		int _event();
+		int _event(std::vector<KLGLKeyEvent> *keyQueue);
 	};
 
 	class Win32Resource {

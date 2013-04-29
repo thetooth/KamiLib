@@ -2,19 +2,19 @@
 
 1. Features
 
-- OpenGL and WM context creation. (complete, platform-dependant)
-- Platform independant I/O (TODO)
+- OpenGL and WM context creation. (complete)
+- Platform independant I/O (in-progress)
 - Basic blit and sprite functionallity (complete)
 - GLSL support (complete)
 - GL matrix and geometry automation (complete)
-- Sound (TODO)
-- Lua scripting of events and interop (partial)
+- Sound (deprecated)
+- Lua scripting of events and interop (deprecated)
 
 2. Licensing
 
-Copyright	(C) 2005-2012 Ameoto Systems Inc. All Rights Reserved.
+Copyright	(C) 2005-2013 Ameoto Systems Inc. All Rights Reserved.
 
-		(C) 2010-2012 Jeff Jenner.
+		(C) 2010-2013 Jeff Jenner.
 		(C) 2002-2008 Milan Ikits.
 		(C) 2002-2008 Marcelo E. Magallon.
 		(C) 2002-2002 Lev Povalahev.

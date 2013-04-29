@@ -57,7 +57,7 @@ namespace MicroCJson {
 		struct JSONData_t* operator[](const char *s)
 		{
 			if(this->type != VDT_MAP)
-				return false;
+				return nullptr;
 
 			return ((map<string, struct JSONData_t*> *) this->pointer)->find(string(s))->second;
 		}
@@ -65,7 +65,7 @@ namespace MicroCJson {
 		struct JSONData_t* operator[](unsigned int s)
 		{
 			if(this->type != VDT_LIST)
-				return false;
+				return nullptr;
 
 			return ((vector<struct JSONData_t*> *) this->pointer)->at(s);
 		}
@@ -98,7 +98,7 @@ namespace MicroCJson {
 		}
 		else if(data->type == VDT_ULONG){
 			char rtr[64];
-			sprintf(rtr,"%u", *(unsigned long *) data->pointer);
+			sprintf(rtr,"%lu", *(unsigned long *) data->pointer);
 			return string(rtr);
 		}
 		else if(data->type == VDT_STRING)
@@ -133,7 +133,7 @@ namespace MicroCJson {
 	inline JSONData *JSONData_mapGet(JSONData* d_map, string key)
 	{
 		if(d_map->type != VDT_MAP)
-			return false;
+			return nullptr;
 
 		auto tmp = ((map<string, JSONData*> *) d_map->pointer)->find(key);
 		if (tmp == ((map<string, JSONData*> *) d_map->pointer)->end()){
@@ -353,6 +353,8 @@ namespace MicroCJson {
 			return JSONData_mapDump(data, 0);
 		}else if(data->type == VDT_LIST){
 			return JSONData_listDump(data, 0);
+		}else{
+			return "!unknown";
 		}
 	}
 
@@ -381,7 +383,7 @@ namespace MicroCJson {
 				p++;
 			}
 			else if(dc[i] == '['){
-				state == UNKNOWN;
+				state = UNKNOWN;
 				key_level.push_back(key);
 				stack.push_back(JSONData_listCreate());
 				stack_type.push_back(LIST);

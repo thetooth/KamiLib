@@ -1,6 +1,6 @@
 /*
-	PURE.H - Cross-platform utility header.
-	Copyright (C) 2005-2011, Ameoto Systems Inc. All rights reserved.
+PURE.H - Cross-platform utility header.
+Copyright (C) 2005-2011, Ameoto Systems Inc. All rights reserved.
 */
 
 #pragma once
@@ -13,18 +13,18 @@
 #include <string.h>
 #include <wchar.h>
 #include <unordered_map>
+#include <math.h>
 
 namespace klib {
 
-#pragma region Global_Defines
-
 #ifndef APP_MOTD
-#define APP_MOTD "(c) 2005-2012 Ameoto Systems Inc. All Rights Reserved.\n\n"
+#define APP_MOTD "(c) 2005-2013 Ameoto Systems Inc. All Rights Reserved.\n\n"
 #endif
 #define APP_BUFFER_SIZE 4096
 #define APP_ENABLE_MIPMAP 0
 #define APP_ANISOTROPY 4.0
 #define APP_CONSOLE_LINES 32
+#define APP_PI 3.14159265359
 
 #define uchar2vec(x) vector<unsigned char>(reinterpret_cast<unsigned char*>(x), reinterpret_cast<unsigned char*>(x)+sizeof(x))
 
@@ -32,7 +32,11 @@ namespace klib {
 #if		defined __ECC || defined __ICC || defined __INTEL_COMPILER
 #	define APP_COMPILER_STRING "Intel C/C++"
 #elif	defined __GNUC__
-#	define APP_COMPILER_STRING "GNU/GCC"
+#	if defined __clang__
+#		define APP_COMPILER_STRING "LLVM " __clang_version__
+#	else
+#		define APP_COMPILER_STRING "GCC"
+#	endif
 #elif	defined _MSC_VER
 #	define APP_COMPILER_STRING "Microsoft Visual C++"
 #elif  !defined APP_COMPILER_STRING
@@ -50,25 +54,16 @@ namespace klib {
 #endif
 
 #if defined(_WIN32)
-	#define APP_WINDOWMANAGER_CLASS Win32WM
+#define APP_WINDOWMANAGER_CLASS Win32WM
 #else
-	#define APP_WINDOWMANAGER_CLASS X11WM
+#define APP_WINDOWMANAGER_CLASS X11WM
 #endif
 
-#pragma endregion
-
-#pragma region Global_Data
-
-	static int cursor_x = 0, cursor_y = 0, clBufferAllocLen = APP_BUFFER_SIZE;
-	static bool cursor_L_down = false;
+	static int clBufferAllocLen = APP_BUFFER_SIZE;
 	extern bool KLGLDebug;
 	extern bool resizeEvent;
 	extern char *clBuffer;
 	//extern std::unordered_map<std::string, void*> clHashTable;
-
-#pragma endregion
-
-#pragma region Inline_System_Utilitys
 
 	inline int substr(char *dest, const char *src, int start, int len){
 		if (src == 0 || strlen(src) == 0 || strlen(src) < start || strlen(src) < (start+len)){
@@ -99,23 +94,23 @@ namespace klib {
 			char* tclBuffer = (char*)realloc(clBuffer, clBufferAllocLen);
 			fill_n(tclBuffer+clBufferAllocLen, clBufferAllocLen, '\0');
 			if (tclBuffer != NULL){
-				clBuffer = tclBuffer;
+			clBuffer = tclBuffer;
 			}else{
-				exit(1);
+			exit(1);
 			}*/
 		}
-		
+
 		// Temporary buffer
 		char *tBuffer = new char[clBufferAllocLen];
 		std::fill_n(tBuffer, clBufferAllocLen, '\0');
-		
+
 		int ret = 0, numLn = 0, numLnP = 0;
 
 		// Do normal output
 		va_list arg;
 		va_start(arg, format);
 		vsprintf(tBuffer, format, arg);
-		ret = printf(tBuffer);
+		ret = printf("%s", tBuffer);
 		va_end(arg);
 
 		// Append the new string to the buffer
@@ -152,12 +147,6 @@ namespace klib {
 		return (float)color/255.0f;
 	}
 
-	
-
-#pragma endregion
-
-#pragma region Misc
-
 	struct cmp_cstring : public std::binary_function<const char*, const char*, bool> {
 	public:
 		bool operator()(const char* str1, const char* str2) const {
@@ -182,6 +171,90 @@ namespace klib {
 		return out.str();
 	}
 
-#pragma endregion
+#define LOType template <class LOValue>
 
+	// Logical Object template
+	LOType class LObject {
+	public:
+		LOValue x;
+		LOValue y;
+		LObject(){ moveTo(0, 0); };
+		LObject(LOValue newx, LOValue newy){ moveTo(newx, newy); };
+		inline LOValue getX(){ return x; };
+		inline LOValue getY(){ return y; };
+		inline void setX(LOValue newx){ x = newx; };
+		inline void setY(LOValue newy){ y = newy; };
+		inline void moveTo(LOValue newx, LOValue newy){ setX(newx); setY(newy); };
+		inline void rMoveTo(LOValue deltax, LOValue deltay){ moveTo(getX() + deltax, getY() + deltay); };
+		inline void moveAngle(LOValue angle, LOValue speed = 1, LOValue time = 1){
+			float rad = angle * (APP_PI / 180);
+			x += cos(rad) * (time * speed);
+			y -= sin(rad) * (time * speed);
+		}
+	};
+
+	// Point
+	LOType class Point: public LObject<LOValue> {
+	public:
+		Point(): LObject<LOValue>::LObject(){};
+		Point(LOValue newx, LOValue newy): LObject<LOValue>::LObject(newx, newy){};
+	};
+
+	// Rectangle
+	LOType class Rect: public LObject<LOValue> {
+	public:
+		LOValue width;
+		LOValue height;
+		Rect(): LObject<LOValue>::LObject(){
+			setWidth(0);
+			setHeight(0);
+		};
+		Rect(LOValue newx, LOValue newy, LOValue newwidth, LOValue newheight): LObject<LOValue>::LObject(newx, newy){
+			setWidth(newwidth);
+			setHeight(newheight);
+		};
+		inline LOValue getWidth(){
+			return width;
+		};
+		inline LOValue getHeight(){
+			return height;
+		};
+		inline void setWidth(LOValue newwidth){
+			width = newwidth;
+		};
+		inline void setHeight(LOValue newheight){
+			height = newheight;
+		};
+	};
+
+	// Vec4
+	LOType class Vec4: public LObject<LOValue> {
+	public:
+		LOValue x;
+		LOValue y;
+		LOValue z;
+		LOValue w;
+
+		Vec4(): LObject<LOValue>::LObject(){
+			x = 0;
+			y = 0;
+			z = 0;
+			w = 0;
+		}
+		Vec4(LOValue newx, LOValue newy, LOValue newz, LOValue neww): LObject<LOValue>::LObject(newx, newy){
+			x = newx;
+			y = newy;
+			z = newz;
+			w = neww;
+		}
+		inline LOValue* Data(){
+			rawTypePtr[0] = x;
+			rawTypePtr[1] = y;
+			rawTypePtr[2] = z;
+			rawTypePtr[3] = w;
+			return rawTypePtr;
+		}
+	private:
+		LOValue rawTypePtr[4];
+	};
 }

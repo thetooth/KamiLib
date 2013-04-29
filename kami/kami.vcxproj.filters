@@ -21,9 +21,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="logicalObjects.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="kami.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -66,6 +63,12 @@
     <ClInclude Include="font_unicode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="event.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="input.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="kami.cpp">
@@ -94,6 +97,9 @@
     </ClCompile>
     <ClCompile Include="miniz.c">
       <Filter>Source Files\3rd Party</Filter>
+    </ClCompile>
+    <ClCompile Include="input.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

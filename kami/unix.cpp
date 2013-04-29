@@ -42,13 +42,16 @@ namespace klib {
 		** returned framebuffer config */
 		vInfo = glXGetVisualFromFBConfig(dpy, fbConfigs[0]);
 
-		swa.border_pixel = 0;
+		swa.border_pixel = 10;
 		swa.event_mask = StructureNotifyMask;
 		swa.colormap = XCreateColormap(dpy, RootWindow(dpy, vInfo->screen), vInfo->visual, AllocNone);
 
 		swaMask = CWBorderPixel | CWColormap | CWEventMask;
 
 		xWin = XCreateWindow(dpy, RootWindow(dpy, vInfo->screen), 0, 0, window->width, window->height, 0, vInfo->depth, InputOutput, vInfo->visual, swaMask, &swa);
+
+		Atom wmDeleteMessage = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+		XSetWMProtocols(dpy, xWin, &wmDeleteMessage, 1);
 
 		/* Create a GLX context for OpenGL rendering */
 		context = glXCreateNewContext(dpy, fbConfigs[0], GLX_RGBA_TYPE, NULL, True);
@@ -63,24 +66,25 @@ namespace klib {
 
 		/* Bind the GLX context to the Window */
 		glXMakeContextCurrent(dpy, glxWin, glxWin, context);
+
+		/* Setup the input event mask so we capture key presses */
+		XSelectInput(dpy, xWin, X11_EVENT_MASK);
+		initKeyTable();
 	}
 
 	void X11WM::_swap(){
 		glXSwapBuffers(dpy, glxWin);
 	}
 
-	int X11WM::_event(){
+	int X11WM::_event(std::vector<KLGLKeyEvent> *keyQueue){
 		int status = 1;
 		while (XPending(dpy) > 0)
 		{
 			XNextEvent(dpy, &event);
+			KeySym nativeKeyCode;
+			char keyCode;
+			Atom wmDeleteMessage = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
 			switch (event.type){
-			/*case Expose:
-				if(event.xexpose.count != 0){
-					break;
-				}
-				renderGL();
-				break;*/
 			case ConfigureNotify:
 				if((event.xconfigure.width != window->width) || (event.xconfigure.height != window->height)){
 					resizeEvent = true;
@@ -92,27 +96,166 @@ namespace klib {
 			case ButtonPress:
 				break;
 			case KeyPress:
-				if(XLookupKeysym(&event.xkey, 0) == XK_Escape){
-					status = 0;
+			case KeyRelease:
+				nativeKeyCode = XLookupKeysym(&event.xkey, 0);
+				if (nativeKeyCode < 32 || nativeKeyCode > 255){
+					keyCode = '?';
+				}else{
+					keyCode = nativeKeyCode;
 				}
+				(*keyQueue).push_back(
+					KLGLKeyEvent(
+						KLGLKeyEvent::translateNativeKeyCode(nativeKeyCode), 
+						keyCode, 
+						0, 
+						nativeKeyCode, 
+						(event.type == KeyPress ? 1 : 0)
+					)
+				);
 				break;
 			case ClientMessage:
-				if(strcmp(XGetAtomName(dpy, event.xclient.message_type), "WM_PROTOCOLS") == 0){
-					status = 0;
+				if(event.xclient.data.l[0] == wmDeleteMessage){
+					XCloseDisplay(dpy);
+					return 0;
 				}
 				break;
 			default:
 				break;
 			}
 		}
-		if(status != 1){
-			return status;
-		}else{
-			return 1;
-		}
+		return status;
 	}
 	
 	void X11WM::clientResize(int nWidth, int nHeight){
 		
+	}
+
+	unsigned int sKeyTable[MAX_KEYCODE];
+
+	// Much of this keyTable is courtesy of SDL's keyboard handling code
+	static void initKeyTable()
+	{
+		for( int c = 0; c < MAX_KEYCODE; ++c ){
+			sKeyTable[c] = KLGLKeyEvent::KEY_UNKNOWN;
+		}
+
+		sKeyTable[XK_BackSpace] = KLGLKeyEvent::KEY_BACKSPACE;
+		sKeyTable[XK_Tab] = KLGLKeyEvent::KEY_TAB;
+		sKeyTable[XK_Clear] = KLGLKeyEvent::KEY_CLEAR;
+		sKeyTable[XK_Return] = KLGLKeyEvent::KEY_RETURN;
+		sKeyTable[XK_Pause] = KLGLKeyEvent::KEY_PAUSE;
+		sKeyTable[XK_Escape] = KLGLKeyEvent::KEY_ESCAPE;
+		sKeyTable[' '] = KLGLKeyEvent::KEY_SPACE;
+		sKeyTable[0xDE] = KLGLKeyEvent::KEY_QUOTE;
+		sKeyTable[0xBC] = KLGLKeyEvent::KEY_COMMA;
+		sKeyTable[0xDD] = KLGLKeyEvent::KEY_MINUS;
+		sKeyTable[0xBE] = KLGLKeyEvent::KEY_PERIOD;
+		sKeyTable[0xBF] = KLGLKeyEvent::KEY_SLASH;
+		sKeyTable['0'] = KLGLKeyEvent::KEY_0;
+		sKeyTable['1'] = KLGLKeyEvent::KEY_1;
+		sKeyTable['2'] = KLGLKeyEvent::KEY_2;
+		sKeyTable['3'] = KLGLKeyEvent::KEY_3;
+		sKeyTable['4'] = KLGLKeyEvent::KEY_4;
+		sKeyTable['5'] = KLGLKeyEvent::KEY_5;
+		sKeyTable['6'] = KLGLKeyEvent::KEY_6;
+		sKeyTable['7'] = KLGLKeyEvent::KEY_7;
+		sKeyTable['8'] = KLGLKeyEvent::KEY_8;
+		sKeyTable['9'] = KLGLKeyEvent::KEY_9;
+		sKeyTable[XK_semicolon] = KLGLKeyEvent::KEY_SEMICOLON;
+		sKeyTable[XK_equal] = KLGLKeyEvent::KEY_EQUALS;
+		sKeyTable[XK_bracketleft] = KLGLKeyEvent::KEY_LEFTBRACKET;
+		sKeyTable[XK_backslash] = KLGLKeyEvent::KEY_BACKSLASH;
+		sKeyTable[XK_less] = KLGLKeyEvent::KEY_LESS;
+		sKeyTable[XK_bracketright] = KLGLKeyEvent::KEY_RIGHTBRACKET;
+		sKeyTable[0xC0] = KLGLKeyEvent::KEY_BACKQUOTE;
+		sKeyTable[0xDF] = KLGLKeyEvent::KEY_BACKQUOTE;
+		sKeyTable['A'] = KLGLKeyEvent::KEY_a;
+		sKeyTable['B'] = KLGLKeyEvent::KEY_b;
+		sKeyTable['C'] = KLGLKeyEvent::KEY_c;
+		sKeyTable['D'] = KLGLKeyEvent::KEY_d;
+		sKeyTable['E'] = KLGLKeyEvent::KEY_e;
+		sKeyTable['F'] = KLGLKeyEvent::KEY_f;
+		sKeyTable['G'] = KLGLKeyEvent::KEY_g;
+		sKeyTable['H'] = KLGLKeyEvent::KEY_h;
+		sKeyTable['I'] = KLGLKeyEvent::KEY_i;
+		sKeyTable['J'] = KLGLKeyEvent::KEY_j;
+		sKeyTable['K'] = KLGLKeyEvent::KEY_k;
+		sKeyTable['L'] = KLGLKeyEvent::KEY_l;
+		sKeyTable['M'] = KLGLKeyEvent::KEY_m;
+		sKeyTable['N'] = KLGLKeyEvent::KEY_n;
+		sKeyTable['O'] = KLGLKeyEvent::KEY_o;
+		sKeyTable['P'] = KLGLKeyEvent::KEY_p;
+		sKeyTable['Q'] = KLGLKeyEvent::KEY_q;
+		sKeyTable['R'] = KLGLKeyEvent::KEY_r;
+		sKeyTable['S'] = KLGLKeyEvent::KEY_s;
+		sKeyTable['T'] = KLGLKeyEvent::KEY_t;
+		sKeyTable['U'] = KLGLKeyEvent::KEY_u;
+		sKeyTable['V'] = KLGLKeyEvent::KEY_v;
+		sKeyTable['W'] = KLGLKeyEvent::KEY_w;
+		sKeyTable['X'] = KLGLKeyEvent::KEY_x;
+		sKeyTable['Y'] = KLGLKeyEvent::KEY_y;
+		sKeyTable['Z'] = KLGLKeyEvent::KEY_z;
+		sKeyTable[XK_Delete] = KLGLKeyEvent::KEY_DELETE;
+
+		sKeyTable[XK_KP_0] = KLGLKeyEvent::KEY_KP0;
+		sKeyTable[XK_KP_1] = KLGLKeyEvent::KEY_KP1;
+		sKeyTable[XK_KP_2] = KLGLKeyEvent::KEY_KP2;
+		sKeyTable[XK_KP_3] = KLGLKeyEvent::KEY_KP3;
+		sKeyTable[XK_KP_4] = KLGLKeyEvent::KEY_KP4;
+		sKeyTable[XK_KP_5] = KLGLKeyEvent::KEY_KP5;
+		sKeyTable[XK_KP_6] = KLGLKeyEvent::KEY_KP6;
+		sKeyTable[XK_KP_7] = KLGLKeyEvent::KEY_KP7;
+		sKeyTable[XK_KP_8] = KLGLKeyEvent::KEY_KP8;
+		sKeyTable[XK_KP_9] = KLGLKeyEvent::KEY_KP9;
+		sKeyTable[XK_KP_Decimal] = KLGLKeyEvent::KEY_KP_PERIOD;
+		sKeyTable[XK_KP_Divide] = KLGLKeyEvent::KEY_KP_DIVIDE;
+		sKeyTable[XK_KP_Multiply] = KLGLKeyEvent::KEY_KP_MULTIPLY;
+		sKeyTable[XK_KP_Subtract] = KLGLKeyEvent::KEY_KP_MINUS;
+		sKeyTable[XK_KP_Add] = KLGLKeyEvent::KEY_KP_PLUS;
+
+		sKeyTable[XK_Up] = KLGLKeyEvent::KEY_UP;
+		sKeyTable[XK_Down] = KLGLKeyEvent::KEY_DOWN;
+		sKeyTable[XK_Right] = KLGLKeyEvent::KEY_RIGHT;
+		sKeyTable[XK_Left] = KLGLKeyEvent::KEY_LEFT;
+		sKeyTable[XK_Insert] = KLGLKeyEvent::KEY_INSERT;
+		sKeyTable[XK_Home] = KLGLKeyEvent::KEY_HOME;
+		sKeyTable[XK_End] = KLGLKeyEvent::KEY_END;
+		sKeyTable[XK_Page_Up] = KLGLKeyEvent::KEY_PAGEUP;
+		sKeyTable[XK_Page_Down] = KLGLKeyEvent::KEY_PAGEDOWN;
+
+		sKeyTable[XK_F1] = KLGLKeyEvent::KEY_F1;
+		sKeyTable[XK_F2] = KLGLKeyEvent::KEY_F2;
+		sKeyTable[XK_F3] = KLGLKeyEvent::KEY_F3;
+		sKeyTable[XK_F4] = KLGLKeyEvent::KEY_F4;
+		sKeyTable[XK_F5] = KLGLKeyEvent::KEY_F5;
+		sKeyTable[XK_F6] = KLGLKeyEvent::KEY_F6;
+		sKeyTable[XK_F7] = KLGLKeyEvent::KEY_F7;
+		sKeyTable[XK_F8] = KLGLKeyEvent::KEY_F8;
+		sKeyTable[XK_F9] = KLGLKeyEvent::KEY_F9;
+		sKeyTable[XK_F10] = KLGLKeyEvent::KEY_F10;
+		sKeyTable[XK_F11] = KLGLKeyEvent::KEY_F11;
+		sKeyTable[XK_F12] = KLGLKeyEvent::KEY_F12;
+		sKeyTable[XK_F13] = KLGLKeyEvent::KEY_F13;
+		sKeyTable[XK_F14] = KLGLKeyEvent::KEY_F14;
+		sKeyTable[XK_F15] = KLGLKeyEvent::KEY_F15;
+
+		sKeyTable[XK_Num_Lock] = KLGLKeyEvent::KEY_NUMLOCK;
+		sKeyTable[XK_Caps_Lock] = KLGLKeyEvent::KEY_CAPSLOCK;
+		sKeyTable[XK_Scroll_Lock] = KLGLKeyEvent::KEY_SCROLLOCK;
+		sKeyTable[XK_Shift_R] = KLGLKeyEvent::KEY_RSHIFT;
+		sKeyTable[XK_Shift_L] = KLGLKeyEvent::KEY_LSHIFT;
+		sKeyTable[XK_Control_R] = KLGLKeyEvent::KEY_RCTRL;
+		sKeyTable[XK_Control_L] = KLGLKeyEvent::KEY_LCTRL;
+		sKeyTable[XK_Alt_R] = KLGLKeyEvent::KEY_RALT;
+		sKeyTable[XK_Alt_L] = KLGLKeyEvent::KEY_LALT;
+		sKeyTable[XK_Meta_R] = KLGLKeyEvent::KEY_RSUPER;
+		sKeyTable[XK_Meta_L] = KLGLKeyEvent::KEY_LSUPER;
+
+		sKeyTable[XK_Help] = KLGLKeyEvent::KEY_HELP;
+		sKeyTable[XK_Print] = KLGLKeyEvent::KEY_PRINT;
+		sKeyTable[XK_Cancel] = KLGLKeyEvent::KEY_BREAK;
+		sKeyTable[XK_Menu] = KLGLKeyEvent::KEY_MENU;
+
+		sTableInited = true;
 	}
 }
