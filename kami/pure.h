@@ -14,6 +14,7 @@ Copyright (C) 2005-2011, Ameoto Systems Inc. All rights reserved.
 #include <wchar.h>
 #include <unordered_map>
 #include <math.h>
+#include <future>
 
 namespace klib {
 
@@ -60,6 +61,7 @@ namespace klib {
 #endif
 
 	static int clBufferAllocLen = APP_BUFFER_SIZE;
+	static int clBufferLines = APP_CONSOLE_LINES;
 	extern bool KLGLDebug;
 	extern bool resizeEvent;
 	extern char *clBuffer;
@@ -124,8 +126,8 @@ namespace klib {
 		}
 
 		// Tail buffer
-		numLn = APP_CONSOLE_LINES+1;
-		while (numLn > APP_CONSOLE_LINES)
+		numLn = clBufferLines+1;
+		while (numLn > clBufferLines)
 		{
 			numLn = 0;
 			for (char* c = clBuffer; *c != '\0'; c++)
@@ -133,7 +135,7 @@ namespace klib {
 				if (*c == '\n'){ numLn++;	}
 				if (numLn == 0){ numLnP++;	}
 			}
-			if (numLn > APP_CONSOLE_LINES){
+			if (numLn > clBufferLines){
 				memcpy(tBuffer, clBuffer+numLnP+1, clBufferAllocLen);
 				memcpy(clBuffer, tBuffer, clBufferAllocLen);
 			}

@@ -323,6 +323,8 @@ namespace klib{
 			Descriptor Chars[100000];
 		} charsetDesc;
 
+		int bmfont;
+
 		KLGLFont();
 		KLGLFont(GLuint init_texture, GLuint init_m_width, GLuint init_m_height, GLuint init_c_width, GLuint init_c_height, int init_extended = 0);
 		void Draw(int x, int y, char* text, KLGLColor* vcolor = NULL);

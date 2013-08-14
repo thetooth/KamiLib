@@ -551,7 +551,7 @@ namespace klib{
 
 		std::string shaderString(file_contents(fname));
 
-		/*try {
+		try {
 			std::basic_regex<char> includeMatch("#include([\\s]+|[\\t]+)\"([^\"]+)\"");
 			std::match_results<std::string::const_iterator> matches;
 
@@ -561,8 +561,8 @@ namespace klib{
 				shaderString = regex_replace(shaderString, includeMatch, content);
 			}
 		}catch(std::regex_error e){
-			cl("%s", e.what());
-		}*/
+			cl("std::regex_error: %s, %d\n", e.what(), e.code());
+		}
 
 		*dest = (char*)malloc(shaderString.length());
 		strcpy(*dest, shaderString.c_str());
@@ -665,6 +665,7 @@ namespace klib{
 		extended = -1;
 		color = new KLGLColor(255, 255, 255);
 		c_per_row = m_width/c_width;
+		bmfont = 0;
 	}
 
 	KLGLFont::KLGLFont(GLuint init_texture, GLuint init_m_width, GLuint init_m_height, GLuint init_c_width, GLuint init_c_height, int init_extended) : 
@@ -673,6 +674,7 @@ namespace klib{
 		//set the color to render the font
 		color = new KLGLColor(255, 255, 255);
 		c_per_row = m_width/c_width;
+		bmfont = 0;
 	}
 
 	void KLGLFont::Draw(int x, int y, char* text, KLGLColor* vcolor)
@@ -755,7 +757,7 @@ namespace klib{
 				break;
 			}
 
-			if(true){
+			if(bmfont == 1){
 				wchar_t index = text[cp];
 				GLfloat tx = (float)charsetDesc.Chars[index].x/(float)charsetDesc.Width;
 				GLfloat ty = (float)charsetDesc.Chars[index].y/(float)charsetDesc.Height;
@@ -824,6 +826,7 @@ namespace klib{
 	}
 
 	bool KLGLFont::ParseFnt(std::istream& stream){
+		bmfont = 1;
 		string line;
 		string Read, Key, Value;
 		std::size_t i;
