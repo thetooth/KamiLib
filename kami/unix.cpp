@@ -97,9 +97,9 @@ namespace klib {
 				break;
 			case KeyPress:
 			case KeyRelease:
-				nativeKeyCode = XLookupKeysym(&event.xkey, 0);
+				nativeKeyCode = XLookupKeysym(&event.xkey, event.xkey.state & ShiftMask);
 				if (nativeKeyCode < 32 || nativeKeyCode > 255){
-					keyCode = '?';
+					keyCode = '\0';
 				}else{
 					keyCode = nativeKeyCode;
 				}
@@ -107,7 +107,7 @@ namespace klib {
 					KLGLKeyEvent(
 						KLGLKeyEvent::translateNativeKeyCode(nativeKeyCode), 
 						keyCode, 
-						0, 
+						event.xkey.state, 
 						nativeKeyCode, 
 						(event.type == KeyPress ? 1 : 0)
 					)
@@ -169,32 +169,32 @@ namespace klib {
 		sKeyTable[XK_bracketright] = KLGLKeyEvent::KEY_RIGHTBRACKET;
 		sKeyTable[0xC0] = KLGLKeyEvent::KEY_BACKQUOTE;
 		sKeyTable[0xDF] = KLGLKeyEvent::KEY_BACKQUOTE;
-		sKeyTable['A'] = KLGLKeyEvent::KEY_a;
-		sKeyTable['B'] = KLGLKeyEvent::KEY_b;
-		sKeyTable['C'] = KLGLKeyEvent::KEY_c;
-		sKeyTable['D'] = KLGLKeyEvent::KEY_d;
-		sKeyTable['E'] = KLGLKeyEvent::KEY_e;
-		sKeyTable['F'] = KLGLKeyEvent::KEY_f;
-		sKeyTable['G'] = KLGLKeyEvent::KEY_g;
-		sKeyTable['H'] = KLGLKeyEvent::KEY_h;
-		sKeyTable['I'] = KLGLKeyEvent::KEY_i;
-		sKeyTable['J'] = KLGLKeyEvent::KEY_j;
-		sKeyTable['K'] = KLGLKeyEvent::KEY_k;
-		sKeyTable['L'] = KLGLKeyEvent::KEY_l;
-		sKeyTable['M'] = KLGLKeyEvent::KEY_m;
-		sKeyTable['N'] = KLGLKeyEvent::KEY_n;
-		sKeyTable['O'] = KLGLKeyEvent::KEY_o;
-		sKeyTable['P'] = KLGLKeyEvent::KEY_p;
-		sKeyTable['Q'] = KLGLKeyEvent::KEY_q;
-		sKeyTable['R'] = KLGLKeyEvent::KEY_r;
-		sKeyTable['S'] = KLGLKeyEvent::KEY_s;
-		sKeyTable['T'] = KLGLKeyEvent::KEY_t;
-		sKeyTable['U'] = KLGLKeyEvent::KEY_u;
-		sKeyTable['V'] = KLGLKeyEvent::KEY_v;
-		sKeyTable['W'] = KLGLKeyEvent::KEY_w;
-		sKeyTable['X'] = KLGLKeyEvent::KEY_x;
-		sKeyTable['Y'] = KLGLKeyEvent::KEY_y;
-		sKeyTable['Z'] = KLGLKeyEvent::KEY_z;
+		sKeyTable['a'] = KLGLKeyEvent::KEY_a;
+		sKeyTable['b'] = KLGLKeyEvent::KEY_b;
+		sKeyTable['c'] = KLGLKeyEvent::KEY_c;
+		sKeyTable['d'] = KLGLKeyEvent::KEY_d;
+		sKeyTable['e'] = KLGLKeyEvent::KEY_e;
+		sKeyTable['f'] = KLGLKeyEvent::KEY_f;
+		sKeyTable['g'] = KLGLKeyEvent::KEY_g;
+		sKeyTable['h'] = KLGLKeyEvent::KEY_h;
+		sKeyTable['i'] = KLGLKeyEvent::KEY_i;
+		sKeyTable['j'] = KLGLKeyEvent::KEY_j;
+		sKeyTable['k'] = KLGLKeyEvent::KEY_k;
+		sKeyTable['l'] = KLGLKeyEvent::KEY_l;
+		sKeyTable['m'] = KLGLKeyEvent::KEY_m;
+		sKeyTable['n'] = KLGLKeyEvent::KEY_n;
+		sKeyTable['o'] = KLGLKeyEvent::KEY_o;
+		sKeyTable['p'] = KLGLKeyEvent::KEY_p;
+		sKeyTable['q'] = KLGLKeyEvent::KEY_q;
+		sKeyTable['r'] = KLGLKeyEvent::KEY_r;
+		sKeyTable['s'] = KLGLKeyEvent::KEY_s;
+		sKeyTable['t'] = KLGLKeyEvent::KEY_t;
+		sKeyTable['u'] = KLGLKeyEvent::KEY_u;
+		sKeyTable['v'] = KLGLKeyEvent::KEY_v;
+		sKeyTable['w'] = KLGLKeyEvent::KEY_w;
+		sKeyTable['x'] = KLGLKeyEvent::KEY_x;
+		sKeyTable['y'] = KLGLKeyEvent::KEY_y;
+		sKeyTable['z'] = KLGLKeyEvent::KEY_z;
 		sKeyTable[XK_Delete] = KLGLKeyEvent::KEY_DELETE;
 
 		sKeyTable[XK_KP_0] = KLGLKeyEvent::KEY_KP0;

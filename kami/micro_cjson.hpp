@@ -50,26 +50,27 @@ namespace MicroCJson {
 		MAP, LIST
 	} JsonParserContainer;
 
-	typedef struct JSONData_t {
+	class JSONData {
+	public:
 		void *pointer;
 		JSONDataType type;
 
-		struct JSONData_t* operator[](const char *s)
+		JSONData* operator[](const char *s)
 		{
 			if(this->type != VDT_MAP)
 				return nullptr;
 
-			return ((map<string, struct JSONData_t*> *) this->pointer)->find(string(s))->second;
+			return ((map<string, struct JSONData*> *) this->pointer)->find(string(s))->second;
 		}
 
-		struct JSONData_t* operator[](unsigned int s)
+		JSONData* operator[](unsigned int s)
 		{
 			if(this->type != VDT_LIST)
 				return nullptr;
 
-			return ((vector<struct JSONData_t*> *) this->pointer)->at(s);
+			return ((vector<struct JSONData*> *) this->pointer)->at(s);
 		}
-	} JSONData;
+	};
 
 	const std::string JSONData_listDump(JSONData* d_list, int i);
 

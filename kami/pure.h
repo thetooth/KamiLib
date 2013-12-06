@@ -15,6 +15,7 @@ Copyright (C) 2005-2011, Ameoto Systems Inc. All rights reserved.
 #include <unordered_map>
 #include <math.h>
 #include <future>
+#include <regex>
 
 namespace klib {
 
@@ -58,6 +59,10 @@ namespace klib {
 #define APP_WINDOWMANAGER_CLASS Win32WM
 #else
 #define APP_WINDOWMANAGER_CLASS X11WM
+#endif
+
+#if _MSC_VER
+#define snprintf _snprintf
 #endif
 
 	static int clBufferAllocLen = APP_BUFFER_SIZE;
@@ -171,6 +176,39 @@ namespace klib {
 		std::wstringstream out;
 		out << x;
 		return out.str();
+	}
+
+	inline std::string REGEXParseCode(std::regex_constants::error_type etype) {
+	    switch (etype) {
+	    case std::regex_constants::error_collate:
+	        return "error_collate: invalid collating element request";
+	    case std::regex_constants::error_ctype:
+	        return "error_ctype: invalid character class";
+	    case std::regex_constants::error_escape:
+	        return "error_escape: invalid escape character or trailing escape";
+	    case std::regex_constants::error_backref:
+	        return "error_backref: invalid back reference";
+	    case std::regex_constants::error_brack:
+	        return "error_brack: mismatched bracket([ or ])";
+	    case std::regex_constants::error_paren:
+	        return "error_paren: mismatched parentheses(( or ))";
+	    case std::regex_constants::error_brace:
+	        return "error_brace: mismatched brace({ or })";
+	    case std::regex_constants::error_badbrace:
+	        return "error_badbrace: invalid range inside a { }";
+	    case std::regex_constants::error_range:
+	        return "erro_range: invalid character range(e.g., [z-a])";
+	    case std::regex_constants::error_space:
+	        return "error_space: insufficient memory to handle this regular expression";
+	    case std::regex_constants::error_badrepeat:
+	        return "error_badrepeat: a repetition character (*, ?, +, or {) was not preceded by a valid regular expression";
+	    case std::regex_constants::error_complexity:
+	        return "error_complexity: the requested match is too complex";
+	    case std::regex_constants::error_stack:
+	        return "error_stack: insufficient memory to evaluate a match";
+	    default:
+	        return "";
+	    }
 	}
 
 #define LOType template <class LOValue>

@@ -36,8 +36,8 @@ namespace klib{
 #pragma region KLGL_Classes
 
 	// Pre define
-	class KLGL;
-	class KLGLWindowManager;
+	class GC;
+	class WindowManager;
 	class KLGLObj;
 
 	class KLGLException {
@@ -77,34 +77,34 @@ namespace klib{
 	}
 
 	// Storage Type for loading textures in a format opengl can use(unsigned RGBA8)
-	class KLGLTexture {
+	class Texture {
 	public:
 		GLuint gltexture;
 		unsigned long width;
 		unsigned long height;
-		KLGLTexture();
-		KLGLTexture(unsigned char *data, int size){
+		Texture();
+		Texture(unsigned char *data, int size){
 			InitTexture(data, size);
 		}
-		KLGLTexture(const char *fname){
+		Texture(const char *fname){
 			LoadTexture(fname);
 		}
-		~KLGLTexture();
+		~Texture();
 	private:
 		int LoadTexture(const char *fname);
 		int InitTexture(unsigned char *data, size_t size);
 	};
 
 	// Colors
-	class KLGLColor {
+	class Color {
 	public:
-		KLGLColor(){
+		Color(){
 			Assign(0, 0, 0, 255);
 		}
-		KLGLColor(int tred, int tgreen, int tblue, int talpha = 255){
+		Color(int tred, int tgreen, int tblue, int talpha = 255){
 			Assign(tred, tgreen, tblue, talpha);
 		}
-		KLGLColor(KLGLColor *tVcolor){
+		Color(Color *tVcolor){
 			Assign(tVcolor->r, tVcolor->g, tVcolor->b, tVcolor->a);
 		}
 		void Set(){
@@ -121,14 +121,14 @@ namespace klib{
 	};
 
 	// Sprites
-	class KLGLSprite {
+	class Sprite {
 	public:
-		KLGLTexture* texturePtr;
+		Texture* texturePtr;
 		int swidth, sheight, width, height, localTexture;
-		KLGLSprite(){
+		Sprite(){
 			localTexture = 0;
 		}
-		KLGLSprite(KLGLTexture* texture, int sWidth, int sHeight, int Internal = 0){
+		Sprite(Texture* texture, int sWidth, int sHeight, int Internal = 0){
 			localTexture = Internal;
 			texturePtr = texture;
 			swidth = sWidth;
@@ -136,27 +136,27 @@ namespace klib{
 			width = texturePtr->width;
 			height = texturePtr->height;
 		}
-		KLGLSprite(const char *fname, int sWidth, int sHeight);
-		~KLGLSprite();
+		Sprite(const char *fname, int sWidth, int sHeight);
+		~Sprite();
 	};
 
 	class KLGLObj : public Obj::File {
 	public:
-		KLGLTexture *texture;
+		Texture *texture;
 		KLGLObj(){
 
 		};
 	protected:
 		inline unsigned int OnLoadTexture(const char filename[]){
-			texture = new KLGLTexture(filename);
+			texture = new Texture(filename);
 			return texture->gltexture;
 		}
 	};
 
-	class KLGLWindowManager {
+	class WindowManager {
 	public:
 		APP_WINDOWMANAGER_CLASS* wm;
-		KLGLWindowManager(const char* title, Rect<int> *window, int scaleFactor, bool fullscreen){
+		WindowManager(const char* title, Rect<int> *window, int scaleFactor, bool fullscreen){
 			wm = new APP_WINDOWMANAGER_CLASS(title, window, scaleFactor, fullscreen);
 		}
 		void Swap(){
@@ -164,6 +164,7 @@ namespace klib{
 		}
 		// Events
 		std::vector<KLGLKeyEvent> keyQueue;
+		Point<int> mousePos;
 		void ProcessEvent(int *status){
 			if (*status == 0){
 				return;
@@ -171,12 +172,12 @@ namespace klib{
 			keyQueue.erase(std::remove_if(keyQueue.begin(), keyQueue.end(), [](KLGLKeyEvent e) {
 				return e.isfinished();
 			}), keyQueue.end());
-			*status = wm->_event(&keyQueue);
+			*status = wm->_event(&keyQueue, &mousePos.x, &mousePos.y);
 		}
 	};
 
 	// General drawing helper and view mode manager
-	class KLGL {
+	class GC {
 	public:
 		int internalStatus;
 
@@ -186,7 +187,7 @@ namespace klib{
 #endif
 
 		// Window regions
-		KLGLWindowManager *windowManager;
+		WindowManager *windowManager;
 		Rect<int> window;
 		Rect<int> buffer;
 		int overSampleFactor, scaleFactor;
@@ -194,6 +195,7 @@ namespace klib{
 		bool fullscreen;
 		bool bufferAutoSize;
 
+		// OpenGL constants
 		unsigned int fbo[128]; // The frame buffer object  
 		unsigned int fbo_depth[128]; // The depth buffer for the frame buffer object  
 		unsigned int fbo_texture[128]; // The texture object to write our frame buffer object to
@@ -206,14 +208,16 @@ namespace klib{
 		Vec4<GLfloat> light_diffuse;		// Default Diffuse light
 		Vec4<GLfloat> light_position;		// Default Infinite light location.
 
-		int shaderClock;
-		KLGLConfig *config;
-		KLGLTexture *framebuffer, *klibLogo, *InfoBlue, *CheepCheepDebug;
+		unsigned int rect_VBO;
+
+		double shaderClock;
+		Config *config;
+		Texture *framebuffer, *klibLogo, *InfoBlue, *CheepCheepDebug;
 		//KLGLSound *audio;
 		double fps;
 
-		KLGL(const char* title = "Application", int width = 640, int height = 480, int framerate = 60, bool fullscreen = false, int OSAA = 1, int scale = 1, float anisotropy = 4.0);
-		~KLGL();
+		GC(const char* title = "Application", int width = 640, int height = 480, int framerate = 60, bool fullscreen = false, int OSAA = 1, int scale = 1, float anisotropy = 4.0);
+		~GC();
 
 		// Sleep
 		void sleep(int ms){
@@ -227,21 +231,18 @@ namespace klib{
 		// Render FBO to the display and reset
 		void Swap();
 		void GenFrameBuffer(GLuint& fbo, GLuint &fbtex, GLuint &fbo_depth, int bufferWidth = 0, int bufferHeight = 0);
-		void Resize(){
-			//windowResize(hWnd);
-		}
 		// Blit
-		void Blit2D(KLGLTexture* texture, int x, int y, float rotation = 0.0f, float scale = 1.0f, KLGLColor vcolor = KLGLColor(255, 255, 255, 255), Rect<float> mask = Rect<float>(0,0,0,0));
-		void BlitSprite2D(KLGLSprite* sprite, int x, int y, int row, int col, bool managed = 1, Rect<int> mask = Rect<int>(0,0,0,0));
-		void BlitSprite2D(KLGLSprite* sprite, int x, int y, int index = 0, bool managed = 1, Rect<int> mask = Rect<int>(0,0,0,0)){
+		void Blit2D(Texture* texture, int x, int y, float rotation = 0.0f, float scale = 1.0f, Color vcolor = Color(255, 255, 255, 255), Rect<float> mask = Rect<float>(0,0,0,0));
+		void BlitSprite2D(Sprite* sprite, int x, int y, int row, int col, bool managed = 1, Rect<int> mask = Rect<int>(0,0,0,0));
+		void BlitSprite2D(Sprite* sprite, int x, int y, int index = 0, bool managed = 1, Rect<int> mask = Rect<int>(0,0,0,0)){
 			int length = sprite->width/sprite->swidth;
 			int col = index%length;
-			int row = (index-col)/length;
+			int row = floor(index/length);
 
 			BlitSprite2D(sprite, x, y, row, col, managed, mask);
 		};
-		void Tile2D(KLGLTexture* texture, int x, int y, int w, int h);
-		void Rectangle2D(int x, int y, int width, int height, KLGLColor vcolor = KLGLColor(255, 0, 0, 255));
+		void Tile2D(Texture* texture, int x, int y, int w, int h);
+		void Rectangle2D(int x, int y, int width, int height, Color vcolor = Color(255, 0, 0, 255));
 		void OrthogonalStart(float scale = 1.0f);
 		void OrthogonalEnd();
 		void BindMultiPassShader(int shaderProgId = 0, int alliterations = 1, bool flipOddBuffer = true, float x = 0.0f, float y = 0.0f, float width = -1.0f, float height = -1.0f, int textureSlot = 0);
@@ -271,14 +272,22 @@ namespace klib{
 
 			glDeleteProgram(shader_id[id]);
 		}
-		int ProcessEvent(int *status);
-		/*template <typename IteratorT, typename FunctionT> FunctionT HandleEvent(FunctionT func){
-		std::vector<KLGLKeyEvent>::iterator it = windowManager->keyQueue.begin();
-		for(;it != windowManager->keyQueue.end(); ++it){
-			func(it);
+		void GenVertVBO(GLuint *vbo, void* vertexPositions, int vertexSize){
+			glGenBuffers(1, vbo);
+
+			glBindBuffer(GL_ARRAY_BUFFER, *vbo);
+			glBufferData(GL_ARRAY_BUFFER, vertexSize*3*sizeof(float), vertexPositions, GL_STATIC_DRAW);
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
 		}
-		return func;
-		};*/
+		void GenTexCoordVBO(GLuint *vbo, void* vertexPositions, int vertexSize){
+			glGenBuffers(1, vbo);
+
+			glBindBuffer(GL_TEXTURE_COORD_ARRAY, *vbo);
+			glBufferData(GL_TEXTURE_COORD_ARRAY, vertexSize*2*sizeof(float), vertexPositions, GL_STATIC_DRAW);
+			glBindBuffer(GL_TEXTURE_COORD_ARRAY, 0);
+		}
+
+		int ProcessEvent(int *status);
 		std::function<void(std::vector<KLGLKeyEvent>::iterator)> HandleEvent(std::function<void(std::vector<KLGLKeyEvent>::iterator)> func){
 			std::vector<KLGLKeyEvent>::iterator it = windowManager->keyQueue.begin();
 			for(;it != windowManager->keyQueue.end(); ++it){
@@ -293,12 +302,12 @@ namespace klib{
 		}
 		void LoadShaderFile(char **dest, const char* fname);
 		static void PrintShaderInfoLog(GLuint obj, int isShader = 1);
-		KLGLTexture nullTexture;
+		Texture nullTexture;
 		Rect<int> ASPRatio(Rect<int> &rcScreen, Rect<int> &sizePicture, bool bCenter = true);
 	};
 
 	// Simple text drawing
-	class KLGLFont
+	class Font
 	{
 	public:
 		struct Descriptor
@@ -325,12 +334,12 @@ namespace klib{
 
 		int bmfont;
 
-		KLGLFont();
-		KLGLFont(GLuint init_texture, GLuint init_m_width, GLuint init_m_height, GLuint init_c_width, GLuint init_c_height, int init_extended = 0);
-		void Draw(int x, int y, char* text, KLGLColor* vcolor = NULL);
-		void Draw(int x, int y, wchar_t* text, KLGLColor* vcolor = NULL);
+		Font();
+		Font(GLuint init_texture, GLuint init_m_width, GLuint init_m_height, GLuint init_c_width, GLuint init_c_height, int init_extended = 0);
+		void Draw(int x, int y, char* text, Color* vcolor = NULL);
+		void Draw(int x, int y, wchar_t* text, Color* vcolor = NULL);
 		bool ParseFnt(std::istream& Stream);
-		~KLGLFont();
+		~Font();
 		//private:
 		GLuint c_texture;
 		GLint c_per_row;
@@ -340,7 +349,7 @@ namespace klib{
 		GLuint m_height;
 
 		//character settings
-		KLGLColor *color;
+		Color *color;
 		GLuint c_width;
 		GLuint c_height;
 		int extended;

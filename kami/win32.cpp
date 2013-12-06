@@ -119,6 +119,7 @@ namespace klib {
 		ShowWindow(hWnd,SW_SHOW);
 		SetForegroundWindow(hWnd);
 		SetFocus(hWnd);
+		SetVSync(false);
 
 		glewExperimental = GL_TRUE;
 		GLenum glewIinitHandle = glewInit();
@@ -137,13 +138,16 @@ namespace klib {
 		SwapBuffers(hDC);
 	}
 
-	int Win32WM::_event(std::vector<KLGLKeyEvent> *keyQueue){
+	int Win32WM::_event(std::vector<KLGLKeyEvent> *keyQueue, int *mouseX, int *mouseY){
 		int status = 1;
 		if(PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE)){
-			if(msg.message == WM_QUIT){
+			switch (msg.message){
+			case WM_QUIT:
 				PostQuitMessage(0);
 				status = 0;
-			}else if(msg.message == WM_KEYDOWN || msg.message == WM_KEYUP){
+				break;
+			case WM_KEYDOWN:
+			case WM_KEYUP:
 				(*keyQueue).push_back(KLGLKeyEvent(
 					KLGLKeyEvent::translateNativeKeyCode(msg.wParam), 
 					vktochar(msg.wParam), 
@@ -151,7 +155,47 @@ namespace klib {
 					msg.wParam, 
 					(msg.message == WM_KEYDOWN ? true : false)
 					));
-			}else{
+				break;
+			case WM_LBUTTONDOWN:
+			case WM_LBUTTONUP:
+			case WM_RBUTTONDOWN:
+			case WM_RBUTTONUP:
+			case WM_MBUTTONDOWN:
+			case WM_MBUTTONUP:
+				unsigned int key;
+				switch (msg.wParam){
+				case MK_LBUTTON:
+					key = KLGLKeyEvent::KEY_MLBUTTON;
+					break;
+				case MK_RBUTTON:
+					key = KLGLKeyEvent::KEY_MRBUTTON;
+					break;
+				case MK_MBUTTON:
+					key = KLGLKeyEvent::KEY_MMBUTTON;
+					break;
+				default:
+					key = KLGLKeyEvent::KEY_MLBUTTON; // ! WIN32 - WM_LBUTTONUP does not contain a KEY_MLBUTTON, fucking retards
+				}
+				bool stroke = false;
+				if (msg.message == WM_LBUTTONDOWN || msg.message == WM_RBUTTONDOWN || msg.message == WM_MBUTTONDOWN){
+					stroke = true;
+				}
+				(*keyQueue).push_back(KLGLKeyEvent(
+					key,
+					0,
+					0,
+					msg.wParam,
+					stroke
+					));
+				break;
+			case WM_MOUSEMOVE:
+				POINT p;
+				GetCursorPos(&p);
+				ScreenToClient(hWnd, &p);
+				*mouseX = p.x;
+				*mouseY = p.y;
+				break;
+			default:
 				TranslateMessage(&msg);
 				DispatchMessage(&msg);
 			}

@@ -185,6 +185,7 @@
     <ClInclude Include="event.h" />
     <ClInclude Include="font_unicode.h" />
     <ClInclude Include="input.h" />
+    <ClInclude Include="json.h" />
     <ClInclude Include="md5.h" />
     <ClInclude Include="micro_cjson.hpp" />
     <ClInclude Include="objload.h" />

@@ -5,6 +5,7 @@
 #endif
 
 #include <Windows.h>
+#include <windowsx.h>
 #include "glew.h"
 #include "wglew.h"
 #include "pure.h"
@@ -123,7 +124,7 @@ namespace klib {
 			return ascii;
 		}
 
-		return '?';
+		return '\0';
 	}
 	
 	class Win32WM {
@@ -140,7 +141,7 @@ namespace klib {
 
 		void _swap();
 		void clientResize(int nWidth, int nHeight);
-		int _event(std::vector<KLGLKeyEvent> *keyQueue);
+		int _event(std::vector<KLGLKeyEvent> *keyQueue, int *mouseX, int *mouseY);
 	};
 
 	class Win32Resource {

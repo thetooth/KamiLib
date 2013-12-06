@@ -5,12 +5,12 @@
 using namespace MicroCJson;
 
 namespace klib {
-	class KLGLConfig
+	class Config
 	{
 	public:
 		int status;
 		JSONData *data;
-		KLGLConfig(const char *configFile){
+		Config(const char *configFile){
 			status = 0;
 			data = nullptr;
 			FILE *fp = fopen(configFile, "r");
@@ -30,7 +30,7 @@ namespace klib {
 			fclose(fp);
 			delete [] config;
 		};
-		~KLGLConfig(){
+		~Config(){
 			delete [] data;
 		};
 

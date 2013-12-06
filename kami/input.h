@@ -207,6 +207,10 @@ namespace klib {
 			KEY_EURO		= 321,		/* Some european keyboards */
 			KEY_UNDO		= 322,		/* Atari keyboard has Undo */
 
+			KEY_MLBUTTON	= 323,
+			KEY_MRBUTTON	= 324,
+			KEY_MMBUTTON	= 325,
+
 			KEY_LAST
 		};
 
