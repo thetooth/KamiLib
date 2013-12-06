@@ -176,17 +176,19 @@ namespace klib {
 				default:
 					key = KLGLKeyEvent::KEY_MLBUTTON; // ! WIN32 - WM_LBUTTONUP does not contain a KEY_MLBUTTON, fucking retards
 				}
-				bool stroke = false;
-				if (msg.message == WM_LBUTTONDOWN || msg.message == WM_RBUTTONDOWN || msg.message == WM_MBUTTONDOWN){
-					stroke = true;
+				{
+					bool stroke = false;
+					if (msg.message == WM_LBUTTONDOWN || msg.message == WM_RBUTTONDOWN || msg.message == WM_MBUTTONDOWN){
+						stroke = true;
+					}
+					(*keyQueue).push_back(KLGLKeyEvent(
+						key,
+						0,
+						0,
+						msg.wParam,
+						stroke
+						));
 				}
-				(*keyQueue).push_back(KLGLKeyEvent(
-					key,
-					0,
-					0,
-					msg.wParam,
-					stroke
-					));
 				break;
 			case WM_MOUSEMOVE:
 				POINT p;
