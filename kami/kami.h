@@ -72,7 +72,7 @@ namespace klib{
 			glColor4ub(r, g, b, a);
 		}
 
-		int r,g,b,a;
+		int r, g, b, a;
 		void Assign(int tred, int tgreen, int tblue, int talpha = 255){
 			r = tred;
 			b = tblue;
@@ -191,12 +191,21 @@ namespace klib{
 	};
 
 	// Simple text drawing
-	class Font
-	{
+	class Font {
 	public:
-		struct Descriptor
-		{
-			//clean 16 bytes
+		// New
+		bool created;
+		GLuint MVP;
+		ShaderProgram shader;
+		glObj<Rect2D<GLfloat>> buffer;
+		std::vector<std::unique_ptr<Texture>> m_texture;
+
+		// Deprecated?
+		GLint c_per_row;
+		GLuint m_width;
+		GLuint m_height;
+
+		struct Descriptor {
 			short x, y;
 			short Width, Height;
 			short XOffset, YOffset;
@@ -207,8 +216,7 @@ namespace klib{
 				XAdvance( 0 ), Page( 0 )
 			{ }
 		};
-		struct Charset
-		{
+		struct Charset {
 			short LineHeight;
 			short Base;
 			short Width, Height;
@@ -217,23 +225,13 @@ namespace klib{
 			std::map<int, Descriptor> Chars;
 		} charsetDesc;
 
-		int bmfont;
-
-		Font();
-		Font(const std::string font);
+		Font(){};
+		Font(const std::string font){ Load(font); };
 		~Font();
 
 		void Load(const std::string font);
 		void Draw(int x, int y, char* text);
 		void Draw(int x, int y, wchar_t* text);
 		bool ParseFnt(std::istream& Stream);
-	
-		//private:
-		Texture* c_texture[8];
-		GLint c_per_row;
-
-		//bitmap setting
-		GLuint m_width;
-		GLuint m_height;
 	};
 }

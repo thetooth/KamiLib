@@ -23,10 +23,15 @@ namespace klib {
 		glBuffer() = default;
 		~glBuffer(){ glDeleteBuffers(1, &buffer); };
 
-		virtual void Create(std::vector<StorageClass> v){
+		void Create(std::vector<StorageClass> v){
 			glGenBuffers(1, &buffer);
 			glBindBuffer(BufferType, buffer);
 			glBufferData(BufferType, v.size()*sizeof(StorageClass), &v.front(), GL_STATIC_DRAW);
+		};
+
+		void Update(std::vector<StorageClass> v){
+			glBindBuffer(BufferType, buffer);
+			glBufferData(BufferType, v.size()*sizeof(StorageClass), &v.front(), GL_DYNAMIC_DRAW);
 		};
 	};
 
@@ -54,6 +59,18 @@ namespace klib {
 			// Create two buffers, first stores the vertex data, second stores element index for draw order
 			vbo.Create(std::move(v));
 			ebo.Create(std::move(e));
+		};
+
+		void Update(std::vector<StorageClass> v, std::vector<GLuint> e){
+			// Rebind existing buffer
+			glBindVertexArray(vao);
+
+			// Update buffer element size
+			elementSize = e.size();
+
+			// Send new arrays
+			vbo.Update(std::move(v));
+			ebo.Update(std::move(e));
 		};
 
 		void Draw(int mode = GL_TRIANGLE_STRIP){

@@ -401,13 +401,6 @@ namespace klib{
 		glEnd();
 	}
 
-	Font::Font(){
-	}
-
-	Font::Font(const std::string font){
-		Load(font);
-	}
-
 	void Font::Load(const std::string font){
 		std::ifstream fontStream(font);
 		auto folder = font.find_last_of("/\\");
@@ -419,10 +412,41 @@ namespace klib{
 		ParseFnt(fontStream);
 		m_width = charsetDesc.Width;
 		m_height = charsetDesc.Height;
+		created = false;
 
 		for (int i = 0; i < charsetDesc.Pages; i++){
-			c_texture[i] = new Texture((font.substr(0, folder + 1) + charsetDesc.FileName[i]).c_str());
+			m_texture.emplace_back(new Texture((font.substr(0, folder + 1) + charsetDesc.FileName[i]).c_str()));
 		}
+
+		// Create renderer
+		std::string vert2d = GLSL(
+			in vec2 position;
+			in vec2 texcoord;
+			out vec2 coord;
+
+			uniform mat4 MVP;
+
+			void main() {
+				coord = texcoord;
+				gl_Position = MVP*vec4(position, 0.0, 1.0);
+			}
+		);
+		std::string frag2d = GLSL(
+			uniform sampler2D image;
+
+		in vec2 coord;
+		out vec4 outColor;
+
+		void main() {
+			outColor = texture(image, coord);
+		}
+		);
+
+		shader.CreateSRC(GL_VERTEX_SHADER, vert2d);
+		shader.CreateSRC(GL_FRAGMENT_SHADER, frag2d);
+		shader.Link();
+
+		MVP = glGetUniformLocation(shader.program, "MVP");
 	}
 
 	void Font::Draw(int x, int y, char* text){
@@ -436,9 +460,8 @@ namespace klib{
 
 	void Font::Draw(int x, int y, wchar_t* text)
 	{
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, c_texture[0]->gltexture);
-		glBegin(GL_QUADS);
+		std::vector<Rect2D<GLfloat>> v;
+		std::vector<GLuint> e;
 
 		//character location and dimensions
 		int cp = 0;
@@ -481,18 +504,52 @@ namespace klib{
 			cx += charsetDesc.Chars[index].XAdvance;
 
 			if (charsetDesc.Chars[index].Page != lastPage){
-				glEnd();
-				glBindTexture(GL_TEXTURE_2D, c_texture[charsetDesc.Chars[index].Page]->gltexture);
-				glBegin(GL_QUADS);
+				//glBindTexture(GL_TEXTURE_2D, m_texture[charsetDesc.Chars[index].Page]->gltexture);
+				lastPage = charsetDesc.Chars[index].Page;
 			}
 
-			glTexCoord2f(tx,	ty+th);	glVertex2i(x+tcx,		y+tcy+tch);
-			glTexCoord2f(tx+tw,	ty+th);	glVertex2i(x+tcx+tcw,		y+tcy+tch);
-			glTexCoord2f(tx+tw,	ty);	glVertex2i(x+tcx+tcw,		y+tcy);
-			glTexCoord2f(tx,	ty);	glVertex2i(x+tcx,		y+cy);
+			v.emplace_back(tcx,			tcy,		tx,			ty);
+			v.emplace_back(tcx + tcw,	tcy,		tx + tw,	ty);
+			v.emplace_back(tcx + tcw,	tcy + tch,	tx + tw,	ty + th);
+			v.emplace_back(tcx,			tcy + tch,	tx,			ty + th);
+
+			auto elementIndex = cp * 4;
+
+			e.push_back(elementIndex + 0);
+			e.push_back(elementIndex + 1);
+			e.push_back(elementIndex + 2);
+			e.push_back(elementIndex + 2);
+			e.push_back(elementIndex + 3);
+			e.push_back(elementIndex + 0);
 		}
-		glEnd();
-		glBindTexture(GL_TEXTURE_2D, 0);
+
+		if (created){
+			buffer.Update(v, e);
+		}else{
+			buffer.Create(v, e);
+
+			GLint posAttrib = glGetAttribLocation(shader.program, "position");
+			glEnableVertexAttribArray(posAttrib);
+			glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
+
+			GLint texAttrib = glGetAttribLocation(shader.program, "texcoord");
+			glEnableVertexAttribArray(texAttrib);
+			glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
+
+			created = true;
+		}
+
+		auto projection = glm::ortho(0.0f, (float)640, (float)360, 0.0f, -1.0f, 1000.0f);
+		auto view = glm::translate(
+			glm::mat4(1.0f),
+			glm::vec3(x, y, 0.0f)
+		);
+
+		shader.Bind();
+		m_texture[0]->Bind(); // ! We need to support multiple textures per character or we can't do UTF-8
+		glUniformMatrix4fv(MVP, 1, GL_FALSE, glm::value_ptr(projection*view));
+		buffer.Draw(GL_TRIANGLES);
+
 		delete [] sbtext;
 	}
 
@@ -500,7 +557,6 @@ namespace klib{
 	}
 
 	bool Font::ParseFnt(std::istream& stream){
-		bmfont = 1;
 		std::string line;
 		std::string Read, Key, Value;
 		std::size_t i;
