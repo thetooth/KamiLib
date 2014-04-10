@@ -1,5 +1,6 @@
 #include "kami.h"
 #include "lodepng.h"
+#include "xxhash.h"
 #include "version.h"
 
 #include <iostream>
@@ -449,97 +450,107 @@ namespace klib{
 		MVP = glGetUniformLocation(shader.program, "MVP");
 	}
 
-	void Font::Draw(int x, int y, char* text){
+	void Font::Draw(glm::mat4 projection, int x, int y, char* text){
 		int len = strlen(text);
 		wchar_t* tmpStr = new wchar_t[len+8];
 		tmpStr[len] = L'\0';
 		mbstowcs(tmpStr, text, len);
-		Draw(x, y, tmpStr);
+		Draw(projection, x, y, tmpStr);
 		delete [] tmpStr;
 	}
 
-	void Font::Draw(int x, int y, wchar_t* text)
+	void Font::Draw(glm::mat4 projection, int x, int y, wchar_t* text)
 	{
-		std::vector<Rect2D<GLfloat>> v;
-		std::vector<GLuint> e;
-
-		//character location and dimensions
-		int cp = 0;
-		int cx = 0;
-		int cy = 0;
-		int cw = charsetDesc.Width;
-		int ch = charsetDesc.Height;
-		int twidth = 4;
-		int dropshadow = 0;
-		int lastPage = 0;
 		size_t stringLen = wcslen(text);
 
-		char* sbtext = new char[stringLen+8];
-		memset(sbtext, 0, stringLen+8);
+		auto hash = XXH32(text, stringLen*sizeof(wchar_t), 4352334);
 
-		wcstombs(sbtext, text, stringLen);
-		for (char* c = sbtext; *c != 0; c++,cp++) {
-			// Per-character logic
-			switch(*c){
-			case '\n':
-				cx = 0;
-				cy += ch;
-				continue;
-			case '\t':
-				cx += cw*(twidth-cp%twidth);
-				continue;
+		if (hash != lastHash){
+			lastHash = hash;
+
+			// Character geometry
+			std::vector<Rect2D<GLfloat>> v;
+			std::vector<GLuint> e;
+
+			// Character location and dimensions
+			int cp = 0;
+			int cx = 0;
+			int cy = 0;
+			int cw = charsetDesc.Width;
+			int ch = charsetDesc.Height;
+			int twidth = 4;
+			int dropshadow = 0;
+			int lastPage = 0;
+
+			// Fix this leaky shit
+			char* sbtext = new char[stringLen + 8];
+			memset(sbtext, 0, stringLen + 8);
+
+			wcstombs(sbtext, text, stringLen);
+			for (char* c = sbtext; *c != 0; c++, cp++) {
+				// Per-character logic
+				switch (*c){
+				case '\n':
+					cx = 0;
+					cy += ch;
+					continue;
+				case '\t':
+					cx += cw*(twidth - cp%twidth);
+					continue;
+				}
+
+				wchar_t index = text[cp];
+				GLfloat tx = (float)charsetDesc.Chars[index].x / (float)charsetDesc.Width;
+				GLfloat ty = (float)charsetDesc.Chars[index].y / (float)charsetDesc.Height;
+				GLfloat tw = (float)charsetDesc.Chars[index].Width / (float)charsetDesc.Width;
+				GLfloat th = (float)charsetDesc.Chars[index].Height / (float)charsetDesc.Height;
+				GLfloat tcx = (float)(cx + charsetDesc.Chars[index].XOffset);
+				GLfloat tcy = (float)(cy + charsetDesc.Chars[index].YOffset);
+				GLfloat tcw = (float)(charsetDesc.Chars[index].Width);
+				GLfloat tch = (float)(charsetDesc.Chars[index].Height);
+
+				// Increment current cursor position
+				cx += charsetDesc.Chars[index].XAdvance;
+
+				if (charsetDesc.Chars[index].Page != lastPage){
+					//glBindTexture(GL_TEXTURE_2D, m_texture[charsetDesc.Chars[index].Page]->gltexture);
+					lastPage = charsetDesc.Chars[index].Page;
+				}
+
+				v.emplace_back(tcx, tcy, tx, ty);
+				v.emplace_back(tcx + tcw, tcy, tx + tw, ty);
+				v.emplace_back(tcx + tcw, tcy + tch, tx + tw, ty + th);
+				v.emplace_back(tcx, tcy + tch, tx, ty + th);
+
+				auto elementIndex = cp * 4;
+
+				e.push_back(elementIndex + 0);
+				e.push_back(elementIndex + 1);
+				e.push_back(elementIndex + 2);
+				e.push_back(elementIndex + 2);
+				e.push_back(elementIndex + 3);
+				e.push_back(elementIndex + 0);
 			}
 
-			wchar_t index = text[cp];
-			GLfloat tx = (float)charsetDesc.Chars[index].x/(float)charsetDesc.Width;
-			GLfloat ty = (float)charsetDesc.Chars[index].y/(float)charsetDesc.Height;
-			GLfloat tw = (float)charsetDesc.Chars[index].Width/(float)charsetDesc.Width;
-			GLfloat th = (float)charsetDesc.Chars[index].Height/(float)charsetDesc.Height;
-			GLfloat tcx = (float)(cx+charsetDesc.Chars[index].XOffset);
-			GLfloat tcy = (float)(cy+charsetDesc.Chars[index].YOffset);
-			GLfloat tcw = (float)(charsetDesc.Chars[index].Width);
-			GLfloat tch = (float)(charsetDesc.Chars[index].Height);
-
-			// Increment current cursor position
-			cx += charsetDesc.Chars[index].XAdvance;
-
-			if (charsetDesc.Chars[index].Page != lastPage){
-				//glBindTexture(GL_TEXTURE_2D, m_texture[charsetDesc.Chars[index].Page]->gltexture);
-				lastPage = charsetDesc.Chars[index].Page;
+			if (created){
+				buffer.Update(v, e);
 			}
+			else{
+				buffer.Create(v, e);
 
-			v.emplace_back(tcx,			tcy,		tx,			ty);
-			v.emplace_back(tcx + tcw,	tcy,		tx + tw,	ty);
-			v.emplace_back(tcx + tcw,	tcy + tch,	tx + tw,	ty + th);
-			v.emplace_back(tcx,			tcy + tch,	tx,			ty + th);
+				GLint posAttrib = glGetAttribLocation(shader.program, "position");
+				glEnableVertexAttribArray(posAttrib);
+				glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
 
-			auto elementIndex = cp * 4;
+				GLint texAttrib = glGetAttribLocation(shader.program, "texcoord");
+				glEnableVertexAttribArray(texAttrib);
+				glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
 
-			e.push_back(elementIndex + 0);
-			e.push_back(elementIndex + 1);
-			e.push_back(elementIndex + 2);
-			e.push_back(elementIndex + 2);
-			e.push_back(elementIndex + 3);
-			e.push_back(elementIndex + 0);
+				created = true;
+			}
+			delete[] sbtext;
 		}
 
-		if (created){
-			buffer.Update(v, e);
-		}else{
-			buffer.Create(v, e);
-
-			GLint posAttrib = glGetAttribLocation(shader.program, "position");
-			glEnableVertexAttribArray(posAttrib);
-			glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
-
-			GLint texAttrib = glGetAttribLocation(shader.program, "texcoord");
-			glEnableVertexAttribArray(texAttrib);
-			glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
-
-			created = true;
-		}
-
-		auto projection = glm::ortho(0.0f, (float)640, (float)360, 0.0f, -1.0f, 1000.0f);
 		auto view = glm::translate(
 			glm::mat4(1.0f),
 			glm::vec3(x, y, 0.0f)
@@ -549,8 +560,6 @@ namespace klib{
 		m_texture[0]->Bind(); // ! We need to support multiple textures per character or we can't do UTF-8
 		glUniformMatrix4fv(MVP, 1, GL_FALSE, glm::value_ptr(projection*view));
 		buffer.Draw(GL_TRIANGLES);
-
-		delete [] sbtext;
 	}
 
 	Font::~Font(){

@@ -199,6 +199,7 @@ namespace klib{
 		ShaderProgram shader;
 		glObj<Rect2D<GLfloat>> buffer;
 		std::vector<std::unique_ptr<Texture>> m_texture;
+		unsigned int lastHash;
 
 		// Deprecated?
 		GLint c_per_row;
@@ -230,8 +231,8 @@ namespace klib{
 		~Font();
 
 		void Load(const std::string font);
-		void Draw(int x, int y, char* text);
-		void Draw(int x, int y, wchar_t* text);
+		void Draw(glm::mat4 projection, int x, int y, char* text);
+		void Draw(glm::mat4 projection, int x, int y, wchar_t* text);
 		bool ParseFnt(std::istream& Stream);
 	};
 }

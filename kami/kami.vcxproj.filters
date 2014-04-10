@@ -51,6 +51,9 @@
     <ClInclude Include="predef.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="xxhash.h">
+      <Filter>Header Files\3rd Party</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="kami.cpp">
@@ -73,6 +76,9 @@
     </ClCompile>
     <ClCompile Include="gl4.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="xxhash.c">
+      <Filter>Source Files\3rd Party</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
