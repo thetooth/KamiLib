@@ -1,8 +1,3 @@
-/*
-PURE.H - Cross-platform utility header.
-Copyright (C) 2005-2011, Ameoto Systems Inc. All rights reserved.
-*/
-
 #pragma once
 
 #include <stdio.h>
@@ -20,7 +15,7 @@ Copyright (C) 2005-2011, Ameoto Systems Inc. All rights reserved.
 namespace klib {
 
 #ifndef APP_MOTD
-#define APP_MOTD "(c) 2005-2013 Ameoto Systems Inc. All Rights Reserved.\n\n"
+#define APP_MOTD "(c) 2005-2014 Ameoto Systems Inc. All Rights Reserved.\n\n"
 #endif
 #define APP_BUFFER_SIZE 4096
 #define APP_ENABLE_MIPMAP 0
@@ -71,6 +66,14 @@ namespace klib {
 	extern bool resizeEvent;
 	extern char *clBuffer;
 	//extern std::unordered_map<std::string, void*> clHashTable;
+
+	class KLGLException {
+	private:
+		char* msg;
+	public:
+		KLGLException(const char* m, ...);
+		char* getMessage();
+	};
 
 	inline int substr(char *dest, const char *src, int start, int len){
 		if (src == 0 || strlen(src) == 0 || strlen(src) < start || strlen(src) < (start+len)){
@@ -296,5 +299,11 @@ namespace klib {
 		}
 	private:
 		LOValue rawTypePtr[4];
+	};
+
+	template<typename T> struct Rect2D
+	{
+		T x, y, z, w;
+		Rect2D(T X, T Y, T Z, T W) : x(X), y(Y), z(Z), w(W) {};
 	};
 }

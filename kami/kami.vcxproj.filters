@@ -24,43 +24,13 @@
     <ClInclude Include="kami.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="picopng.h">
-      <Filter>Header Files\3rd Party</Filter>
-    </ClInclude>
-    <ClInclude Include="cl.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="threads.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="md5.h">
-      <Filter>Header Files\3rd Party</Filter>
-    </ClInclude>
-    <ClInclude Include="databin.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="win32.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="pure.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="objload.h">
-      <Filter>Header Files\3rd Party</Filter>
-    </ClInclude>
-    <ClInclude Include="tween.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="micro_cjson.hpp">
-      <Filter>Header Files\3rd Party</Filter>
-    </ClInclude>
     <ClInclude Include="config.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="font_unicode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="event.h">
@@ -72,36 +42,36 @@
     <ClInclude Include="json.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="lodepng.h">
+      <Filter>Header Files\3rd Party</Filter>
+    </ClInclude>
+    <ClInclude Include="gl4.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="predef.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="kami.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="picopng.cpp">
-      <Filter>Source Files\3rd Party</Filter>
-    </ClCompile>
-    <ClCompile Include="threads.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="glew.c">
       <Filter>Source Files\3rd Party</Filter>
     </ClCompile>
-    <ClCompile Include="md5.cpp">
-      <Filter>Source Files\3rd Party</Filter>
-    </ClCompile>
     <ClCompile Include="win32.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="objload.cpp">
-      <Filter>Source Files\3rd Party</Filter>
-    </ClCompile>
-    <ClCompile Include="tween.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="miniz.c">
       <Filter>Source Files\3rd Party</Filter>
     </ClCompile>
     <ClCompile Include="input.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="lodepng.cpp">
+      <Filter>Source Files\3rd Party</Filter>
+    </ClCompile>
+    <ClCompile Include="gl4.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

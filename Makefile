@@ -1,4 +1,4 @@
-SUBDIRS = buildnumber kami crossplatform-test
+SUBDIRS = buildnumber kami
 CLEANDIRS = $(SUBDIRS)
 
 .PHONY: subdirs $(SUBDIRS) clean

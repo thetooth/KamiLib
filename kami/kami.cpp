@@ -1,12 +1,10 @@
 #include "kami.h"
-#include "picopng.h"
-#include "databin.h"
+#include "lodepng.h"
+#include "version.h"
+
 #include <iostream>
 #include <string>
 #include <regex>
-#ifndef _WIN32
-#include <boost/regex.hpp>
-#endif
 
 namespace klib{
 
@@ -28,53 +26,64 @@ namespace klib{
 
 	int Texture::LoadTexture(const char *fname){
 		cl("Loading Texture: %s ", fname);
-		unique_ptr<FILE, int(*)(FILE*)> filePtr(fopen(fname, "rb"), fclose);
+		std::ifstream file(fname, std::ios::in | std::ios::binary);
 
-		if(filePtr == nullptr){
+		if(file.bad()){
 			cl("[FAILED]\n");
 			throw KLGLException("[KLGLTexture::LoadTexture][%d:%s] \nResource \"%s\" could not be opened.", __LINE__, __FILE__, fname);
 			return 1;
 		}
 
-		// Pass a big file and we could be sitting here for a long time
-		fseek(filePtr.get(), 0, SEEK_END);
-		size_t size = ftell(filePtr.get());
-		rewind(filePtr.get());
+		std::vector<unsigned char> buffer;
+		std::vector<unsigned char> raw;
 
-		unsigned char *data = new unsigned char[size+8];
-		fread((unsigned char*)data, 1, size, filePtr.get());
-		filePtr.release();
+		std::copy( 
+			std::istreambuf_iterator<char>(file), 
+			std::istreambuf_iterator<char>( ),
+			std::back_inserter(buffer));
 
-		InitTexture(data, size);
-		data[size+1] = '\0';
-		delete [] data;
+		unsigned error = lodepng::decode(raw, width, height, buffer);
+
+		if (error){
+			cl("[FAILED]\n");
+			throw KLGLException("[KLGLTexture::LoadTexture][%d:%s] \nPNG decode failed with \"%s\".", __LINE__, __FILE__, lodepng_error_text(error));
+			return 2;
+		}
+
+		InitTexture(raw);
 
 		cl("[OK]\n");
 		return 0;
 	}
 
 	int Texture::InitTexture(unsigned char *data, size_t size){
-		static std::vector<unsigned char> swap;
-		// PNG DECODER OMG OMG OMG
-		decodePNG(swap, width, height, data, size);
+		std::vector<unsigned char> raw;
+		unsigned int error = lodepng::decode(raw, width, height, data, size);
 
-		// Throw them thar pixels at the VRAM
+		InitTexture(raw);
+		return 0;
+	}
+
+	int Texture::InitTexture(std::vector<unsigned char> &data){
 		glGenTextures(1, &gltexture);
 		glBindTexture(GL_TEXTURE_2D, gltexture);
-		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, APP_ANISOTROPY);
 		if (APP_ENABLE_MIPMAP){
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-			gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, width, height, GL_RGBA, GL_UNSIGNED_BYTE, swap.data());
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+			gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
 		}else{
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, swap.data());
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
 		}
-		swap.clear();
 		return 0;
+	}
+
+	void Texture::Bind(){
+		glBindTexture(GL_TEXTURE_2D, gltexture);
 	}
 
 	GC::GC(const char* _title, int _width, int _height, int _framerate, bool _fullscreen, int _OSAA, int _scale, float _anisotropy){
@@ -89,20 +98,19 @@ namespace klib{
 
 			// Clear the console buffer(VERY IMPORTANT)
 			clBuffer = new char[APP_BUFFER_SIZE*2];
-			fill_n(clBuffer, APP_BUFFER_SIZE*2, '\0');
+			std::fill_n(clBuffer, APP_BUFFER_SIZE * 2, '\0');
 
 			//MOTD
 			time_t buildTime = (time_t)APP_BUILD_TIME;
 			char* buildTimeString = asctime(gmtime(&buildTime));
 			memset(buildTimeString+strlen(buildTimeString)-1, 0, 1); // Remove the \n
-			cl("KamiLib v0.0.2 R%d %s, %s %s,\n", APP_BUILD_VERSION, buildTimeString, APP_ARCH_STRING, APP_COMPILER_STRING);
+			cl("KamiLib v0.1.0 R%d %s, %s %s,\n", APP_BUILD_VERSION, buildTimeString, APP_ARCH_STRING, APP_COMPILER_STRING);
 			cl(APP_MOTD);
 
 			vsync				= true;
 			overSampleFactor	= _OSAA;
 			scaleFactor			= _scale;
 			fps					= _framerate;
-			shaderClock			= 0.0f;
 			fullscreen			= _fullscreen;
 			bufferAutoSize		= false;
 
@@ -134,60 +142,62 @@ namespace klib{
 			}
 
 			// Init window
-			windowManager = new WindowManager(_title, &window, scaleFactor, fullscreen);
-
-			glMatrixMode(GL_MODELVIEW);
-			glLoadIdentity();
+			windowManager = new WindowManager(_title, &window, scaleFactor, fullscreen, vsync);
 
 			// Continue setup of OpenGL and framebuffer
-			GenFrameBuffer(fbo[0], fbo_texture[0], fbo_depth[0]);
-			GenFrameBuffer(fbo[1], fbo_texture[1], fbo_depth[1]);
+			fbo.emplace_back(buffer.width, buffer.height);
+			//GenFrameBuffer(fbo[0], fbo_texture[0], fbo_depth[0]);
+			//GenFrameBuffer(fbo[1], fbo_texture[1], fbo_depth[1]);
+
+			// Create basic pass-through shaders
+			std::string vert2d = GLSL(
+				in vec2 position;
+				in vec2 texcoord;
+				out vec2 coord;
+
+				uniform mat4 MVP;
+
+				void main() {
+					coord = texcoord;
+					gl_Position = MVP*vec4(position, 0.0, 1.0);
+				}
+			);
+			std::string frag2d = GLSL(
+				uniform sampler2D image;
+
+				in vec2 coord;
+				out vec4 outColor;
+
+				void main() {
+					outColor = texture(image, coord);
+				}
+			);
+
+			defaultShader.CreateSRC(GL_VERTEX_SHADER, vert2d);
+			defaultShader.CreateSRC(GL_FRAGMENT_SHADER, frag2d);
+			defaultShader.Link();
+
+			// Create default quad for rendering framebuffer
+			defaultMVP = FastQuad(defaultRect, defaultShader.program, buffer.width, buffer.height);
 
 			// Initialize gl parmas
-			glViewport(0, 0, window.width*scaleFactor, window.height*scaleFactor);	// Create initial 2D view
-			glEnable(GL_TEXTURE_2D);												// Enable Texture Mapping ( NEW )
-			glShadeModel(GL_SMOOTH);												// Enable Smooth Shading
-			glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);						// Really Nice Perspective Calculations
-			glClearColor(ubtof(153), ubtof(51), ubtof(51), ubtof(255));				// Background Color
-			glClearDepth(1.0f);														// Depth Buffer Setup
-
-			//glDepthFunc(GL_LESS);													// The Type Of Depth Testing To Do
-			//glAlphaFunc(GL_GREATER, 0.0f);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			glEnable(GL_DEPTH_TEST);
-			glEnable(GL_ALPHA_TEST);
+			glDepthMask(GL_TRUE);
+			glDepthFunc(GL_LEQUAL);
+			glDepthRange(0.0f, 1.0f);
+
 			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-			light_diffuse = Vec4<GLfloat>(1.0, 1.0, 1.0, 1.0);
-			light_position = Vec4<GLfloat>(1.0, 1.0, 1.0, 0.0);						// Default Infinite light location.
-			glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse.Data());
-			glLightfv(GL_LIGHT0, GL_POSITION, light_position.Data());
-			glEnable(GL_LIGHT0);
-
-			float defaultRect[24] = {0,		0,		0,
-									256,	0,		0,
-									256,	256,	0,
-									0,		256,	0,};
-			GenVertVBO(&rect_VBO, defaultRect, 4);
+			// Hello World
+			glClearColor(ubtof(0), ubtof(122), ubtof(204), 1.0f);
+			glClearDepth(1.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			windowManager->Swap();
 
 			// Init OpenGL OK!
 			cl("Initialized %s OpenGL %s %dx%d\n", glGetString(GL_VENDOR), glGetString(GL_VERSION), buffer.width, buffer.height);
-
-			// Draw logo and load internal resources
-			InfoBlue = new Texture(KLGLInfoBluePNG, 205);
-			CheepCheepDebug = new Texture(KLGLCheepCheepDebugPNG, 296);
-			klibLogo = new Texture(KLGLStartupLogoPNG, 248);
-
-			framebuffer = new Texture();
-			framebuffer->width = window.width;
-			framebuffer->height = window.height;
-
-			OrthogonalStart();
-			glClearColor(ubtof(24), ubtof(20), ubtof(26), 1.0f);
-			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-			Blit2D(klibLogo, window.width/2-16, window.height/2-16);
-			OrthogonalEnd();
-			windowManager->Swap();
+			
 			glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
 			internalStatus = 0;
@@ -201,20 +211,9 @@ namespace klib{
 	GC::~GC(){
 		//Bind 0, which means render to back buffer, as a result, fb is unbound
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-		// Destroy shaders and framebuffers
-		for (int i = 0; i < 128; i++)
-		{
-			UnloadShaders(i);
-			glDeleteTextures(1, &fbo_texture[i]);
-			glDeleteTextures(1, &fbo_depth[i]);
-			glDeleteFramebuffersEXT(1, &fbo[0]);
-		}
 
 		delete config;
-
-#ifdef APP_ENABLE_LUA
-		lua_close(lua);
-#endif
+		delete windowManager;
 
 		cl("\n0x%x :3\n", internalStatus);
 		cl(NULL);
@@ -226,71 +225,48 @@ namespace klib{
 		return *status;
 	}
 
-	void GC::OpenFBO(float fov, float eyex, float eyey, float eyez){
+	void GC::OpenFBO(){
 		if (resizeEvent && !fullscreen){
-			#if defined _WIN32
-				RECT win;
-				GetClientRect(windowManager->wm->hWnd, &win);
-				window.width = max(win.right-win.left, 0);
-				window.height = max(win.bottom-win.top, 0);
-				windowManager->wm->clientResize(window.width, window.height);		
-			#endif	
+#if defined _WIN32 // ! BUG - Redundant functions
+			RECT win;
+			GetClientRect(windowManager->wm->hWnd, &win);
+			window.width = std::max(int(win.right-win.left), 16);
+			window.height = std::max(int(win.bottom-win.top), 16);
+			windowManager->wm->clientResize(window.width, window.height);		
+#endif	
 			if (bufferAutoSize){
-				buffer.width = window.width*overSampleFactor;
-				buffer.height = window.height*overSampleFactor;
-				GenFrameBuffer(fbo[0], fbo_texture[0], fbo_depth[0], buffer.width, buffer.height);
-				GenFrameBuffer(fbo[1], fbo_texture[1], fbo_depth[1], buffer.width, buffer.height);
+				buffer.width = std::max(window.width*overSampleFactor, 16);
+				buffer.height = std::max(window.height*overSampleFactor, 16);
+				fbo[0] = FrameBuffer(buffer.width, buffer.height);
 			}
 			resizeEvent = false;
 		}
-		glLoadIdentity();
-		glViewport(0, 0, window.width, window.height);
-		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT); //Clear the colour buffer (more buffers later on)
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo[0]); // Bind our frame buffer for rendering
-		glPushAttrib(GL_VIEWPORT_BIT | GL_ENABLE_BIT); // Push our glEnable and glViewport states
 
-		// Set the size of the frame buffer view port
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); //Clear the colour buffer (more buffers later on)
+		fbo[0].Bind(); // Bind our frame buffer for rendering
 		glViewport(0, 0, buffer.width, buffer.height);
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glOrtho( -2.0, 2.0, -2.0, 2.0, -100.0, 100.0 );
-		glViewport(0, 0, buffer.width, buffer.height);
-		gluPerspective(fov, 1.0f*buffer.width/buffer.height, -100.0, 100.0);
-		gluLookAt(eyex, eyey, eyez, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0);
-		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-
-		// Set MODELVIEW matrix mode
-		glMatrixMode(GL_MODELVIEW);
 		glClear (GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 	}
 
 	void GC::Swap(){
-		// Restore our glEnable and glViewport states and unbind our texture
-		glPopAttrib();
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glViewport(0, 0, window.width, window.height);
 
-		glLoadIdentity(); // Load the Identity Matrix to reset our drawing locations
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glDisable(GL_LIGHTING);
-
-		BindShaders(0);
-		glUniform1f(glGetUniformLocation(GetShaderID(0), "time"), shaderClock);
-		glUniform2f(glGetUniformLocation(GetShaderID(0), "resolution"), buffer.width*scaleFactor, buffer.height*scaleFactor);
-		glUniform2f(glGetUniformLocation(GetShaderID(0), "outputSize"), window.width, window.height);
-
-		glBindTexture(GL_TEXTURE_2D, fbo_texture[0]); // Bind our frame buffer texture
-		glBegin(GL_QUADS);
-		{
-			Rect<int> ratio = ASPRatio(window, buffer, false);
-			glTexCoord2d(0.0,0.0); glVertex3d(-(ratio.width/double(window.width)),	-(ratio.height/double(window.height)), 0);
-			glTexCoord2d(1.0,0.0); glVertex3d(+(ratio.width/double(window.width)),	-(ratio.height/double(window.height)), 0);
-			glTexCoord2d(1.0,1.0); glVertex3d(+(ratio.width/double(window.width)),	+(ratio.height/double(window.height)), 0);
-			glTexCoord2d(0.0,1.0); glVertex3d(-(ratio.width/double(window.width)),	+(ratio.height/double(window.height)), 0);
-		}
-		glEnd();
-		glBindTexture(GL_TEXTURE_2D, 0); // Unbind any textures
-		UnbindShaders();
+		defaultShader.Bind();
+		glBindTexture(GL_TEXTURE_2D, fbo[0].texture);
+		auto projection = glm::ortho(0.0f, (float)window.width, 0.0f, (float)window.height);
+		auto ratio = ASPRatio(window, buffer, false);
+		auto view = glm::translate(
+			glm::mat4(1.0f),
+			glm::vec3((window.width - ratio.width) / 2.0f, (window.height - ratio.height) / 2.0f, 0.0f)
+			);
+		auto model = glm::scale(
+			glm::mat4(1.0f),
+			glm::vec3(ratio.width / float(buffer.width), ratio.height / float(buffer.height), 0.0f)
+			);
+		auto MVP = projection*view*model;
+		glUniformMatrix4fv(defaultMVP, 1, GL_FALSE, glm::value_ptr(MVP));
+		defaultRect.Draw();
 
 		// Swap!
 		windowManager->Swap();
@@ -318,60 +294,31 @@ namespace klib{
 		return rect;
 	}
 
-	void GC::GenFrameBuffer(GLuint &fbo, GLuint &fbo_texture, GLuint &fbo_depth, int bufferWidth, int bufferHeight) {
+	GLuint GC::FastQuad(glObj<Rect2D<GLfloat>> &vao, GLuint &shaderProgram, int width, int height){
 
-		if (bufferWidth == 0 || bufferHeight == 0){
-			bufferWidth = buffer.width;
-			bufferHeight = buffer.height;
-		}
-		// Depth Buffer
-		/*glGenTextures(1, &fbo_depth);
-		glBindTexture(GL_TEXTURE_2D, fbo_depth);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, bufferWidth, bufferHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+		// This sequence draws a box from two triangles
+		std::vector<Rect2D<GLfloat>> v;
 
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glBindTexture(GL_TEXTURE_2D, 0);*/
+		v.emplace_back(0, 0, 0, 0);
+		v.emplace_back(0 + width, 0, 1, 0);
+		v.emplace_back(0 + width, 0 + height, 1, 1);
+		v.emplace_back(0, 0 + height, 0, 1);
 
-		glGenRenderbuffers(1, &fbo_depth);
-		glBindRenderbuffer(GL_RENDERBUFFER, fbo_depth);
-		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, bufferWidth, bufferHeight);
-		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+		std::vector<GLuint> e{ 0, 1, 2, 2, 3, 0 };
 
-		// Texture Buffer
-		glGenTextures(1, &fbo_texture);
-		glBindTexture(GL_TEXTURE_2D, fbo_texture);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bufferWidth, bufferHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+		// Push to GPU
+		vao.Create(v, e);
 
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glBindTexture(GL_TEXTURE_2D, 0);
+		// Specify the layout of the vertex data
+		GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
+		glEnableVertexAttribArray(posAttrib);
+		glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
 
-		glGenFramebuffersEXT(1, &fbo);
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo);
+		GLint texAttrib = glGetAttribLocation(shaderProgram, "texcoord");
+		glEnableVertexAttribArray(texAttrib);
+		glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
 
-		//glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, fbo_depth, 0);
-		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbo_depth);
-		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, fbo_texture, 0);
-		glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
-
-		GLenum status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
-
-		switch (status) {
-		case GL_FRAMEBUFFER_COMPLETE_EXT:
-			break;
-		case GL_FRAMEBUFFER_UNSUPPORTED_EXT:
-			throw KLGLException("Error: unsupported framebuffer format!\n");
-			break;
-		default:
-			throw KLGLException("Error: invalid framebuffer config!\n");
-		}
-
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+		return glGetUniformLocation(shaderProgram, "MVP");
 	}
 
 	void GC::Blit2D(Texture* texture, int x, int y, float rotation, float scale, Color vcolor, Rect<float> mask){
@@ -442,22 +389,6 @@ namespace klib{
 		}
 	}
 
-	void GC::Tile2D(Texture* texture, int x, int y, int w, int h){
-		int scrX = 0;
-		int scrY = 0;
-
-		for(int iY = 0; iY < h; iY++){
-			for(int iX = 0; iX < w; iX++){
-				scrX = x+(iX*texture->width);
-				scrY = y+(iY*texture->height);
-				if(scrX < 0-texture->width || scrX > buffer.width || scrY < 0-texture->height || scrY > buffer.height){
-					//continue;
-				}
-				Blit2D(texture, scrX, scrY);
-			}
-		}
-	}
-
 	void GC::Rectangle2D(int x, int y, int width, int height, Color vcolor){
 		glBegin(GL_QUADS);
 		{
@@ -470,263 +401,55 @@ namespace klib{
 		glEnd();
 	}
 
-	void GC::OrthogonalStart(float scale){
-		glPushAttrib(GL_VIEWPORT_BIT | GL_ENABLE_BIT);
-		glMatrixMode(GL_PROJECTION);
-		glPushMatrix();
-		glLoadIdentity();
-		glOrtho(0, (buffer.width/overSampleFactor)*scale, 0, (buffer.height/overSampleFactor)*scale, -1, 1);
-		glScalef(1.0f, -1.0f, 1.0f);
-		glTranslatef(0.0f, -(buffer.height/overSampleFactor)*scale, 0.0f);
-		glMatrixMode(GL_MODELVIEW);
-		glDisable(GL_LIGHTING);
-		glDisable(GL_DEPTH_TEST);
-	}
-
-	void GC::OrthogonalEnd(){
-		glPopAttrib();
-		glMatrixMode(GL_PROJECTION);
-		glPopMatrix();
-		glLoadIdentity();
-		glMatrixMode(GL_MODELVIEW);
-		glEnable(GL_LIGHTING);
-		glEnable(GL_DEPTH_TEST);
-		glShadeModel(GL_SMOOTH);
-	}
-
-	int GC::InitShaders(int shaderProgId, int isString, const char *vsFile, const char *fsFile, const char *gsFile, const char *tsFile){
-		cl("Initializing Shader ID %d\n", shaderProgId);
-
-		char* sData = nullptr;
-		shader_id[shaderProgId] = glCreateProgram();
-
-#define sLoad(dest, src) LoadShaderFile(&dest, src)
-
-		sLoad(sData, vsFile);
-		if (vsFile != NULL && sData != nullptr){
-			cl("Compiling %s\n", vsFile);
-			shader_vp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_VERTEX_SHADER,	 sData);
-		}
-		sLoad(sData, fsFile);
-		if (fsFile != NULL && sData != nullptr){
-			cl("Compiling %s\n", fsFile);
-			shader_fp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_FRAGMENT_SHADER, sData);
-		}
-		sLoad(sData, gsFile);
-		if (gsFile != NULL && sData != nullptr){
-			cl("Compiling %s\n", gsFile);
-			shader_gp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_GEOMETRY_SHADER, sData);
-		}
-		sLoad(sData, tsFile);
-		if (tsFile != NULL && sData != nullptr){
-			cl("Compiling %s\n", tsFile);
-			shader_tp[shaderProgId] = ComputeShader(shader_id[shaderProgId], GL_ARB_tessellation_shader, sData);
-		}
-#undef sLoad
-
-		cl("Linking...", vsFile);
-		glLinkProgram(shader_id[shaderProgId]);
-		if(KLGLDebug){
-			PrintShaderInfoLog(shader_id[shaderProgId], 0);
-		}
-
-		cl(" [OK]\n");
-		return 0;
-	}
-
-	unsigned int GC::ComputeShader(unsigned int &shaderProgram, unsigned int shaderType, const char* shaderString){
-		if (shaderString == NULL){
-			throw KLGLException("NULL ptr given instead of shader string.");
-			return 0;
-		}
-		unsigned int tmpLinker = glCreateShader(shaderType);
-		glShaderSource(tmpLinker, 1, &shaderString, 0);
-		glCompileShader(tmpLinker);
-		if(KLGLDebug){
-			PrintShaderInfoLog(tmpLinker);
-		}
-		glAttachShader(shaderProgram, tmpLinker);
-		//free(const_cast<char *>(shaderString));
-		return tmpLinker;
-	}
-
-	void GC::LoadShaderFile(char **dest, const char *fname){
-		if (fname == NULL || strlen(fname) == 0){
-			*dest = nullptr;
-			return;
-			//throw KLGLException("File name NULL or emty.");
-		}
-
-		std::string shaderString(file_contents(fname));
-
-		#ifdef _WIN32
-		#define regexNsp std
-		#else
-		#define regexNsp boost
-		#endif
-		try {
-			regexNsp::basic_regex<char> includeMatch("#include([\\s]*|[\\t]*)\"([^\"]+)\"");
-			regexNsp::match_results<std::string::const_iterator> matches;
-
-			while(regexNsp::regex_search(shaderString, matches, includeMatch)){
-				std::string includePath(matches[2]);
-				std::string content(file_contents(includePath.c_str()));
-				shaderString = regexNsp::regex_replace(shaderString, includeMatch, content);
-				//cl("Shader String:\n%s\n", shaderString.c_str());
-			}
-		}catch(regexNsp::regex_error e){
-			#ifdef _WIN32
-			cl("std::regex_error: %s, %s\n", e.what(), REGEXParseCode(e.code()).c_str());
-			#else
-			cl("HURRRRRRRR\n");
-			#endif
-		}
-
-		*dest = (char*)malloc(shaderString.length()+1);
-		strcpy(*dest, shaderString.c_str());
-	}
-
-	void GC::PrintShaderInfoLog(GLuint obj, int isShader){
-		int status;
-		int infoLogLength = 0;
-		int infoLogRemainLength = 0;
-		int charsWritten = 0;
-		char *infoLog;
-
-		glGetShaderiv(obj, GL_INFO_LOG_LENGTH, &infoLogLength);
-		glGetShaderiv(obj, GL_COMPILE_STATUS, &status);
-
-		if ((status != 1 || KLGLDebug) && infoLogLength > 0){
-			infoLog = (char *)malloc(infoLogLength);
-			if(isShader){
-				glGetShaderInfoLog(obj, infoLogLength, &charsWritten, infoLog);
-			}else{
-				glGetProgramInfoLog(obj, infoLogLength, &charsWritten, infoLog);
-			}
-			cl("%s", infoLog);
-			free(infoLog);
-		}
-	}
-
-	void GC::BindMultiPassShader(int shaderProgId, int alliterations, bool flipOddBuffer, float x, float y, float width, float height, int textureSlot){
-		if (width < 0.0f || height < 0.0f){
-			width = buffer.width;
-			height = buffer.height;
-		}
-
-		glPushMatrix();
-		glLoadIdentity();
-
-		int primary = (textureSlot != 0 ? textureSlot*2 : 0);
-		int secondary = (textureSlot != 0 ? (textureSlot*2)+1 : 1);
-
-		for (int i = 0; i < alliterations; i++)
-		{
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo[secondary]);
-			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, fbo_texture[0]);
-			/*glActiveTexture(GL_TEXTURE0+textureSlot);
-			glBindTexture(GL_TEXTURE_2D, fbo_texture[2]);*/
-
-
-			BindShaders(shaderProgId);
-			glBegin(GL_QUADS);
-			glTexCoord2d(0.0,0.0); glVertex2i(x,			y);
-			glTexCoord2d(1.0,0.0); glVertex2i(width,		y);
-			glTexCoord2d(1.0,1.0); glVertex2i(width,		height);
-			glTexCoord2d(0.0,1.0); glVertex2i(x,			height);
-			glEnd();
-			UnbindShaders();
-			glBindTexture(GL_TEXTURE_2D, 0);
-
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo[primary]);
-			//glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-
-			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, fbo_texture[1]);
-			/*glActiveTexture(GL_TEXTURE0+textureSlot);
-			glBindTexture(GL_TEXTURE_2D, fbo_texture[3]);*/
-
-			glBegin(GL_QUADS);
-			// Fix for odd flipping when using gl_FragCoord
-			if (flipOddBuffer && (i%2 == 0 )){
-				glTexCoord2d(0.0,1.0); glVertex2i(x,			y);
-				glTexCoord2d(1.0,1.0); glVertex2i(width,		y);
-				glTexCoord2d(1.0,0.0); glVertex2i(width,		height);
-				glTexCoord2d(0.0,0.0); glVertex2i(x,			height);
-			}else{
-				glTexCoord2d(0.0,0.0); glVertex2i(x,			y);
-				glTexCoord2d(1.0,0.0); glVertex2i(width,		y);
-				glTexCoord2d(1.0,1.0); glVertex2i(width,		height);
-				glTexCoord2d(0.0,1.0); glVertex2i(x,			height);
-			}
-			glEnd();
-			glBindTexture(GL_TEXTURE_2D, 0);
-		}
-
-		if (textureSlot != 0){
-			glActiveTexture(GL_TEXTURE0);
-		}
-
-		glPopMatrix();
-	}
-
 	Font::Font(){
-		auto *tmtex = new Texture(KLGLFontDefault, 2576);
-		c_texture = tmtex->gltexture;
-		m_width = 128;
-		m_height= 192;
-		c_width = 8;
-		c_height= 8;
-		extended = -1;
-		color = new Color(255, 255, 255);
-		c_per_row = m_width/c_width;
-		bmfont = 0;
 	}
 
-	Font::Font(GLuint init_texture, GLuint init_m_width, GLuint init_m_height, GLuint init_c_width, GLuint init_c_height, int init_extended) : 
-		c_texture(init_texture), m_width(init_m_width), m_height(init_m_height), c_width(init_c_width), c_height(init_c_height), extended(init_extended)
-	{
-		//set the color to render the font
-		color = new Color(255, 255, 255);
-		c_per_row = m_width/c_width;
-		bmfont = 0;
+	Font::Font(const std::string font){
+		Load(font);
 	}
 
-	void Font::Draw(int x, int y, char* text, Color* vcolor)
-	{
+	void Font::Load(const std::string font){
+		std::ifstream fontStream(font);
+		auto folder = font.find_last_of("/\\");
+
+		if (fontStream.bad()){
+			throw KLGLException("[Font][%s:%d] Error loading font file \"%s\", no stream.", __FILE__, __LINE__, font.c_str());
+		}
+
+		ParseFnt(fontStream);
+		m_width = charsetDesc.Width;
+		m_height = charsetDesc.Height;
+
+		for (int i = 0; i < charsetDesc.Pages; i++){
+			c_texture[i] = new Texture((font.substr(0, folder + 1) + charsetDesc.FileName[i]).c_str());
+		}
+	}
+
+	void Font::Draw(int x, int y, char* text){
 		int len = strlen(text);
 		wchar_t* tmpStr = new wchar_t[len+8];
 		tmpStr[len] = L'\0';
 		mbstowcs(tmpStr, text, len);
-		Draw(x, y, tmpStr, vcolor);
+		Draw(x, y, tmpStr);
 		delete [] tmpStr;
 	}
 
-	void Font::Draw(int x, int y, wchar_t* text, Color* vcolor)
+	void Font::Draw(int x, int y, wchar_t* text)
 	{
 		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, c_texture);
+		glBindTexture(GL_TEXTURE_2D, c_texture[0]->gltexture);
 		glBegin(GL_QUADS);
 
 		//character location and dimensions
 		int cp = 0;
 		int cx = 0;
 		int cy = 0;
-		int cw = c_width;
-		int ch = c_height;
+		int cw = charsetDesc.Width;
+		int ch = charsetDesc.Height;
 		int twidth = 4;
 		int dropshadow = 0;
+		int lastPage = 0;
 		size_t stringLen = wcslen(text);
-
-		if (vcolor != NULL){
-			color = vcolor;
-		}
-
-		//calculate how wide each character is in term of texture coords
-		GLfloat dtx = (float)c_width/(float)m_width;
-		GLfloat dty = (float)c_height/(float)m_height;
 
 		char* sbtext = new char[stringLen+8];
 		memset(sbtext, 0, stringLen+8);
@@ -742,96 +465,31 @@ namespace klib{
 			case '\t':
 				cx += cw*(twidth-cp%twidth);
 				continue;
-			case '@':
-				if (*(c+1) == 'C'){ // Change color
-					char *token = new char[8];
-					char *colorSubStr = new char[4];
-
-					memset(token, 0, 8);
-					memset(colorSubStr, 0, 4);
-					substr(token, sbtext, cp+2, 6);
-
-					c += 7;
-					cp+= 7;
-
-					substr(colorSubStr, token, 0, 2);
-					color->r = strtoul(colorSubStr, NULL, 16);
-					substr(colorSubStr, token, 2, 2);
-					color->g = strtoul(colorSubStr, NULL, 16);
-					substr(colorSubStr, token, 4, 2);
-					color->b = strtoul(colorSubStr, NULL, 16);
-					color->a = 255;
-
-					delete [] token;
-					delete [] colorSubStr;
-					continue;
-				}else if (*(c+1) == 'D'){ // Drop shadow
-					c += 1;
-					cp+= 1;
-					dropshadow = 1;
-					continue;
-				}
-				break;
 			}
 
-			if(bmfont == 1){
-				wchar_t index = text[cp];
-				GLfloat tx = (float)charsetDesc.Chars[index].x/(float)charsetDesc.Width;
-				GLfloat ty = (float)charsetDesc.Chars[index].y/(float)charsetDesc.Height;
-				GLfloat tw = (float)charsetDesc.Chars[index].Width/(float)charsetDesc.Width;
-				GLfloat th = (float)charsetDesc.Chars[index].Height/(float)charsetDesc.Height;
-				GLfloat tcx = (float)(cx+charsetDesc.Chars[index].XOffset);
-				GLfloat tcy = (float)(cy+charsetDesc.Chars[index].YOffset);
-				GLfloat tcw = (float)(charsetDesc.Chars[index].Width);
-				GLfloat tch = (float)(charsetDesc.Chars[index].Height);
+			wchar_t index = text[cp];
+			GLfloat tx = (float)charsetDesc.Chars[index].x/(float)charsetDesc.Width;
+			GLfloat ty = (float)charsetDesc.Chars[index].y/(float)charsetDesc.Height;
+			GLfloat tw = (float)charsetDesc.Chars[index].Width/(float)charsetDesc.Width;
+			GLfloat th = (float)charsetDesc.Chars[index].Height/(float)charsetDesc.Height;
+			GLfloat tcx = (float)(cx+charsetDesc.Chars[index].XOffset);
+			GLfloat tcy = (float)(cy+charsetDesc.Chars[index].YOffset);
+			GLfloat tcw = (float)(charsetDesc.Chars[index].Width);
+			GLfloat tch = (float)(charsetDesc.Chars[index].Height);
 
-				// Increment current cursor position
-				cx += charsetDesc.Chars[index].XAdvance;
+			// Increment current cursor position
+			cx += charsetDesc.Chars[index].XAdvance;
 
-				color->Set();
-
-				glTexCoord2f(tx,	ty+th);	glVertex2i(x+tcx,		y+tcy+tch);
-				glTexCoord2f(tx+tw,	ty+th);	glVertex2i(x+tcx+tcw,		y+tcy+tch);
-				glTexCoord2f(tx+tw,	ty);	glVertex2i(x+tcx+tcw,		y+tcy);
-				glTexCoord2f(tx,	ty);	glVertex2i(x+tcx,		y+cy);
-			}else{
-				// If not in extended mode subtract the value of the first
-				// char in the character map to get the index in our map
-				wchar_t index = text[cp];
-				if(extended == 0){
-					index -= L' ';
-				}else if(extended > 0){
-					index -= extended;
-				}
-
-				// Increment current cursor position
-				cx += cw;
-
-				int col = index%c_per_row;
-				int row = (index-col)/c_per_row;
-
-				// find the texture coords
-				GLfloat tx = (float)(col * c_width)/(float)m_width;
-				GLfloat ty = (float)(row * c_height)/(float)m_height;
-
-				if (dropshadow == 1){
-					glColor4ub(0, 0, 0, 127);
-
-					glTexCoord2f(tx,		ty+dty);	glVertex2i(x+cx-1,		y+cy+ch+1);
-					glTexCoord2f(tx+dtx,	ty+dty);	glVertex2i(x+cx+cw-1,	y+cy+ch+1);
-					glTexCoord2f(tx+dtx,	ty);		glVertex2i(x+cx+cw-1,	y+cy+1);
-					glTexCoord2f(tx,		ty);		glVertex2i(x+cx-1,		y+cy+1);
-				}
-				{
-					color->Set();
-
-					glTexCoord2f(tx,		ty+dty);	glVertex2i(x+cx,		y+cy+ch);
-					glTexCoord2f(tx+dtx,	ty+dty);	glVertex2i(x+cx+cw,		y+cy+ch);
-					glTexCoord2f(tx+dtx,	ty);		glVertex2i(x+cx+cw,		y+cy);
-					glTexCoord2f(tx,		ty);		glVertex2i(x+cx,		y+cy);
-
-				}
+			if (charsetDesc.Chars[index].Page != lastPage){
+				glEnd();
+				glBindTexture(GL_TEXTURE_2D, c_texture[charsetDesc.Chars[index].Page]->gltexture);
+				glBegin(GL_QUADS);
 			}
+
+			glTexCoord2f(tx,	ty+th);	glVertex2i(x+tcx,		y+tcy+tch);
+			glTexCoord2f(tx+tw,	ty+th);	glVertex2i(x+tcx+tcw,		y+tcy+tch);
+			glTexCoord2f(tx+tw,	ty);	glVertex2i(x+tcx+tcw,		y+tcy);
+			glTexCoord2f(tx,	ty);	glVertex2i(x+tcx,		y+cy);
 		}
 		glEnd();
 		glBindTexture(GL_TEXTURE_2D, 0);
@@ -839,13 +497,12 @@ namespace klib{
 	}
 
 	Font::~Font(){
-		delete color;
 	}
 
 	bool Font::ParseFnt(std::istream& stream){
 		bmfont = 1;
-		string line;
-		string Read, Key, Value;
+		std::string line;
+		std::string Read, Key, Value;
 		std::size_t i;
 		std::size_t end;
 		while( !stream.eof() )
@@ -880,6 +537,29 @@ namespace klib{
 						Converter >> charsetDesc.Height;
 					else if( Key == "pages" )
 						Converter >> charsetDesc.Pages;
+				}
+			}
+			else if( Read == "page" )
+			{
+				unsigned short PageID = 0;
+				while( !LineStream.eof() )
+				{
+					std::stringstream Converter;
+					LineStream >> Read;
+					i = Read.find('=');
+					end = Read.length()-i-1;
+					Key = Read.substr( 0, i );
+					Value = Read.substr(i+1, end);
+
+					// Strip quotes
+					Value.erase(remove( Value.begin(), Value.end(), '\"' ), Value.end());
+
+					//assign the correct value
+					Converter << Value;
+					if( Key == "id")
+						Converter >> PageID;
+					if( Key == "file" )
+						Converter >> charsetDesc.FileName[PageID];
 				}
 			}
 			else if( Read == "char" )

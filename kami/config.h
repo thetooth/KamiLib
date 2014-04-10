@@ -1,66 +1,66 @@
 #pragma once
 
-#include "micro_cjson.hpp"
-
-using namespace MicroCJson;
+#include "json.h"
+#include <string>
+#include <fstream>
 
 namespace klib {
 	class Config
 	{
 	public:
 		int status;
-		JSONData *data;
+		json::Value data;
+		Config(){};
 		Config(const char *configFile){
 			status = 0;
-			data = nullptr;
-			FILE *fp = fopen(configFile, "r");
-			if(fp == NULL){
+			std::ifstream configStream(configFile);
+			if (configStream.bad()){
 				status = 1;
-				return;
+			}else{
+				try {
+					json::read(configStream, data);
+				}
+				catch (json::JsonException e){
+					status = 1;
+					throw KLGLException("JSON::%s:%d::%s", __FILE__, __LINE__, e.what());
+				}
 			}
-			fseek (fp , 0 , SEEK_END);
-			int size = ftell(fp);
-			rewind (fp);
-			char *config = new char[size+1];
-			fread(config, 1, size, fp);
-			data = parseJSON(config);
-			if(data == nullptr){
-				status = 2;
-			}
-			fclose(fp);
-			delete [] config;
 		};
 		~Config(){
-			delete [] data;
+			
 		};
 
-		inline JSONData* GetPtr(const char *section, const char *key){
-			JSONData *sectionPtr = JSONData_mapGet(data, section);
-			return JSONData_mapGet(sectionPtr, key);
-		}
-
 		inline int GetInteger(const char *section, const char *key, int defaultValue = 0){
-			int *ptr = JSONData_readInt(GetPtr(section, key));
-			if (ptr != nullptr){
-				return *ptr;
+			if (!data.HasMember(section)){
+				return defaultValue;
+			}
+			json::Value const& sec = data.GetObjectMember(section);
+			if (sec.HasMember(key)){
+				return sec.GetIntMember(key);
 			}else{
 				return defaultValue;
 			}
 		}
 
 		inline bool GetBoolean(const char *section, const char *key, bool defaultValue = false){
-			bool *ptr = JSONData_readBool(GetPtr(section, key));
-			if (ptr != nullptr){
-				return *ptr;
+			if (!data.HasMember(section)){
+				return defaultValue;
+			}
+			json::Value const& sec = data.GetObjectMember(section);
+			if (sec.HasMember(key)){
+				return sec.GetBoolMember(key);
 			}else{
 				return defaultValue;
 			}
 		}
 
-		inline string GetString(const char *section, const char *key, string defaultValue = ""){
-			string *ptr = JSONData_readString(GetPtr(section, key));
-			if (ptr != nullptr){
-				return *ptr;
+		inline std::string GetString(const char *section, const char *key, std::string defaultValue = ""){
+			if (!data.HasMember(section)){
+				return defaultValue;
+			}
+			json::Value const& sec = data.GetObjectMember(section);
+			if (sec.HasMember(key)){
+				return sec.GetStringMember(key);
 			}else{
 				return defaultValue;
 			}

@@ -7,24 +7,9 @@ namespace klib {
 		WINDOWPLACEMENT pos;
 		LONG res;
 		switch (message){
-			// TODO: Fix loading of positions!
-			/*case WM_CREATE:
-			res = RegOpenKey(HKEY_CURRENT_USER, TEXT("Software\\Ameoto\\Neo"), &hKey);
-
-			if(res == ERROR_SUCCESS){
-			pos.length = sizeof(WINDOWPLACEMENT);
-			res = RegQueryValueEx(hKey, TEXT("windowPlacement"), NULL, NULL, (LPBYTE)&pos, NULL);
-			SetWindowPlacement(hWnd, &pos);
-			RegCloseKey(hKey);
-			}
-			break;*/
+		case WM_QUIT:
 		case WM_CLOSE:
 		case WM_DESTROY:
-			/*pos.length = sizeof(WINDOWPLACEMENT);
-			GetWindowPlacement(hWnd, &pos);
-			RegCreateKey(HKEY_CURRENT_USER, TEXT("Software\\Ameoto\\Neo"), &hKey);
-			RegSetValueEx(hKey, TEXT("windowPlacement"), NULL, REG_BINARY, (BYTE*)&pos, sizeof(WINDOWPLACEMENT));
-			RegCloseKey(hKey);*/
 			PostQuitMessage( 0 );
 			break;
 		case WM_KEYDOWN:
@@ -42,7 +27,7 @@ namespace klib {
 		return 0;
 	}
 
-	Win32WM::Win32WM(const char* title, Rect<int> *window, int scaleFactor, bool fullscreen){
+	Win32WM::Win32WM(const char* title, Rect<int> *window, int scaleFactor, bool fullscreen, bool vsync){
 		// Register win32 class
 		wc.style = CS_OWNDC;
 		wc.lpfnWndProc = WndProc;
@@ -80,7 +65,7 @@ namespace klib {
 			clientResize(window->width*scaleFactor, window->height*scaleFactor);
 		}
 
-		SetWindowText(hWnd, "Loading...");
+		SetWindowText(hWnd, title);
 
 		PIXELFORMATDESCRIPTOR pfd;
 		int format;
@@ -102,33 +87,25 @@ namespace klib {
 
 		// create and enable the render context (RC)
 		hRC = wglCreateContext(hDC);
-		hRCAUX = wglCreateContext(hDC);
-		if(wglShareLists(hRC, hRCAUX) == FALSE){
-			DWORD errorCode=GetLastError();
-			LPVOID lpMsgBuf;
-			FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-				NULL, errorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),(LPTSTR) &lpMsgBuf, 0, NULL);
-			MessageBox( NULL, (LPCTSTR)lpMsgBuf, "Error", MB_OK | MB_ICONINFORMATION );
-			//throw KLGLException((LPCTSTR)lpMsgBuf);
-			LocalFree(lpMsgBuf);
-			//Destroy the GL context and just use 1 GL context
-			wglDeleteContext(hRCAUX);
-		}
 		wglMakeCurrent(hDC, hRC);
 
 		ShowWindow(hWnd,SW_SHOW);
 		SetForegroundWindow(hWnd);
 		SetFocus(hWnd);
-		SetVSync(false);
+		SetVSync(vsync);
 
-		glewExperimental = GL_TRUE;
+		//glewExperimental = GL_TRUE;
 		GLenum glewIinitHandle = glewInit();
 		if(glewIinitHandle != GLEW_OK)
 		{
-			cl("Error: %s\n", glewGetErrorString(glewIinitHandle));
+			cl("Catastrophic Error: %s\n", glewGetErrorString(glewIinitHandle));
 			exit(EXIT_FAILURE);
 		}
 		glewIinitHandle = NULL;
+		if (!glewIsSupported("GL_VERSION_3_0")){
+			cl("Catastrophic Error: Minimum OpenGL version 3 not supported, please upgrade your graphics hardware.\n");
+			exit(EXIT_FAILURE);
+		}
 
 		// Initialize reference table for key codes
 		initKeyTable();
@@ -143,6 +120,8 @@ namespace klib {
 		if(PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE)){
 			switch (msg.message){
 			case WM_QUIT:
+			case WM_CLOSE:
+			case WM_DESTROY:
 				PostQuitMessage(0);
 				status = 0;
 				break;

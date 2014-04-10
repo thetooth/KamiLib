@@ -1,6 +1,7 @@
 #include "unix.h"
 
 namespace klib {
+	using namespace klib_unix;
 	int singleBufferAttributess[] = {
 		GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
 		GLX_RENDER_TYPE, GLX_RGBA_BIT,
@@ -20,7 +21,7 @@ namespace klib {
 		None
 	};
 
-	X11WM::X11WM(const char* _title, Rect<int> *_window, int _scaleFactor, bool _fullscreen){
+	X11WM::X11WM(const char* _title, Rect<int> *_window, int _scaleFactor, bool _fullscreen, bool _vsync){
 		window = _window;
 		/* Open a connection to the X server */
 		dpy = XOpenDisplay(NULL);
@@ -72,12 +73,25 @@ namespace klib {
 		initKeyTable();
 	}
 
+	X11WM::~X11WM(){
+		
+	}
+
 	void X11WM::_swap(){
 		glXSwapBuffers(dpy, glxWin);
 	}
 
-	int X11WM::_event(std::vector<KLGLKeyEvent> *keyQueue){
+	int X11WM::_event(std::vector<KLGLKeyEvent> *keyQueue, int *mouseX, int *mouseY){
 		int status = 1;
+		int root_x, root_y;
+    	int win_x, win_y;
+    	unsigned int mask_return;
+    	Window window_returned;
+
+    	XQueryPointer(dpy, xWin, &window_returned,
+                &window_returned, &root_x, &root_y, mouseX, mouseY,
+                &mask_return);
+
 		while (XPending(dpy) > 0)
 		{
 			XNextEvent(dpy, &event);

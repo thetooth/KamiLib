@@ -133,10 +133,10 @@ namespace klib {
 		WNDCLASS wc;
 		HWND hWnd;
 		HDC hDC;
-		HGLRC hRC,hRCAUX;
+		HGLRC hRC;
 		MSG msg;
 		
-		Win32WM(const char* title, Rect<int> *window, int scaleFactor, bool fullscreen);
+		Win32WM(const char* title, Rect<int> *window, int scaleFactor, bool fullscreen, bool vsync);
 		~Win32WM();
 
 		void _swap();
