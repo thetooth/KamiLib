@@ -1,4 +1,4 @@
-C_FILES = 
+C_FILES = gl_core_3_3.c xxhash.c
 CPP_FILES = lodepng.cpp unix.cpp kami.cpp
 OBJECTS = $(C_FILES:.c=.o) $(CPP_FILES:.cpp=.o)
 

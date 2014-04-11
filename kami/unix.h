@@ -4,18 +4,12 @@
 #define X11_EVENT_MASK ExposureMask | StructureNotifyMask | SubstructureNotifyMask | PropertyChangeMask | KeyPressMask | KeyReleaseMask
 #define stricmp strcasecmp
 
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/glext.h>
 #include <vector>
 #include "pure.h"
 #include "input.h"
 
 namespace klib_unix { // Precious little bitch why don't you declare everything fucking globally
-	#include <GL/gl.h>
 	#include <GL/glx.h>
-	#include <GL/glu.h>
-	#include <GL/glext.h>
 }
 
 namespace klib {
