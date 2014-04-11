@@ -69,7 +69,7 @@ namespace klib{
 			Assign(tVcolor->r, tVcolor->g, tVcolor->b, tVcolor->a);
 		}
 		void Set(){
-			glColor4ub(r, g, b, a);
+			//glColor4ub(r, g, b, a);
 		}
 
 		int r, g, b, a;

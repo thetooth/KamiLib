@@ -12,6 +12,8 @@
 #include <future>
 #include <regex>
 
+#include "gl_core_3_3.h"
+
 namespace klib {
 
 #ifndef APP_MOTD

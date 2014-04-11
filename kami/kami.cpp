@@ -74,9 +74,10 @@ namespace klib{
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, APP_ANISOTROPY);
 		if (APP_ENABLE_MIPMAP){
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+			// ! Upgrade
+			/*glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-			gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
+			gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data.data());*/
 		}else{
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
 		}
@@ -145,10 +146,14 @@ namespace klib{
 			// Init window
 			windowManager = new WindowManager(_title, &window, scaleFactor, fullscreen, vsync);
 
-			// Continue setup of OpenGL and framebuffer
+			// Load OpenGL
+			if (ogl_LoadFunctions() == ogl_LOAD_FAILED){
+				cl("Catastrophic Error: Minimum OpenGL version 3 not supported, please upgrade your graphics hardware.\n");
+				exit(EXIT_FAILURE);
+			}
+
+			// Setup frame buffer
 			fbo.emplace_back(buffer.width, buffer.height);
-			//GenFrameBuffer(fbo[0], fbo_texture[0], fbo_depth[0]);
-			//GenFrameBuffer(fbo[1], fbo_texture[1], fbo_depth[1]);
 
 			// Create basic pass-through shaders
 			std::string vert2d = GLSL(
@@ -178,10 +183,10 @@ namespace klib{
 			defaultShader.CreateSRC(GL_FRAGMENT_SHADER, frag2d);
 			defaultShader.Link();
 
-			// Create default quad for rendering framebuffer
+			// Create default quad for rendering frame buffer
 			defaultMVP = FastQuad(defaultRect, defaultShader.program, buffer.width, buffer.height);
 
-			// Initialize gl parmas
+			// Initialize gl parameters
 			glEnable(GL_DEPTH_TEST);
 			glDepthMask(GL_TRUE);
 			glDepthFunc(GL_LEQUAL);
@@ -211,7 +216,7 @@ namespace klib{
 
 	GC::~GC(){
 		//Bind 0, which means render to back buffer, as a result, fb is unbound
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		delete config;
 		delete windowManager;
@@ -323,7 +328,7 @@ namespace klib{
 	}
 
 	void GC::Blit2D(Texture* texture, int x, int y, float rotation, float scale, Color vcolor, Rect<float> mask){
-		glEnable(GL_TEXTURE_2D);
+		/*glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, texture->gltexture);
 
 		glPushMatrix();
@@ -360,11 +365,11 @@ namespace klib{
 		}
 		glPopMatrix();
 
-		glBindTexture(GL_TEXTURE_2D, 0);
+		glBindTexture(GL_TEXTURE_2D, 0);*/
 	}
 
 	void GC::BlitSprite2D(Sprite* sprite, int x, int y, int row, int col, bool managed, Rect<int> mask){
-		if (managed){
+		/*if (managed){
 			glEnable(GL_TEXTURE_2D);
 			glBindTexture(GL_TEXTURE_2D, sprite->texturePtr->gltexture);
 			glBegin(GL_QUADS);
@@ -387,11 +392,11 @@ namespace klib{
 		if (managed){
 			glEnd();
 			glBindTexture(GL_TEXTURE_2D, 0);
-		}
+		}*/
 	}
 
 	void GC::Rectangle2D(int x, int y, int width, int height, Color vcolor){
-		glBegin(GL_QUADS);
+		/*glBegin(GL_QUADS);
 		{
 			vcolor.Set();
 			glTexCoord2d(0.0,0.0); glVertex2i(x,		y);
@@ -399,7 +404,7 @@ namespace klib{
 			glTexCoord2d(1.0,1.0); glVertex2i(x+width,	y+height);
 			glTexCoord2d(0.0,1.0); glVertex2i(x,		y+height);
 		}
-		glEnd();
+		glEnd();*/
 	}
 
 	void Font::Load(const std::string font){
@@ -461,8 +466,7 @@ namespace klib{
 
 	void Font::Draw(glm::mat4 projection, int x, int y, wchar_t* text)
 	{
-		size_t stringLen = wcslen(text);
-
+		auto stringLen = wcslen(text);
 		auto hash = XXH32(text, stringLen*sizeof(wchar_t), 4352334);
 
 		if (hash != lastHash){
@@ -476,26 +480,19 @@ namespace klib{
 			int cp = 0;
 			int cx = 0;
 			int cy = 0;
-			int cw = charsetDesc.Width;
-			int ch = charsetDesc.Height;
 			int twidth = 4;
-			int dropshadow = 0;
 			int lastPage = 0;
+			int elementIndex = 0;
 
-			// Fix this leaky shit
-			char* sbtext = new char[stringLen + 8];
-			memset(sbtext, 0, stringLen + 8);
-
-			wcstombs(sbtext, text, stringLen);
-			for (char* c = sbtext; *c != 0; c++, cp++) {
+			for (wchar_t* c = text; *c != 0; c++, cp++) {
 				// Per-character logic
 				switch (*c){
-				case '\n':
+				case L'\n':
 					cx = 0;
-					cy += ch;
+					cy += charsetDesc.LineHeight;
 					continue;
-				case '\t':
-					cx += cw*(twidth - cp%twidth);
+				case L'\t':
+					cx += charsetDesc.Base*(twidth - cp%twidth);
 					continue;
 				}
 
@@ -522,20 +519,19 @@ namespace klib{
 				v.emplace_back(tcx + tcw, tcy + tch, tx + tw, ty + th);
 				v.emplace_back(tcx, tcy + tch, tx, ty + th);
 
-				auto elementIndex = cp * 4;
-
 				e.push_back(elementIndex + 0);
 				e.push_back(elementIndex + 1);
 				e.push_back(elementIndex + 2);
 				e.push_back(elementIndex + 2);
 				e.push_back(elementIndex + 3);
 				e.push_back(elementIndex + 0);
+
+				elementIndex += 4;
 			}
 
 			if (created){
 				buffer.Update(v, e);
-			}
-			else{
+			}else{
 				buffer.Create(v, e);
 
 				GLint posAttrib = glGetAttribLocation(shader.program, "position");
@@ -548,7 +544,6 @@ namespace klib{
 
 				created = true;
 			}
-			delete[] sbtext;
 		}
 
 		auto view = glm::translate(

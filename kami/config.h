@@ -22,7 +22,7 @@ namespace klib {
 				}
 				catch (json::JsonException e){
 					status = 1;
-					throw KLGLException("JSON::%s:%d::%s", __FILE__, __LINE__, e.what());
+					cl("JSON::%s\n", e.what());
 				}
 			}
 		};

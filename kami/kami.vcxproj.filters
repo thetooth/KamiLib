@@ -54,13 +54,13 @@
     <ClInclude Include="xxhash.h">
       <Filter>Header Files\3rd Party</Filter>
     </ClInclude>
+    <ClInclude Include="gl_core_3_3.h">
+      <Filter>Header Files\3rd Party</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="kami.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="glew.c">
-      <Filter>Source Files\3rd Party</Filter>
     </ClCompile>
     <ClCompile Include="win32.cpp">
       <Filter>Source Files</Filter>
@@ -78,6 +78,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="xxhash.c">
+      <Filter>Source Files\3rd Party</Filter>
+    </ClCompile>
+    <ClCompile Include="gl_core_3_3.c">
       <Filter>Source Files\3rd Party</Filter>
     </ClCompile>
   </ItemGroup>

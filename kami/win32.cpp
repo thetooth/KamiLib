@@ -94,19 +94,6 @@ namespace klib {
 		SetFocus(hWnd);
 		SetVSync(vsync);
 
-		//glewExperimental = GL_TRUE;
-		GLenum glewIinitHandle = glewInit();
-		if(glewIinitHandle != GLEW_OK)
-		{
-			cl("Catastrophic Error: %s\n", glewGetErrorString(glewIinitHandle));
-			exit(EXIT_FAILURE);
-		}
-		glewIinitHandle = NULL;
-		if (!glewIsSupported("GL_VERSION_3_0")){
-			cl("Catastrophic Error: Minimum OpenGL version 3 not supported, please upgrade your graphics hardware.\n");
-			exit(EXIT_FAILURE);
-		}
-
 		// Initialize reference table for key codes
 		initKeyTable();
 	}

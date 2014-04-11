@@ -6,8 +6,8 @@
 
 #include <Windows.h>
 #include <windowsx.h>
-#include "glew.h"
-#include "wglew.h"
+//#include "glew.h"
+//#include "wglew.h"
 #include "pure.h"
 #include "input.h"
 
