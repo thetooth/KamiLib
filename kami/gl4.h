@@ -192,7 +192,7 @@ namespace klib {
 	class FrameBuffer {
 	public:
 		GLuint fbo;
-		GLuint depthStencil;
+		GLuint depth;
 		GLuint texture;
 
 		FrameBuffer() = default;
@@ -201,13 +201,12 @@ namespace klib {
 		};
 		~FrameBuffer(){
 			glDeleteTextures(1, &texture);
-			glDeleteRenderbuffers(1, &depthStencil);
+			glDeleteRenderbuffers(1, &depth);
 			glDeleteFramebuffers(1, &fbo);
 		};
 
 		void Create(int width, int height){
 			// Create frame buffer
-			GLuint frameBuffer;
 			glGenFramebuffers(1, &fbo);
 			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
@@ -222,15 +221,11 @@ namespace klib {
 
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
 
-			// Create Renderbuffer Object to hold depth and stencil buffers
-			/*glGenRenderbuffers(1, &depthStencil);
-			glBindRenderbuffer(GL_RENDERBUFFER, depthStencil);
-			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
-			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthStencil);*/
-			glGenRenderbuffers(1, &depthStencil);
-			glBindRenderbuffer(GL_RENDERBUFFER, depthStencil);
+			// Create Render Buffer Object to hold depth buffer
+			glGenRenderbuffers(1, &depth);
+			glBindRenderbuffer(GL_RENDERBUFFER, depth);
 			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
-			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthStencil);
+			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
 
 			GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 

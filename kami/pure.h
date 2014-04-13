@@ -12,7 +12,13 @@
 #include <future>
 #include <regex>
 
+//#define APP_USE_GLEW
+
+#if defined(APP_USE_GLEW)
+#include "glew.h"
+#else
 #include "gl_core_3_3.h"
+#endif
 
 namespace klib {
 

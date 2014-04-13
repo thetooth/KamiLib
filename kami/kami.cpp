@@ -4,6 +4,8 @@
 #include "version.h"
 
 #include <iostream>
+#include <locale>
+#include <codecvt>
 #include <string>
 #include <regex>
 
@@ -147,10 +149,14 @@ namespace klib{
 			windowManager = new WindowManager(_title, &window, scaleFactor, fullscreen, vsync);
 
 			// Load OpenGL
+#if defined APP_USE_GLEW
+			glewInit();
+#else
 			if (ogl_LoadFunctions() == ogl_LOAD_FAILED){
 				cl("Catastrophic Error: Minimum OpenGL version 3 not supported, please upgrade your graphics hardware.\n");
 				exit(EXIT_FAILURE);
 			}
+#endif
 
 			// Setup frame buffer
 			fbo.emplace_back(buffer.width, buffer.height);
@@ -416,9 +422,8 @@ namespace klib{
 		}
 
 		ParseFnt(fontStream);
-		m_width = charsetDesc.Width;
-		m_height = charsetDesc.Height;
 		created = false;
+		dropshadow = false;
 
 		for (int i = 0; i < charsetDesc.Pages; i++){
 			m_texture.emplace_back(new Texture((font.substr(0, folder + 1) + charsetDesc.FileName[i]).c_str()));
@@ -439,13 +444,14 @@ namespace klib{
 		);
 		std::string frag2d = GLSL(
 			uniform sampler2D image;
+			uniform vec4 color = vec4(1.0, 1.0, 1.0, 1.0);
 
-		in vec2 coord;
-		out vec4 outColor;
+			in vec2 coord;
+			out vec4 outColor;
 
-		void main() {
-			outColor = texture(image, coord);
-		}
+			void main() {
+				outColor = color*texture(image, coord).a;
+			}
 		);
 
 		shader.CreateSRC(GL_VERTEX_SHADER, vert2d);
@@ -453,28 +459,25 @@ namespace klib{
 		shader.Link();
 
 		MVP = glGetUniformLocation(shader.program, "MVP");
+		color = glGetUniformLocation(shader.program, "color");
 	}
 
-	void Font::Draw(glm::mat4 projection, int x, int y, char* text){
-		int len = strlen(text);
-		wchar_t* tmpStr = new wchar_t[len+8];
-		tmpStr[len] = L'\0';
-		mbstowcs(tmpStr, text, len);
-		Draw(projection, x, y, tmpStr);
-		delete [] tmpStr;
+	void Font::Draw(glm::mat4 projection, int x, int y, const char* text){
+		std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+		std::wstring narrow = converter.from_bytes(text);
+		Draw(projection, x, y, narrow.c_str());
 	}
 
-	void Font::Draw(glm::mat4 projection, int x, int y, wchar_t* text)
-	{
+	void Font::Draw(glm::mat4 projection, int x, int y, const wchar_t* text){
 		auto stringLen = wcslen(text);
 		auto hash = XXH32(text, stringLen*sizeof(wchar_t), 4352334);
 
-		if (hash != lastHash){
-			lastHash = hash;
+		if (hash != cache){
+			cache = hash;
 
 			// Character geometry
-			std::vector<Rect2D<GLfloat>> v;
-			std::vector<GLuint> e;
+			std::vector<Rect2D<GLfloat>> v; v.reserve(stringLen * 4);
+			std::vector<GLuint> e; e.reserve(stringLen * 6);
 
 			// Character location and dimensions
 			int cp = 0;
@@ -484,7 +487,7 @@ namespace klib{
 			int lastPage = 0;
 			int elementIndex = 0;
 
-			for (wchar_t* c = text; *c != 0; c++, cp++) {
+			for (const wchar_t* c = text; *c != 0; c++, cp++) {
 				// Per-character logic
 				switch (*c){
 				case L'\n':
@@ -546,14 +549,27 @@ namespace klib{
 			}
 		}
 
+		shader.Bind();
+		m_texture[0]->Bind(); // ! We need to support multiple textures per character or we can't do UTF-8
+
+		if (dropshadow){
+			auto view = glm::translate(
+				glm::mat4(1.0f),
+				glm::vec3(x + 1, y + 1, 0.0f)
+				);
+
+			glUniformMatrix4fv(MVP, 1, GL_FALSE, glm::value_ptr(projection*view));
+			glUniform4f(color, 0, 0, 0, 0.5);
+			buffer.Draw(GL_TRIANGLES);
+		}
+
 		auto view = glm::translate(
 			glm::mat4(1.0f),
 			glm::vec3(x, y, 0.0f)
-		);
+			);
 
-		shader.Bind();
-		m_texture[0]->Bind(); // ! We need to support multiple textures per character or we can't do UTF-8
 		glUniformMatrix4fv(MVP, 1, GL_FALSE, glm::value_ptr(projection*view));
+		glUniform4f(color, 1, 1, 1, 1);
 		buffer.Draw(GL_TRIANGLES);
 	}
 

@@ -1,13 +1,7 @@
 #pragma once
 
-#ifndef GLEW_STATIC
-#define GLEW_STATIC
-#endif
-
 #include <Windows.h>
 #include <windowsx.h>
-//#include "glew.h"
-//#include "wglew.h"
 #include "pure.h"
 #include "input.h"
 

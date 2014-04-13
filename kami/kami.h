@@ -193,18 +193,12 @@ namespace klib{
 	// Simple text drawing
 	class Font {
 	public:
-		// New
-		bool created;
-		GLuint MVP;
+		bool created, dropshadow;
+		GLuint MVP, color;
 		ShaderProgram shader;
 		glObj<Rect2D<GLfloat>> buffer;
 		std::vector<std::unique_ptr<Texture>> m_texture;
-		unsigned int lastHash;
-
-		// Deprecated?
-		GLint c_per_row;
-		GLuint m_width;
-		GLuint m_height;
+		unsigned int cache;
 
 		struct Descriptor {
 			short x, y;
@@ -231,8 +225,8 @@ namespace klib{
 		~Font();
 
 		void Load(const std::string font);
-		void Draw(glm::mat4 projection, int x, int y, char* text);
-		void Draw(glm::mat4 projection, int x, int y, wchar_t* text);
+		void Draw(glm::mat4 projection, int x, int y, const char* text);
+		void Draw(glm::mat4 projection, int x, int y, const wchar_t* text);
 		bool ParseFnt(std::istream& Stream);
 	};
 }
