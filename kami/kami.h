@@ -133,7 +133,7 @@ namespace klib{
 		int internalStatus;
 
 		// Window regions
-		WindowManager *windowManager;
+		std::unique_ptr<WindowManager> windowManager;
 		Rect<int> window;
 		Rect<int> buffer;
 		int overSampleFactor, scaleFactor;
@@ -145,14 +145,9 @@ namespace klib{
 		GLuint defaultMVP;
 		glObj<Rect2D<GLfloat>> defaultRect;
 		ShaderProgram defaultShader;
-
-		// OpenGL constants
 		std::vector<FrameBuffer> fbo;
-		//unsigned int fbo[128]; // The frame buffer object  
-		unsigned int fbo_depth[128]; // The depth buffer for the frame buffer object  
-		unsigned int fbo_texture[128]; // The texture object to write our frame buffer object to
 
-		Config *config;
+		std::unique_ptr<Config> config;
 		double fps;
 
 		GC(const char* title = "Application", int width = 640, int height = 480, int framerate = 60, bool fullscreen = false, int OSAA = 1, int scale = 1, float anisotropy = 4.0);

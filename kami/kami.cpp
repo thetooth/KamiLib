@@ -127,7 +127,7 @@ namespace klib{
 			buffer.height		= window.height*overSampleFactor;
 
 			// Attempt to load runtime configuration
-			config = new Config("configuration.json");
+			config = std::make_unique<Config>("configuration.json");
 			if (config->ParseError() == 1){
 				cl("Failed to load configuration file overrides.\n");
 			}else{
@@ -146,7 +146,7 @@ namespace klib{
 			}
 
 			// Init window
-			windowManager = new WindowManager(_title, &window, scaleFactor, fullscreen, vsync);
+			windowManager = std::make_unique<WindowManager>(_title, &window, scaleFactor, fullscreen, vsync);
 
 			// Load OpenGL
 #if defined APP_USE_GLEW
@@ -223,9 +223,7 @@ namespace klib{
 	GC::~GC(){
 		//Bind 0, which means render to back buffer, as a result, fb is unbound
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-		delete config;
-		delete windowManager;
+		fbo.clear();
 
 		cl("\n0x%x :3\n", internalStatus);
 		cl(NULL);
