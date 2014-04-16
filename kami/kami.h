@@ -127,6 +127,76 @@ namespace klib{
 		}
 	};
 
+	class Rectangle2D {
+	public:
+		Rectangle2D() = default;
+		~Rectangle2D() = default;
+
+		void Create(){
+			// Compile basic color passthrough shader
+			std::string vert2d = GLSL(
+				in vec2 position;
+
+				uniform mat4 MVP;
+
+				void main() {
+					gl_Position = MVP*vec4(position, 0.0, 1.0);
+				}
+			);
+			std::string frag2d = GLSL(
+				out vec4 outColor;
+
+				uniform vec4 color = vec4(1.0, 1.0, 1.0, 1.0);
+
+				void main() {
+					outColor = color;
+				}
+			);
+
+			shader.CreateSRC(GL_VERTEX_SHADER, vert2d);
+			shader.CreateSRC(GL_FRAGMENT_SHADER, frag2d);
+			shader.Link();
+
+			MVP = glGetUniformLocation(shader.program, "MVP");
+			colorPtr = glGetUniformLocation(shader.program, "color");
+
+			// Generate null geometry
+			std::vector<Point2D<GLfloat>> v = {
+				{ 0, 0 }
+			};
+
+			std::vector<GLuint> e = { 0 };
+			obj.Create(v, e);
+
+			// Specify the layout of the vertex data
+			GLint posAttrib = glGetAttribLocation(shader.program, "position");
+			glEnableVertexAttribArray(posAttrib);
+			glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), 0);
+		}
+
+		void Draw(glm::mat4 projection, float x, float y, float width, float height, Color vcolor = Color(255, 0, 0, 255)){
+
+			std::vector<Point2D<GLfloat>> v = {
+				{ x, y },
+				{ x + width, y },
+				{ x + width, y + height },
+				{ x, y + height }
+			};
+
+			std::vector<GLuint> e = { 0, 1, 2, 2, 3, 0 };
+			obj.Update(v, e);
+
+			shader.Bind();
+			glUniformMatrix4fv(MVP, 1, GL_FALSE, glm::value_ptr(projection));
+			glUniform4f(colorPtr, ubtof(vcolor.r), ubtof(vcolor.g), ubtof(vcolor.b), ubtof(vcolor.a));
+			obj.Draw();
+		}
+	private:
+		GLuint MVP, colorPtr;
+		glObj<Point2D<GLfloat>> obj;
+		ShaderProgram shader;
+	};
+
 	// General drawing helper and view mode manager
 	class GC {
 	public:
@@ -146,6 +216,7 @@ namespace klib{
 		glObj<Rect2D<GLfloat>> defaultRect;
 		ShaderProgram defaultShader;
 		std::vector<FrameBuffer> fbo;
+		Rectangle2D dynamicRect;
 
 		std::unique_ptr<Config> config;
 		double fps;
@@ -167,7 +238,7 @@ namespace klib{
 
 			BlitSprite2D(sprite, x, y, row, col, managed, mask);
 		};
-		void Rectangle2D(int x, int y, int width, int height, Color vcolor = Color(255, 0, 0, 255));
+		void Rectangle(int x, int y, int width, int height, Color vcolor = Color(255, 0, 0, 255));
 		void BindMultiPassShader(int shaderProgId = 0, int alliterations = 1, bool flipOddBuffer = true, float x = 0.0f, float y = 0.0f, float width = -1.0f, float height = -1.0f, int textureSlot = 0);
 
 		GLuint FastQuad(glObj<Rect2D<GLfloat>> &vao, GLuint &shaderProgram, int width, int height);

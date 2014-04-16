@@ -309,6 +309,11 @@ namespace klib {
 		LOValue rawTypePtr[4];
 	};
 
+	template<typename T> struct Point2D
+	{
+		T x, y;
+		Point2D(T X, T Y) : x(X), y(Y) {};
+	};
 	template<typename T> struct Rect2D
 	{
 		T x, y, z, w;

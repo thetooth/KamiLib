@@ -45,6 +45,8 @@ namespace klib{
 			std::istreambuf_iterator<char>( ),
 			std::back_inserter(buffer));
 
+		file.close();
+
 		unsigned error = lodepng::decode(raw, width, height, buffer);
 
 		if (error){
@@ -111,6 +113,7 @@ namespace klib{
 			cl("KamiLib v0.1.0 R%d %s, %s %s,\n", APP_BUILD_VERSION, buildTimeString, APP_ARCH_STRING, APP_COMPILER_STRING);
 			cl(APP_MOTD);
 
+			std::string title	= "Application";
 			vsync				= true;
 			overSampleFactor	= _OSAA;
 			scaleFactor			= _scale;
@@ -143,10 +146,11 @@ namespace klib{
 				vsync			= config->GetBoolean("system", "vsync",				vsync							);
 				scaleFactor		= config->GetInteger("system", "windowScale",		_scale							);
 				fullscreen		= config->GetBoolean("system", "fullscreen",		_fullscreen						);
+				title			= config->GetString("system", "title",				_title							);
 			}
 
 			// Init window
-			windowManager = std::make_unique<WindowManager>(_title, &window, scaleFactor, fullscreen, vsync);
+			windowManager = std::make_unique<WindowManager>(title.c_str(), &window, scaleFactor, fullscreen, vsync);
 
 			// Load OpenGL
 #if defined APP_USE_GLEW
@@ -191,6 +195,9 @@ namespace klib{
 
 			// Create default quad for rendering frame buffer
 			defaultMVP = FastQuad(defaultRect, defaultShader.program, buffer.width, buffer.height);
+
+			// Create dynamic quad for utility functions
+			dynamicRect.Create();
 
 			// Initialize gl parameters
 			glEnable(GL_DEPTH_TEST);
@@ -399,16 +406,9 @@ namespace klib{
 		}*/
 	}
 
-	void GC::Rectangle2D(int x, int y, int width, int height, Color vcolor){
-		/*glBegin(GL_QUADS);
-		{
-			vcolor.Set();
-			glTexCoord2d(0.0,0.0); glVertex2i(x,		y);
-			glTexCoord2d(1.0,0.0); glVertex2i(x+width,	y);
-			glTexCoord2d(1.0,1.0); glVertex2i(x+width,	y+height);
-			glTexCoord2d(0.0,1.0); glVertex2i(x,		y+height);
-		}
-		glEnd();*/
+	void GC::Rectangle(int x, int y, int width, int height, Color vcolor){
+		auto projection = glm::ortho(0.0f, (float)buffer.width, (float)buffer.height, 0.0f);
+		dynamicRect.Draw(projection, x, y, width, height, vcolor);
 	}
 
 	void Font::Load(const std::string font){
