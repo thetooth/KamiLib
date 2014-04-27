@@ -12,7 +12,7 @@
 namespace klib{
 
 	// Make extern local to klib
-	char *clBuffer;
+	std::shared_ptr<Console> clConsole;
 	bool KLGLDebug = false;
 	bool resizeEvent = false;
 
@@ -102,11 +102,10 @@ namespace klib{
 			KLGLDebug = false;
 #endif
 
-			// Clear the console buffer(VERY IMPORTANT)
-			clBuffer = new char[APP_BUFFER_SIZE*2];
-			std::fill_n(clBuffer, APP_BUFFER_SIZE * 2, '\0');
+			// Create console buffer
+			clConsole = std::make_shared<Console>();
 
-			//MOTD
+			// MOTD
 			time_t buildTime = (time_t)APP_BUILD_TIME;
 			char* buildTimeString = asctime(gmtime(&buildTime));
 			memset(buildTimeString+strlen(buildTimeString)-1, 0, 1); // Remove the \n
@@ -233,8 +232,6 @@ namespace klib{
 		fbo.clear();
 
 		cl("\n0x%x :3\n", internalStatus);
-		cl(NULL);
-		delete clBuffer;
 	}
 
 	int GC::ProcessEvent(int *status){
@@ -284,6 +281,8 @@ namespace klib{
 		auto MVP = projection*view*model;
 		glUniformMatrix4fv(defaultMVP, 1, GL_FALSE, glm::value_ptr(MVP));
 		defaultRect.Draw();
+
+		glFinish();
 
 		// Swap!
 		windowManager->Swap();
@@ -468,6 +467,11 @@ namespace klib{
 
 	void Font::Draw(glm::mat4 projection, int x, int y, const wchar_t* text){
 		auto stringLen = wcslen(text);
+
+		if (stringLen < 1){
+			return;
+		}
+
 		auto hash = XXH32(text, stringLen*sizeof(wchar_t), 4352334);
 
 		if (hash != cache){

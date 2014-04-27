@@ -11,6 +11,9 @@
 #include <math.h>
 #include <future>
 #include <regex>
+#include <locale>
+#include <codecvt>
+#include <fstream>
 
 //#define APP_USE_GLEW
 
@@ -28,7 +31,7 @@ namespace klib {
 #define APP_BUFFER_SIZE 4096
 #define APP_ENABLE_MIPMAP 0
 #define APP_ANISOTROPY 4.0
-#define APP_CONSOLE_LINES 32
+#define APP_CONSOLE_LINES 16
 #define APP_PI 3.14159265359
 
 #define uchar2vec(x) vector<unsigned char>(reinterpret_cast<unsigned char*>(x), reinterpret_cast<unsigned char*>(x)+sizeof(x))
@@ -68,12 +71,13 @@ namespace klib {
 #define snprintf _snprintf
 #endif
 
+	class Console;
+
 	static int clBufferAllocLen = APP_BUFFER_SIZE;
 	static int clBufferLines = APP_CONSOLE_LINES;
 	extern bool KLGLDebug;
 	extern bool resizeEvent;
-	extern char *clBuffer;
-	//extern std::unordered_map<std::string, void*> clHashTable;
+	extern std::shared_ptr<Console> clConsole;
 
 	class KLGLException {
 	private:
@@ -83,81 +87,149 @@ namespace klib {
 		char* getMessage();
 	};
 
-	inline int substr(char *dest, const char *src, int start, int len){
-		if (src == 0 || strlen(src) == 0 || strlen(src) < start || strlen(src) < (start+len)){
-			return -1;
+	template <class T> class RingBuffer {
+	public:
+		std::vector<T> ring;
+		const size_t   bufferSize;
+		std::atomic<uint64_t> head;
+		std::atomic<uint64_t> tail;
+
+		RingBuffer(size_t buffer_size) : ring(buffer_size), bufferSize(buffer_size), head(0), tail(0){ };
+
+		T* back(){
+			bool received = false;
+
+			if (available(head, tail)){
+				return &(ring[head % bufferSize]);
+			}
+
+			return nullptr;
 		}
 
-		strncpy(dest, src + start, len);
-		return 0;
-	}
+		void push(){
+			++head;
+		}
+
+		T* front(){
+			if (tail < head){
+				return &ring[tail % bufferSize];
+			}
+
+			return nullptr;
+		}
+
+		void pop(){
+			++tail;
+		}
+
+		size_t size() const {
+			if (tail < head){
+				return bufferSize - ((tail + bufferSize) - head);
+			}
+			else if (tail > head){
+				return bufferSize - (tail - head);
+			}
+
+			return 0;
+		}
+
+		bool available(){
+			return available(head, tail);
+		}
+
+		bool available(uint64_t h, uint64_t t) const {
+			if (h == t){
+				return true;
+			}
+			else if (t > h){
+				return (t - h) > bufferSize;
+			}
+			else/* if(h > t)*/{
+				return (t + bufferSize) - h > 0;
+			}
+		}
+	};
+
+	class Console {
+	public:
+		std::wofstream file;
+		std::unique_ptr<RingBuffer<std::wstring>> buffer;
+		bool following;
+
+		Console(){
+			file.open("cl.log", std::ios::binary);
+			if (file.bad()){
+				exit(EXIT_FAILURE);
+			}
+			buffer = std::make_unique<RingBuffer<std::wstring>>(APP_CONSOLE_LINES);
+			following = false;
+		};
+		~Console() = default;
+
+		void push_back(std::wstring str){
+			file << str;
+			if (buffer->back() == nullptr){	// If we exceed the buffer boundaries discard oldest entry
+				buffer->pop();
+			}
+
+			auto val = buffer->back();
+			
+			if (str.back() == L'\n'){		// Check if return
+				if (following){				// Append if we're following a non returning line
+					*val += std::move(str);
+				}else{						// Otherwise its a new entry
+					*val = std::move(str);
+				}
+				following = false;
+				buffer->push();
+			}else{							// Non-returning line, do not increment pointer
+				if (following){				// Append if we're following a non returning line
+					*val += std::move(str);
+				}else{						// Otherwise its a new entry
+					*val = std::move(str);
+				}
+				following = true;
+			}
+		}
+
+		void str(std::wstring &tmpstr){
+			for (int i = 0; i < buffer->size(); i++){
+				tmpstr += buffer->ring[(buffer->tail + i) % buffer->bufferSize];
+			}
+		}
+	};
 
 	inline int cl(const char* format, ...){
-
-		// File handle
-		static FILE *fp;
-		if (fp == NULL){
-			fp = fopen("cl.log", "w+");
-		}
-
-		// Exit situation
-		if (format == NULL && fp != NULL){
-			fclose(fp);
-			return -1;
-		}
-
-		if (strlen(clBuffer)+strlen(format) >= clBufferAllocLen){
-			std::fill_n(clBuffer, 4, '\0');
-			/*clBufferAllocLen = clBufferAllocLen*4;
-			char* tclBuffer = (char*)realloc(clBuffer, clBufferAllocLen);
-			fill_n(tclBuffer+clBufferAllocLen, clBufferAllocLen, '\0');
-			if (tclBuffer != NULL){
-			clBuffer = tclBuffer;
-			}else{
-			exit(1);
-			}*/
-		}
-
 		// Temporary buffer
-		char *tBuffer = new char[clBufferAllocLen];
-		std::fill_n(tBuffer, clBufferAllocLen, '\0');
-
-		int ret = 0, numLn = 0, numLnP = 0;
+		char tBuffer[4096];
 
 		// Do normal output
 		va_list arg;
 		va_start(arg, format);
-		vsprintf(tBuffer, format, arg);
-		ret = printf("%s", tBuffer);
+		vsprintf_s(tBuffer, 4096, format, arg);
+		int ret = printf("%s", tBuffer);
 		va_end(arg);
 
-		// Append the new string to the buffer
-		size_t bufferLen = strlen(clBuffer);
-		memcpy(clBuffer+bufferLen, tBuffer, clBufferAllocLen);
+		std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+		std::wstring wide = converter.from_bytes(tBuffer);
+		clConsole->push_back(wide);
 
-		// Flush to log file
-		if (fp != NULL){
-			fwrite(tBuffer, 1, strlen(tBuffer), fp);
-			fflush(fp);
-		}
+		return ret;
+	}
 
-		// Tail buffer
-		numLn = clBufferLines+1;
-		while (numLn > clBufferLines)
-		{
-			numLn = 0;
-			for (char* c = clBuffer; *c != '\0'; c++)
-			{
-				if (*c == '\n'){ numLn++;	}
-				if (numLn == 0){ numLnP++;	}
-			}
-			if (numLn > clBufferLines){
-				memcpy(tBuffer, clBuffer+numLnP+1, clBufferAllocLen);
-				memcpy(clBuffer, tBuffer, clBufferAllocLen);
-			}
-		}
+	inline int cl(const wchar_t* format, ...){
+		// Temporary buffer
+		wchar_t tBuffer[4096];
 
-		delete [] tBuffer;
+		// Do normal output
+		va_list arg;
+		va_start(arg, format);
+		vswprintf_s(tBuffer, 4096, format, arg);
+		int ret = wprintf(L"%s", tBuffer);
+		va_end(arg);
+
+		clConsole->push_back(tBuffer);
+
 		return ret;
 	}
 
