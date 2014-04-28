@@ -54,7 +54,7 @@
     <ClInclude Include="xxhash.h">
       <Filter>Header Files\3rd Party</Filter>
     </ClInclude>
-    <ClInclude Include="gl_core_3_3.h">
+    <ClInclude Include="gl_core_4_4.hpp">
       <Filter>Header Files\3rd Party</Filter>
     </ClInclude>
   </ItemGroup>
@@ -80,10 +80,10 @@
     <ClCompile Include="xxhash.c">
       <Filter>Source Files\3rd Party</Filter>
     </ClCompile>
-    <ClCompile Include="gl_core_3_3.c">
+    <ClCompile Include="glew.c">
       <Filter>Source Files\3rd Party</Filter>
     </ClCompile>
-    <ClCompile Include="glew.c">
+    <ClCompile Include="gl_core_4_4.cpp">
       <Filter>Source Files\3rd Party</Filter>
     </ClCompile>
   </ItemGroup>

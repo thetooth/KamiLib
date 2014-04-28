@@ -21,17 +21,17 @@ namespace klib {
 		GLuint buffer;
 
 		glBuffer() = default;
-		~glBuffer(){ glDeleteBuffers(1, &buffer); };
+		~glBuffer(){ gl::DeleteBuffers(1, &buffer); };
 
 		void Create(std::vector<StorageClass> v){
-			glGenBuffers(1, &buffer);
-			glBindBuffer(BufferType, buffer);
-			glBufferData(BufferType, v.size()*sizeof(StorageClass), &v.front(), GL_STATIC_DRAW);
+			gl::GenBuffers(1, &buffer);
+			gl::BindBuffer(BufferType, buffer);
+			gl::BufferData(BufferType, v.size()*sizeof(StorageClass), &v.front(), gl::STATIC_DRAW);
 		};
 
 		void Update(std::vector<StorageClass> v){
-			glBindBuffer(BufferType, buffer);
-			glBufferData(BufferType, v.size()*sizeof(StorageClass), &v.front(), GL_DYNAMIC_DRAW);
+			gl::BindBuffer(BufferType, buffer);
+			gl::BufferData(BufferType, v.size()*sizeof(StorageClass), &v.front(), gl::DYNAMIC_DRAW);
 		};
 	};
 
@@ -39,19 +39,19 @@ namespace klib {
 	{
 	public:
 		GLuint vao;
-		glBuffer<GL_ARRAY_BUFFER, StorageClass> vbo;
-		glBuffer<GL_ELEMENT_ARRAY_BUFFER, GLuint> ebo;
+		glBuffer<gl::ARRAY_BUFFER, StorageClass> vbo;
+		glBuffer<gl::ELEMENT_ARRAY_BUFFER, GLuint> ebo;
 
 		int elementSize;
 
 		glObj() = default;
 		glObj(std::vector<StorageClass> v, std::vector<GLuint> e) { Create(v, e); };
-		~glObj(){ glDeleteVertexArrays(1, &vao); };
+		~glObj(){ gl::DeleteVertexArrays(1, &vao); };
 
 		void Create(std::vector<StorageClass> v, std::vector<GLuint> e){
 			// Create Vertex Array Object
-			glGenVertexArrays(1, &vao);
-			glBindVertexArray(vao);
+			gl::GenVertexArrays(1, &vao);
+			gl::BindVertexArray(vao);
 
 			// Retain raw element index length for drawing call
 			elementSize = e.size();
@@ -63,7 +63,7 @@ namespace klib {
 
 		void Update(std::vector<StorageClass> v, std::vector<GLuint> e){
 			// Rebind existing buffer
-			glBindVertexArray(vao);
+			gl::BindVertexArray(vao);
 
 			// Update buffer element size
 			elementSize = e.size();
@@ -73,14 +73,14 @@ namespace klib {
 			ebo.Update(std::move(e));
 		};
 
-		void Draw(int mode = GL_TRIANGLE_STRIP){
-			glBindVertexArray(vao);
-			glDrawElements(mode, elementSize, GL_UNSIGNED_INT, 0);
+		void Draw(int mode = gl::TRIANGLE_STRIP){
+			gl::BindVertexArray(vao);
+			gl::DrawElements(mode, elementSize, gl::UNSIGNED_INT, 0);
 		};
 
-		void DrawInstanced(int instances, int mode = GL_TRIANGLE_STRIP){
-			glBindVertexArray(vao);
-			glDrawElementsInstanced(mode, elementSize, GL_UNSIGNED_INT, 0, instances);
+		void DrawInstanced(int instances, int mode = gl::TRIANGLE_STRIP){
+			gl::BindVertexArray(vao);
+			gl::DrawElementsInstanced(mode, elementSize, gl::UNSIGNED_INT, 0, instances);
 		};
 	};
 
@@ -89,15 +89,15 @@ namespace klib {
 		int infoLogLength = 0;
 		int charsWritten = 0;
 
-		glGetShaderiv(obj, GL_COMPILE_STATUS, &status);
-		glGetShaderiv(obj, GL_INFO_LOG_LENGTH, &infoLogLength);
+		gl::GetShaderiv(obj, gl::COMPILE_STATUS, &status);
+		gl::GetShaderiv(obj, gl::INFO_LOG_LENGTH, &infoLogLength);
 
-		if ((status != GL_TRUE || KLGLDebug) && infoLogLength > 0){
+		if ((status != true || KLGLDebug) && infoLogLength > 0){
 			std::vector<char> infoLog(infoLogLength);
 			if (isShader){
-				glGetShaderInfoLog(obj, infoLogLength, &charsWritten, infoLog.data());
+				gl::GetShaderInfoLog(obj, infoLogLength, &charsWritten, infoLog.data());
 			}else{
-				glGetProgramInfoLog(obj, infoLogLength, &charsWritten, infoLog.data());
+				gl::GetProgramInfoLog(obj, infoLogLength, &charsWritten, infoLog.data());
 			}
 			cl("%s", infoLog.data());
 		}
@@ -114,10 +114,10 @@ namespace klib {
 		~Shader(){};
 
 		void Compile(GLuint shaderType, std::string shaderSource){
-			shader = glCreateShader(shaderType);
+			shader = gl::CreateShader(shaderType);
 			const char *c_str = shaderSource.c_str();
-			glShaderSource(shader, 1, &c_str, 0);
-			glCompileShader(shader);
+			gl::ShaderSource(shader, 1, &c_str, 0);
+			gl::CompileShader(shader);
 			if (KLGLDebug){
 				PrintShaderInfoLog(shader, 1);
 			}
@@ -132,7 +132,7 @@ namespace klib {
 
 		ShaderProgram() = default;
 		ShaderProgram(std::initializer_list<std::string> s){ CreateList(s); };
-		~ShaderProgram(){ glDeleteProgram(program); };
+		~ShaderProgram(){ gl::DeleteProgram(program); };
 
 		void Create(GLuint type, const char* shader){
 			std::ifstream shaderFile(shader, std::ios::in);
@@ -159,7 +159,7 @@ namespace klib {
 			}
 
 			int i = 0;
-			std::vector<int> type = { GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, GL_GEOMETRY_SHADER };
+			std::vector<int> type = { gl::VERTEX_SHADER, gl::FRAGMENT_SHADER, gl::GEOMETRY_SHADER };
 
 			for (auto shader : s){
 				cl("%s ", shader.c_str());
@@ -171,11 +171,11 @@ namespace klib {
 		}
 		
 		GLuint Link(){
-			program = glCreateProgram();
+			program = gl::CreateProgram();
 			for (auto s : shaders){
-				glAttachShader(program, s.shader);
+				gl::AttachShader(program, s.shader);
 			}
-			glLinkProgram(program);
+			gl::LinkProgram(program);
 			if (KLGLDebug){
 				PrintShaderInfoLog(program, 0);
 			}
@@ -183,7 +183,7 @@ namespace klib {
 		}
 
 		void Bind(){
-			glUseProgram(program);
+			gl::UseProgram(program);
 		}
 	private:
 		bool m_firstuse;
@@ -200,54 +200,54 @@ namespace klib {
 			Create(width, height);
 		};
 		~FrameBuffer(){
-			glDeleteTextures(1, &texture);
-			glDeleteRenderbuffers(1, &depth);
-			glDeleteFramebuffers(1, &fbo);
+			gl::DeleteTextures(1, &texture);
+			gl::DeleteRenderbuffers(1, &depth);
+			gl::DeleteFramebuffers(1, &fbo);
 		};
 
 		void Create(int width, int height){
 			// Create frame buffer
-			glGenFramebuffers(1, &fbo);
-			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+			gl::GenFramebuffers(1, &fbo);
+			gl::BindFramebuffer(gl::FRAMEBUFFER, fbo);
 
 			// Create texture to hold color buffer
-			glGenTextures(1, &texture);
-			glBindTexture(GL_TEXTURE_2D, texture);
+			gl::GenTextures(1, &texture);
+			gl::BindTexture(gl::TEXTURE_2D, texture);
 
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+			gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGBA, width, height, 0, gl::RGBA, gl::UNSIGNED_BYTE, NULL);
 
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR);
+			gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST);
 
-			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+			gl::FramebufferTexture2D(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, gl::TEXTURE_2D, texture, 0);
 
 			// Create Render Buffer Object to hold depth buffer
-			glGenRenderbuffers(1, &depth);
-			glBindRenderbuffer(GL_RENDERBUFFER, depth);
-			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
-			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
+			gl::GenRenderbuffers(1, &depth);
+			gl::BindRenderbuffer(gl::RENDERBUFFER, depth);
+			gl::RenderbufferStorage(gl::RENDERBUFFER, gl::DEPTH_COMPONENT, width, height);
+			gl::FramebufferRenderbuffer(gl::FRAMEBUFFER, gl::DEPTH_ATTACHMENT, gl::RENDERBUFFER, depth);
 
-			GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+			GLenum status = gl::CheckFramebufferStatus(gl::FRAMEBUFFER);
 
 			switch (status) {
-			case GL_FRAMEBUFFER_COMPLETE:
+			case gl::FRAMEBUFFER_COMPLETE:
 				break;
-			case GL_FRAMEBUFFER_UNSUPPORTED:
+			case gl::FRAMEBUFFER_UNSUPPORTED:
 				throw KLGLException("Error: unsupported framebuffer format!\n");
 				break;
 			default:
 				throw KLGLException("Error: invalid framebuffer config!\n");
 			}
 
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
 		}
 
 		void Bind(){
-			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+			gl::BindFramebuffer(gl::FRAMEBUFFER, fbo);
 		}
 
 		void Unbind(){
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
 		}
 	};
 }

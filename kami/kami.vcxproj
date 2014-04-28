@@ -98,7 +98,7 @@
     <ClInclude Include="config.h" />
     <ClInclude Include="event.h" />
     <ClInclude Include="gl4.h" />
-    <ClInclude Include="gl_core_3_3.h" />
+    <ClInclude Include="gl_core_4_4.hpp" />
     <ClInclude Include="input.h" />
     <ClInclude Include="json.h" />
     <ClInclude Include="lodepng.h" />
@@ -111,7 +111,7 @@
   <ItemGroup>
     <ClCompile Include="gl4.cpp" />
     <ClCompile Include="glew.c" />
-    <ClCompile Include="gl_core_3_3.c" />
+    <ClCompile Include="gl_core_4_4.cpp" />
     <ClCompile Include="input.cpp" />
     <ClCompile Include="lodepng.cpp" />
     <ClCompile Include="miniz.c" />

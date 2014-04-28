@@ -20,7 +20,7 @@
 #if defined(APP_USE_GLEW)
 #include "glew.h"
 #else
-#include "gl_core_3_3.h"
+#include "gl_core_4_4.hpp"
 #endif
 
 namespace klib {

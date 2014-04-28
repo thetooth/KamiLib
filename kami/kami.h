@@ -153,12 +153,12 @@ namespace klib{
 				}
 			);
 
-			shader.CreateSRC(GL_VERTEX_SHADER, vert2d);
-			shader.CreateSRC(GL_FRAGMENT_SHADER, frag2d);
+			shader.CreateSRC(gl::VERTEX_SHADER, vert2d);
+			shader.CreateSRC(gl::FRAGMENT_SHADER, frag2d);
 			shader.Link();
 
-			MVP = glGetUniformLocation(shader.program, "MVP");
-			colorPtr = glGetUniformLocation(shader.program, "color");
+			MVP = gl::GetUniformLocation(shader.program, "MVP");
+			colorPtr = gl::GetUniformLocation(shader.program, "color");
 
 			// Generate null geometry
 			std::vector<Point2D<GLfloat>> v = {
@@ -169,9 +169,9 @@ namespace klib{
 			obj.Create(v, e);
 
 			// Specify the layout of the vertex data
-			GLint posAttrib = glGetAttribLocation(shader.program, "position");
-			glEnableVertexAttribArray(posAttrib);
-			glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), 0);
+			GLint posAttrib = gl::GetAttribLocation(shader.program, "position");
+			gl::EnableVertexAttribArray(posAttrib);
+			gl::VertexAttribPointer(posAttrib, 2, gl::FLOAT, false, 2 * sizeof(GLfloat), 0);
 		}
 
 		void Draw(glm::mat4 projection, float x, float y, float width, float height, Color vcolor = Color(255, 0, 0, 255)){
@@ -187,8 +187,8 @@ namespace klib{
 			obj.Update(v, e);
 
 			shader.Bind();
-			glUniformMatrix4fv(MVP, 1, GL_FALSE, glm::value_ptr(projection));
-			glUniform4f(colorPtr, ubtof(vcolor.r), ubtof(vcolor.g), ubtof(vcolor.b), ubtof(vcolor.a));
+			gl::UniformMatrix4fv(MVP, 1, false, glm::value_ptr(projection));
+			gl::Uniform4f(colorPtr, ubtof(vcolor.r), ubtof(vcolor.g), ubtof(vcolor.b), ubtof(vcolor.a));
 			obj.Draw();
 		}
 	private:

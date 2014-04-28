@@ -24,7 +24,7 @@ namespace klib{
 
 	Texture::~Texture(){
 		// Drop the texture from VRAM
-		glDeleteTextures( 1, &gltexture );
+		gl::DeleteTextures( 1, &gltexture );
 	}
 
 	int Texture::LoadTexture(const char *fname){
@@ -70,26 +70,26 @@ namespace klib{
 	}
 
 	int Texture::InitTexture(std::vector<unsigned char> &data){
-		glGenTextures(1, &gltexture);
-		glBindTexture(GL_TEXTURE_2D, gltexture);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, APP_ANISOTROPY);
+		gl::GenTextures(1, &gltexture);
+		gl::BindTexture(gl::TEXTURE_2D, gltexture);
+		gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST);
+		gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR);
+		gl::TexParameterf(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT);
+		gl::TexParameterf(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT);
+		gl::TexParameterf(gl::TEXTURE_2D, gl::TEXTURE_MAX_ANISOTROPY_EXT, APP_ANISOTROPY);
 		if (APP_ENABLE_MIPMAP){
 			// ! Upgrade
-			/*glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-			gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data.data());*/
+			/*gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR_MIPMAP_LINEAR);
+			gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR_MIPMAP_LINEAR);
+			gl::uBuild2DMipmaps(gl::TEXTURE_2D, gl::RGBA, width, height, gl::RGBA, gl::UNSIGNED_BYTE, data.data());*/
 		}else{
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
+			gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGBA, width, height, 0, gl::RGBA, gl::UNSIGNED_BYTE, data.data());
 		}
 		return 0;
 	}
 
 	void Texture::Bind(){
-		glBindTexture(GL_TEXTURE_2D, gltexture);
+		gl::BindTexture(gl::TEXTURE_2D, gltexture);
 	}
 
 	GC::GC(const char* _title, int _width, int _height, int _framerate, bool _fullscreen, int _OSAA, int _scale, float _anisotropy){
@@ -155,8 +155,10 @@ namespace klib{
 #if defined APP_USE_GLEW
 			glewInit();
 #else
-			if (ogl_LoadFunctions() == ogl_LOAD_FAILED){
+			gl::exts::LoadTest didLoad = gl::sys::LoadFunctions();
+			if (!didLoad){
 				cl("Catastrophic Error: Minimum OpenGL version 3 not supported, please upgrade your graphics hardware.\n");
+				cl("Number of functions that failed to load: %i.\n", didLoad.GetNumMissing());
 				exit(EXIT_FAILURE);
 			}
 #endif
@@ -188,8 +190,8 @@ namespace klib{
 				}
 			);
 
-			defaultShader.CreateSRC(GL_VERTEX_SHADER, vert2d);
-			defaultShader.CreateSRC(GL_FRAGMENT_SHADER, frag2d);
+			defaultShader.CreateSRC(gl::VERTEX_SHADER, vert2d);
+			defaultShader.CreateSRC(gl::FRAGMENT_SHADER, frag2d);
 			defaultShader.Link();
 
 			// Create default quad for rendering frame buffer
@@ -199,24 +201,24 @@ namespace klib{
 			dynamicRect.Create();
 
 			// Initialize gl parameters
-			glEnable(GL_DEPTH_TEST);
-			glDepthMask(GL_TRUE);
-			glDepthFunc(GL_LEQUAL);
-			glDepthRange(0.0f, 1.0f);
+			gl::Enable(gl::DEPTH_TEST);
+			gl::DepthMask(true);
+			gl::DepthFunc(gl::LEQUAL);
+			gl::DepthRange(0.0f, 1.0f);
 
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			gl::Enable(gl::BLEND);
+			gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
 
 			// Hello World
-			glClearColor(ubtof(0), ubtof(122), ubtof(204), 1.0f);
-			glClearDepth(1.0f);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			gl::ClearColor(ubtof(0), ubtof(122), ubtof(204), 1.0f);
+			gl::ClearDepth(1.0f);
+			gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 			windowManager->Swap();
 
 			// Init OpenGL OK!
-			cl("Initialized %s OpenGL %s %dx%d\n", glGetString(GL_VENDOR), glGetString(GL_VERSION), buffer.width, buffer.height);
+			cl("Initialized %s OpenGL %s %dx%d\n", gl::GetString(gl::VENDOR), gl::GetString(gl::VERSION), buffer.width, buffer.height);
 			
-			glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+			gl::ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
 			internalStatus = 0;
 
@@ -228,7 +230,7 @@ namespace klib{
 
 	GC::~GC(){
 		//Bind 0, which means render to back buffer, as a result, fb is unbound
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
 		fbo.clear();
 
 		cl("\n0x%x :3\n", internalStatus);
@@ -256,18 +258,18 @@ namespace klib{
 			resizeEvent = false;
 		}
 
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); //Clear the colour buffer (more buffers later on)
+		gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT); //Clear the colour buffer (more buffers later on)
 		fbo[0].Bind(); // Bind our frame buffer for rendering
-		glViewport(0, 0, buffer.width, buffer.height);
-		glClear (GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+		gl::Viewport(0, 0, buffer.width, buffer.height);
+		gl::Clear (gl::COLOR_BUFFER_BIT|gl::DEPTH_BUFFER_BIT);
 	}
 
 	void GC::Swap(){
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glViewport(0, 0, window.width, window.height);
+		gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
+		gl::Viewport(0, 0, window.width, window.height);
 
 		defaultShader.Bind();
-		glBindTexture(GL_TEXTURE_2D, fbo[0].texture);
+		gl::BindTexture(gl::TEXTURE_2D, fbo[0].texture);
 		auto projection = glm::ortho(0.0f, (float)window.width, 0.0f, (float)window.height);
 		auto ratio = ASPRatio(window, buffer, false);
 		auto view = glm::translate(
@@ -279,10 +281,10 @@ namespace klib{
 			glm::vec3(ratio.width / float(buffer.width), ratio.height / float(buffer.height), 0.0f)
 			);
 		auto MVP = projection*view*model;
-		glUniformMatrix4fv(defaultMVP, 1, GL_FALSE, glm::value_ptr(MVP));
+		gl::UniformMatrix4fv(defaultMVP, 1, false, glm::value_ptr(MVP));
 		defaultRect.Draw();
 
-		glFinish();
+		gl::Finish();
 
 		// Swap!
 		windowManager->Swap();
@@ -326,20 +328,20 @@ namespace klib{
 		vao.Create(v, e);
 
 		// Specify the layout of the vertex data
-		GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
-		glEnableVertexAttribArray(posAttrib);
-		glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
+		GLint posAttrib = gl::GetAttribLocation(shaderProgram, "position");
+		gl::EnableVertexAttribArray(posAttrib);
+		gl::VertexAttribPointer(posAttrib, 2, gl::FLOAT, false, 4 * sizeof(GLfloat), 0);
 
-		GLint texAttrib = glGetAttribLocation(shaderProgram, "texcoord");
-		glEnableVertexAttribArray(texAttrib);
-		glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
+		GLint texAttrib = gl::GetAttribLocation(shaderProgram, "texcoord");
+		gl::EnableVertexAttribArray(texAttrib);
+		gl::VertexAttribPointer(texAttrib, 2, gl::FLOAT, false, 4 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
 
-		return glGetUniformLocation(shaderProgram, "MVP");
+		return gl::GetUniformLocation(shaderProgram, "MVP");
 	}
 
 	void GC::Blit2D(Texture* texture, int x, int y, float rotation, float scale, Color vcolor, Rect<float> mask){
-		/*glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, texture->gltexture);
+		/*glEnable(gl::TEXTURE_2D);
+		glBindTexture(gl::TEXTURE_2D, texture->gltexture);
 
 		glPushMatrix();
 		{
@@ -363,7 +365,7 @@ namespace klib{
 				glTranslatef(-x-resetW, -y-resetH, 0);
 			}
 
-			glBegin(GL_QUADS);
+			glBegin(gl::QUADS);
 			{
 				vcolor.Set();
 				glTexCoord2d(0.0+mask.x,	0.0+mask.y);		glVertex2i(x+mask.x,						y+mask.y);
@@ -375,14 +377,14 @@ namespace klib{
 		}
 		glPopMatrix();
 
-		glBindTexture(GL_TEXTURE_2D, 0);*/
+		glBindTexture(gl::TEXTURE_2D, 0);*/
 	}
 
 	void GC::BlitSprite2D(Sprite* sprite, int x, int y, int row, int col, bool managed, Rect<int> mask){
 		/*if (managed){
-			glEnable(GL_TEXTURE_2D);
-			glBindTexture(GL_TEXTURE_2D, sprite->texturePtr->gltexture);
-			glBegin(GL_QUADS);
+			glEnable(gl::TEXTURE_2D);
+			glBindTexture(gl::TEXTURE_2D, sprite->texturePtr->gltexture);
+			glBegin(gl::QUADS);
 		}
 		{
 			//calculate how wide each character is in term of texture coords
@@ -401,7 +403,7 @@ namespace klib{
 		}
 		if (managed){
 			glEnd();
-			glBindTexture(GL_TEXTURE_2D, 0);
+			glBindTexture(gl::TEXTURE_2D, 0);
 		}*/
 	}
 
@@ -451,12 +453,12 @@ namespace klib{
 			}
 		);
 
-		shader.CreateSRC(GL_VERTEX_SHADER, vert2d);
-		shader.CreateSRC(GL_FRAGMENT_SHADER, frag2d);
+		shader.CreateSRC(gl::VERTEX_SHADER, vert2d);
+		shader.CreateSRC(gl::FRAGMENT_SHADER, frag2d);
 		shader.Link();
 
-		MVP = glGetUniformLocation(shader.program, "MVP");
-		color = glGetUniformLocation(shader.program, "color");
+		MVP = gl::GetUniformLocation(shader.program, "MVP");
+		color = gl::GetUniformLocation(shader.program, "color");
 	}
 
 	void Font::Draw(glm::mat4 projection, int x, int y, const char* text){
@@ -515,7 +517,7 @@ namespace klib{
 				cx += charsetDesc.Chars[index].XAdvance;
 
 				if (charsetDesc.Chars[index].Page != lastPage){
-					//glBindTexture(GL_TEXTURE_2D, m_texture[charsetDesc.Chars[index].Page]->gltexture);
+					//gl::BindTexture(gl::TEXTURE_2D, m_texture[charsetDesc.Chars[index].Page]->gltexture);
 					lastPage = charsetDesc.Chars[index].Page;
 				}
 
@@ -539,13 +541,13 @@ namespace klib{
 			}else{
 				buffer.Create(v, e);
 
-				GLint posAttrib = glGetAttribLocation(shader.program, "position");
-				glEnableVertexAttribArray(posAttrib);
-				glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
+				GLint posAttrib = gl::GetAttribLocation(shader.program, "position");
+				gl::EnableVertexAttribArray(posAttrib);
+				gl::VertexAttribPointer(posAttrib, 2, gl::FLOAT, false, 4 * sizeof(GLfloat), 0);
 
-				GLint texAttrib = glGetAttribLocation(shader.program, "texcoord");
-				glEnableVertexAttribArray(texAttrib);
-				glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
+				GLint texAttrib = gl::GetAttribLocation(shader.program, "texcoord");
+				gl::EnableVertexAttribArray(texAttrib);
+				gl::VertexAttribPointer(texAttrib, 2, gl::FLOAT, false, 4 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
 
 				created = true;
 			}
@@ -560,9 +562,9 @@ namespace klib{
 				glm::vec3(x + 1, y + 1, 0.0f)
 				);
 
-			glUniformMatrix4fv(MVP, 1, GL_FALSE, glm::value_ptr(projection*view));
-			glUniform4f(color, 0, 0, 0, 0.5);
-			buffer.Draw(GL_TRIANGLES);
+			gl::UniformMatrix4fv(MVP, 1, false, glm::value_ptr(projection*view));
+			gl::Uniform4f(color, 0, 0, 0, 0.5);
+			buffer.Draw(gl::TRIANGLES);
 		}
 
 		auto view = glm::translate(
@@ -570,9 +572,9 @@ namespace klib{
 			glm::vec3(x, y, 0.0f)
 			);
 
-		glUniformMatrix4fv(MVP, 1, GL_FALSE, glm::value_ptr(projection*view));
-		glUniform4f(color, 1, 1, 1, 1);
-		buffer.Draw(GL_TRIANGLES);
+		gl::UniformMatrix4fv(MVP, 1, false, glm::value_ptr(projection*view));
+		gl::Uniform4f(color, 1, 1, 1, 1);
+		buffer.Draw(gl::TRIANGLES);
 	}
 
 	Font::~Font(){
