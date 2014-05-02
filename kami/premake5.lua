@@ -2,7 +2,7 @@ project "kami"
     kind "StaticLib"
     language "C++"
     includedirs { "./" }
-    files { "**.h", "**.hpp", "**.cpp" }
+    files { "**.h", "**.hpp", "**.c", "**.cpp" }
 
     if os.is("windows") then
         excludes { "unix.*" }
