@@ -6,6 +6,8 @@ project "kami"
 
     if os.is("windows") then
         excludes { "unix.*" }
+    else
+        excludes { "win32.*" }
     end
     
     platforms { "x64" }
