@@ -167,6 +167,9 @@ namespace klib {
 		~Console() = default;
 
 		void push_back(std::wstring str){
+			if (str.empty()) return;		//	If the string is empty, we stop here.
+											//	Otherwise, calling str.back() throws an exception.
+
 			file << str;
 			if (buffer->back() == nullptr){	// If we exceed the buffer boundaries discard oldest entry
 				buffer->pop();
