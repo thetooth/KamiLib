@@ -160,12 +160,14 @@ namespace klib{
 			MVP = gl::GetUniformLocation(shader.program, "MVP");
 			colorPtr = gl::GetUniformLocation(shader.program, "color");
 
-			// Generate null geometry
 			std::vector<Point2D<GLfloat>> v = {
-				{ 0, 0 }
+				{ 0, 0 },
+				{ 1, 0 },
+				{ 1, 1 },
+				{ 0, 1 }
 			};
 
-			std::vector<GLuint> e = { 0 };
+			std::vector<GLuint> e = { 0, 1, 2, 2, 3, 0 };
 			obj.Create(v, e);
 
 			// Specify the layout of the vertex data
@@ -176,18 +178,11 @@ namespace klib{
 
 		void Draw(glm::mat4 projection, float x, float y, float width, float height, Color vcolor = Color(255, 0, 0, 255)){
 
-			std::vector<Point2D<GLfloat>> v = {
-				{ x, y },
-				{ x + width, y },
-				{ x + width, y + height },
-				{ x, y + height }
-			};
-
-			std::vector<GLuint> e = { 0, 1, 2, 2, 3, 0 };
-			obj.Update(v, e);
+			auto scale = glm::scale(glm::mat4(1.0f), glm::vec3(width, height, 0.0f));
+			auto translate = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, 0.0f));
 
 			shader.Bind();
-			gl::UniformMatrix4fv(MVP, 1, false, glm::value_ptr(projection));
+			gl::UniformMatrix4fv(MVP, 1, false, glm::value_ptr(translate*scale*projection));
 			gl::Uniform4f(colorPtr, ubtof(vcolor.r), ubtof(vcolor.g), ubtof(vcolor.b), ubtof(vcolor.a));
 			obj.Draw();
 		}
