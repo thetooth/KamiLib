@@ -42,7 +42,7 @@ namespace klib {
 		glBuffer<gl::ARRAY_BUFFER, StorageClass> vbo;
 		glBuffer<gl::ELEMENT_ARRAY_BUFFER, GLuint> ebo;
 
-		int elementSize;
+		size_t elementSize;
 
 		glObj() = default;
 		glObj(std::vector<StorageClass> v, std::vector<GLuint> e) { Create(v, e); };
@@ -92,7 +92,7 @@ namespace klib {
 		gl::GetShaderiv(obj, gl::COMPILE_STATUS, &status);
 		gl::GetShaderiv(obj, gl::INFO_LOG_LENGTH, &infoLogLength);
 
-		if ((status != true || KLGLDebug) && infoLogLength > 0){
+		if ((status != gl::TRUE_ || KLGLDebug) && infoLogLength > 0){
 			std::vector<char> infoLog(infoLogLength);
 			if (isShader){
 				gl::GetShaderInfoLog(obj, infoLogLength, &charsWritten, infoLog.data());

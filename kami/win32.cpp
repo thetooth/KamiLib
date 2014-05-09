@@ -3,9 +3,6 @@
 namespace klib {
 	LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
-		HKEY hKey;
-		WINDOWPLACEMENT pos;
-		LONG res;
 		switch (message){
 		case WM_QUIT:
 		case WM_CLOSE:

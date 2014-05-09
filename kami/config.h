@@ -67,11 +67,11 @@ namespace klib {
 		}
 
 		inline int ParseError(){
-			switch (status)
+			/*switch (status)
 			{
 			default:
 				break;
-			}
+			}*/
 			return status;
 		}
 	};

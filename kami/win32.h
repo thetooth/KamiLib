@@ -74,7 +74,7 @@ namespace klib {
 			return ' ';
 		}
 
-		bool shift = (GetAsyncKeyState(VK_SHIFT));
+		bool shift = (GetAsyncKeyState(VK_SHIFT) != 0);
 
 		switch(vk)
 		{
