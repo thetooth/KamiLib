@@ -182,7 +182,7 @@ namespace klib{
 			auto translate = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, 0.0f));
 
 			shader.Bind();
-			gl::UniformMatrix4fv(MVP, 1, false, glm::value_ptr(translate*scale*projection));
+			gl::UniformMatrix4fv(MVP, 1, false, glm::value_ptr(projection*translate*scale));
 			gl::Uniform4f(colorPtr, ubtof(vcolor.r), ubtof(vcolor.g), ubtof(vcolor.b), ubtof(vcolor.a));
 			obj.Draw();
 		}
