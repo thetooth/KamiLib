@@ -251,6 +251,22 @@ namespace klib{
 		Rect<int> ASPRatio(Rect<int> &rcScreen, Rect<int> &sizePicture, bool bCenter = true);
 	};
 
+	class GCLua {
+	public:
+		std::unique_ptr<GC> gc;
+
+		GCLua() = default;
+		~GCLua() = default;
+
+		void Attach(GC &gcL){
+			gc = std::unique_ptr<klib::GC>(&gcL);
+		}
+
+		void Rectangle(int x, int y, int width, int height){
+			gc->Rectangle(x, y, width, height);
+		}
+	};
+
 	// Simple text drawing
 	class Font {
 	public:
